@@ -1,81 +1,48 @@
 # AI and Contributor Handoff
 
-Last reconciled: 2026-10-12. This is the durable source of continuity for contributors and AI assistants. Re-check files, CI results, and live GitHub settings before relying on time-sensitive details.
+Last reconciled: 2026-10-21. Re-check the files and live GitHub state before acting on time-sensitive details.
 
 ## Read these sources first
 
-1. \`docs/AI-HANDOFF.md\` — this continuity snapshot and next task.
-2. \`docs/PROGRESS.md\` — milestone and acceptance checklist.
-3. \`docs/DECISION-LOG.md\` — accepted decisions and unresolved decisions.
-4. \`docs/REPOSITORY-GOVERNANCE.md\` — rulesets and verification gaps.
-5. \`docs/Tabletop RPG Simulator AI Build Brief.md\` — constraints, testing rules and build order.
-6. \`docs/architecture.md\` — architecture v4.
-7. \`README.md\`, \`CONTRIBUTING.md\`, \`SECURITY.md\`, \`NOTICE\`, \`LICENSE\` and \`.github/workflows/ci.yml\` as relevant.
+1. [Requirements Specification v1.4](Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
+2. [Architecture v5.0](architecture.md)
+3. [AI Build Brief v1.6](Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+4. [Ruleset Specification v0.6 (draft)](Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+5. [Decision Log and Progress Tracker v1.5](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+6. [Repository governance](REPOSITORY-GOVERNANCE.md)
+7. `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `NOTICE`, `LICENSE`, and `.github/workflows/ci.yml` as relevant.
 
-A more specific approved spec takes precedence over a high-level brief. When documents conflict or leave an implementation-critical choice open, describe the discrepancy and ask the human. Never silently invent D&D rules. Keep this handoff, the progress tracker and the decision log aligned.
+Use the ruleset specification as the source of truth for D&D mechanics. More specific specifications outrank the build brief. Do not silently reconcile conflicting requirements or invent unstated rules; record the conflict and ask the owner.
 
-## Project identity and fixed baseline
+## Verified repository baseline
 
-- Repository: public \`SamarthBadola/Tabletop-RPG-Simulator\`.
-- Product: self-hosted browser-based D&D 5e SRD 5.1 (2014) character manager and encounter runner; not a virtual tabletop.
-- Two-person course project; owner is the maintainer. Do not guess the teammate's GitHub handle.
-- Maven \`groupId\`: \`com.github.sbadolankaur\`; \`artifactId\`: \`tabletop-rpg-simulator\`; Java root package \`com.github.sbadolankaur.rpg\`.
-- Selected baseline: Temurin Java 25, Spring Boot 4.1.1, Maven Wrapper 3.10.0, PostgreSQL 16.15.
-- Owner-reported local versions: Git \`2.54.0.windows.1\`, Java \`25.0.4.1+1\`, Docker Engine/CLI \`29.8.2\`, Compose \`5.5.1\`, Buildx \`0.37.2\`; Docker Desktop Linux engine with context \`desktop-linux\`.
-- Project-owned code/docs use Apache-2.0. SRD 5.1 material has separate CC-BY-4.0 terms, with attribution in \`README.md\` and \`NOTICE\`.
-- GitHub Actions and GHCR are intended CI/CD and registry tools. Release publishing is not implemented; ADR-009 is unresolved.
+- Repository: `SamarthBadola/Tabletop-RPG-Simulator`.
+- Step 1 (walking skeleton) passed the owner-reported laptop acceptance test on 2026-10-12: the source-built Compose stack started, PostgreSQL became healthy, the app started, and first-account registration plus sign-in succeeded.
+- Current implementation baseline: Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1, Maven Wrapper 3.10.0, PostgreSQL 16.15.
+- Initial cold image build was approximately 197.8 seconds. Treat this as a measurement to investigate, not as a reason for speculative build changes. Track cold/warm rebuild time, dependency download, compilation/package, image export/size, and app readiness separately.
+- PR #14 (`actions/setup-java` 6.1.0) was merged by the owner on 2026-10-19. Keep third-party Actions pinned to full commit SHAs with readable version comments.
+- Never merge PRs on the owner's behalf. Create the PR, report evidence and limitations, and wait for the owner to review and merge it.
 
-## Current implementation state
+## Current milestone: Step 2 — dice engine
 
-The walking skeleton was merged in PR #6. CI/governance improvements were merged in PR #9, and the Dependabot Compose-ecosystem correction was merged in PR #10. Local first-start acceptance passed on 2026-10-12, as reported by the project owner. Step 1 was accepted on 2026-10-12 after the project owner reported a successful laptop source-build startup, healthy PostgreSQL, successful application startup, first-account registration and sign-in. The first image build took approximately 197.8 seconds. Track build-performance optimization as a follow-up and measure the actual bottlenecks before changing the build.
+Implement only after the owner confirms the unresolved syntax/limit details below. The planned engine is pure Java/JDK-only. Its core concepts are `RandomSource`, `DiceExpression` and parser, `DieRoll`, `RollTerm`, and `RollResult`. Use bounded uniform `nextInt(bound)` draws (no modulo or floating-point scaling), retain every die face and whether it was kept, retain ordered signed terms and natural d20/mode metadata, and inject randomness so worked tests can force results.
 
-The merged walking skeleton provides:
+Step 2 done-when from Build Brief v1.6: malformed and over-limit expressions are rejected; parser/property/uniformity tests pass; and Ruleset Specification section 3.8 examples cover term lists, bonus/penalty dice, natural d20, one reroll per die, and d20 floor behavior. The build guide calls for tests first and no weakening/skipping tests.
 
-- Maven project and wrapper targeting Java 25/Spring Boot 4.1.1/Maven 3.10.0.
-- Spring Boot service with Actuator health/readiness.
-- PostgreSQL configuration, Flyway initial schema and Hibernate schema validation.
-- Username/password registration/login, BCrypt, CSRF, HttpOnly/SameSite cookies, configurable Secure cookie flag, restrictive CSP and bounded login throttling.
-- Pessimistically locked first-account initialization state: the first successful registration becomes the instance administrator; later public registration is closed pending invitations.
-- Thymeleaf login, registration and authenticated landing pages.
-- App Dockerfile, PostgreSQL-only Compose deployment plus a source-build overlay, environment initializer and smoke test.
-- Unit tests and PostgreSQL Testcontainers integration tests.
-- CI jobs for repository hygiene, unit/format checks, PostgreSQL integration, secrets scanning, and source-built Compose smoke on pull requests and branch pushes.
+Do not implement Step 3 kernel/modifier behavior or the combat engine as part of this dice-engine task unless the owner explicitly expands the scope. The architecture and supplied specifications should be treated as design references, not authorization to jump ahead in the build order.
 
-CI evidence: [PR #12 run](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260399502) and [post-merge `main` run](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260733720) passed all five GitHub Actions jobs. The live `main-quality-gates` ruleset additionally requires `DCO`, so six contexts are required for merging.
+## Conflicts and open questions to resolve before coding
 
-## First-run instructions
+1. **Java-version conflict in the supplied documents.** Requirements Specification v1.4 section 5 and Build Brief v1.6 section 3 mention Java 21, while the existing project code, `app/pom.xml`, Dockerfile, and previous owner-approved decision use Java 25. Keep Java 25 for the existing implementation; ask before changing the baseline. The source documents are kept verbatim in this PR so the discrepancy remains visible for owner review.
+2. **Stale Part A/Part B status within Build Brief v1.6.** Section 1 says Parts B–H do not exist, but later Stop-here text refers to Part B and the supplied Ruleset Specification v0.6 includes a drafted Part B. The supplied tracker also records Part B as drafted with its engine decisions closed. Treat Part A section 3.8 as the Step 2 rules source; do not implement Part B combat yet.
+3. **Reroll/floor modifier syntax is not specified.** The ruleset says to support reroll and minimum-value/d20-floor modifiers, but does not define their literal expression tokens or precedence/combination grammar. Confirm the exact parser notation before implementation.
+4. **Numeric safety caps are incomplete.** Die size (2–1000) and group dice count (1–100) are specified, but maximum total dice per expression and maximum expression length are only referred to generically. Choose and record concrete limits before implementing validation.
+5. **Term labels and sources are required, but are not encoded by the shown expression examples.** Confirm whether parsed expressions receive generic terms and higher-level callers attach labels/sources, or whether you expect a separate composition API.
+6. **Parser edge behavior needs decisions** where the specs do not define it: whitespace/case handling, keep/drop counts equal to or greater than the group size, repeated modifiers, and integer overflow. Propose defaults only for owner approval; do not quietly choose semantics.
+7. **Ruleset verification debt V-1 remains open.** The ruleset marks Inspiration, Multiclassing, Backgrounds, class chapters, Spellcasting and item wording as needing verification. That does not block a generic dice primitive, but do not claim dependent class/game-rule behavior is verified.
 
-Use Bash (Git Bash or WSL on Windows) at the repository root:
+## Next action
 
-\`\`\`bash
-./deploy/scripts/init-env.sh
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --env-file deploy/.env up --build -d
-\`\`\`
+First, have the owner confirm the dice grammar tokens, total-dice cap, expression-length cap, term-label/source boundary, and relevant malformed-input semantics. Then implement Step 2 on a short-lived branch with worked-example and property tests, open a PR, and leave merge responsibility with the owner.
 
-Open \`http://localhost:8080\` and create the first instance-admin account. Later open registration is closed until Step 4 introduces invites. Stop without deleting data using \`docker compose ... down\`; use \`down -v\` only when you intend to delete the database volume. Never commit \`deploy/.env\`.
-
-## Non-negotiable engineering constraints
-
-- Do not implement D&D mechanics from memory. The ruleset spec is not written.
-- Until specs exist, follow Steps 1–5 in the build brief.
-- Keep \`engine\` pure JDK: no Spring, JPA, HTTP, or filesystem I/O.
-- Enforce feature package boundaries and ArchUnit rules specified in architecture v4.
-- Keep I/O outside database write transactions; migrations are additive and applied migrations are immutable.
-- Security by default: deny-by-default routes except named public endpoints, data-layer authorization, form DTOs not JPA entities, CSRF, validation, no secrets in files/logs, uploads/imports untrusted.
-- Test behavior and negative cases; never weaken tests to get green.
-- Prefer minimal dependencies and simple designs. Keep code efficient; optimize only where the work is justified by the actual algorithm and use case.
-- Comment only where it adds information: public contracts, non-obvious constraints/reasons/invariants. Avoid redundant comments or a comment quota.
-- Pin tool/dependency/image versions; verify APIs/release details against primary docs.
-- Use short-lived branches, Conventional Commits, DCO sign-off, PRs and squash merges. Do not commit directly to \`main\`.
-- Update progress/decision docs alongside implementation; file existence alone does not prove done-when criteria.
-
-## Next implementation sequence
-
-1. Begin Step 2 (dice engine) in a separate short-lived PR. Follow the grammar, limits and tests in the build brief; do not invent D&D rules.
-2. Keep first-build performance on the implementation checklist. Baseline: approximately 197.8 seconds for the first laptop Docker image build on 2026-10-12. Benchmark cold vs. warm builds, separate downloads from compilation/package and startup, then optimize cache layers and image/build performance based on evidence. Avoid speculative optimizations and preserve a reproducible clean-clone build.
-3. Stop after Step 5 and request the ruleset, content-schema, grid/geometry, and UX/API-with-threat-model specifications before implementing later gameplay features.
-
-## Unresolved choices
-
-- ADR-009: build brief says publish images on version tags; architecture v4 says publish commit-SHA images on main, then promote the same digest to release tags. Preferred direction is build once/promote same digest, but ask the human before enabling CD.
-- Future content decisions: spell/monster subsets, surprise handling, DM override display, corner-cutting, upload limits and journal event capture.
+Stop after Step 5. Obtain the content-schema, grid/geometry, and UX/API-with-threat-model specifications before moving to their corresponding later implementation steps.

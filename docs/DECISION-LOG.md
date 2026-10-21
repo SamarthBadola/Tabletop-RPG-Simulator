@@ -1,5 +1,7 @@
 # Decision Log
 
+> **Authority note (2026-10-21):** Current product/system decisions and milestone status are maintained in [Tabletop RPG Simulator Decision Log and Progress Tracker v1.5](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file preserves earlier repository/implementation ADR detail; where a product or architecture decision conflicts with the consolidated specification set, consult the linked current documents. Live GitHub ruleset settings remain documented in `REPOSITORY-GOVERNANCE.md`.
+
 Record non-obvious choices here. Update this log in the same PR as the implementation that establishes the decision. Last reconciled: 2026-10-12.
 
 | ID | Topic | Status | Decision / note |

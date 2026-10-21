@@ -1,13 +1,13 @@
-# Tabletop RPG Simulator: AI Build Brief
+# Tabletop RPG Simulator: AI Build Brief (v1.6)
 
-Oct 11, 2026 · @Samarth
+Oct 15, 2026 · @Samarth
 
 Read this first. It tells an AI coding assistant what the project is, what is already decided, and how to start building without guessing. Where a more specific spec disagrees with this brief, the spec wins; where something is marked TODO, ask the human.
 
 ## 1. Rules for working on this project
 
-1. Read this brief end to end before writing code. Companion documents, if provided: Requirements Specification, `architecture.md` (v4), Decision Log. If they disagree with this brief, tell the human.
-2. The ruleset specification is the source of truth for D&D mechanics and is **not written yet**. Do not implement game rules from memory. Until it exists, build infrastructure only: skeleton, dice engine, kernel types, schema, auth, CI.
+1. Read this brief end to end before writing code. Companion documents, if provided: Requirements Specification, `Architecture (v5.0)`, Decision Log. If they disagree with this brief, tell the human.
+2. The ruleset specification is the source of truth for D&D mechanics and is **only partly written: Part A (foundations) exists, Parts B to H do not**. Do not implement game rules from memory. Until the relevant part exists, build only what Part A covers (dice engine and kernel types, with the Part A worked examples as tests) plus skeleton, schema, auth and CI.
 3. Keep it simple. Build the simplest thing that meets the current step. Add a seam only if it is in the seams register (5.6). Do not build deferred features.
 4. Work in small tasks, each with a done-when you can demonstrate by running it. Commit per task using Conventional Commits.
 5. Tests first for the engine. Never weaken, skip or edit a test to make it pass; fix the code. Report failures honestly instead of leaving them red or faking green.
@@ -39,7 +39,7 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 
 | Layer | Choice | Notes |
 | --- | --- | --- |
-| Language | Java 25 (LTS, Temurin) | Selected for this project; the exact local runtime and build baseline are recorded in `docs/DECISION-LOG.md`. |
+| Language | Java 21 (LTS, Temurin) | The newest LTS is acceptable if the toolchain supports it; record the choice. |
 | Build | Maven with wrapper | Profiles `integration` and `contract`. Unit tests `*Test`, integration `*IT`. |
 | Framework | Spring Boot (newest stable) | Web MVC, Validation, Security, Data JPA, Actuator. |
 | Views | Thymeleaf plus HTMX | Self-hosted `htmx.js`, no CDN, no SPA. Controllers return HTML fragments for interactive actions. |
@@ -80,7 +80,7 @@ rpg/
   LICENSE, README.md
 ```
 
-The team has selected Maven `groupId` `com.github.sbadolankaur`, Maven `artifactId` `tabletop-rpg-simulator`, and Java root package `com.github.sbadolankaur.rpg`. Use these identifiers when generating the Maven project.
+The group id and root package are a placeholder (`com.yourteam.rpg`). Ask the human for the real one before creating the project.
 
 ## 5. Architecture the code must follow
 
@@ -183,7 +183,7 @@ These are the shapes to implement. Names may be refined, but the behavior is fix
 public enum Ability { STR, DEX, CON, INT, WIS, CHA }   // the only place abilities are enumerated
 
 public final class AbilityScores {                      // the only accessor
-    public int score(Ability a) { /* ... */ }
+    public int score(Ability a) { /* base plus improvements, then ability stat modifiers, clamped to 0..ceiling (default 30) */ }
     public int modifier(Ability a) { return Math.floorDiv(score(a) - 10, 2); }
 }
 
@@ -194,11 +194,15 @@ public record Modifier(String targetStat, ModOp op, int value,
                        DurationSpec duration, String source) {}
 ```
 
-**Stat computation.** A stat is computed, never stored: base value, then `SET`, then `ADD`, then `MULTIPLY` (fractions round down, as in the SRD), then `MIN` and `MAX`. Advantage and disadvantage are collected separately and cancel. Kernel stats: AC, initiative, speed, max HP, attack bonus, save bonuses, skill bonuses, spell save DC, `sense:sight`, `sense:darkvision`, `sense:blindsight`, `sense:truesight`.
+**Stat computation.** A stat is computed, never stored: base value, then `SET`, then `ADD`, then `MULTIPLY` (fractions round down, as in the SRD), then `MIN` and `MAX`. Advantage and disadvantage are collected separately: extra sources of the same kind never stack, and any advantage together with any disadvantage cancels to a normal roll. Skill, save and attack totals are formulas with a separate proficiency component, floor(proficiency bonus x multiplier); MULTIPLY targets that multiplier, never the total (Ruleset Specification, Part A). Maximum HP is derived from stored raw hit die results and the current Constitution modifier, then adjusted by modifiers; current HP is clamped to it. There are two modifier types: stat modifiers (persistent integers) and roll bonuses (applied when a roll is made; fixed or dice; may be consumed). Modifiers carry a stack key and a potency: the same source does not stack with itself (most potent, then most recent) and different sources add. Advantage and disadvantage sources carry a scope (roll kind, ability, conditions). See Ruleset Specification section 3.9. Kernel stats: AC, initiative, speed, max HP, attack bonus, save bonuses, skill bonuses, spell save DC, `sense:sight`, `sense:darkvision`, `sense:blindsight`, `sense:truesight`.
+
+**Ability scores (DEC-074).** An ability score is a stat: the stored base plus recorded improvements, then the ability stat's modifiers, clamped to a ruleset ceiling (default 30) and a floor of 0. Each ability also has a maximum (default 20, raised by some effects together with the score) that caps level-up and feat improvements when they are chosen; any excess is lost. A score of 0 records an ability-at-zero event and the causing effect decides the consequence. The stored base stays between 1 and 30; extra points come from modifiers. Feats are content (DEC-073): a character can hold any number, each stored with its source and choices. An improvement that would pass the maximum shows a warning before it is applied, with the excess that would be lost. Ability score generation at creation uses a registry of built-in methods (standard array, point buy, roll 4d6 drop lowest, roll 3d6, manual entry) that the DM selects per campaign; DM-created methods are version 2.
+
+**Campaign settings and HP rules from the Ruleset Specification.** Campaign settings so far: hit point method (player chooses per level between rolled and fixed average by default, or the DM forces one); advancement (milestone by default, XP as a later option, with the XP column and thresholds kept in the data); natural 20 and natural 1 on ability checks and saves (off by default; the DM can enable it for checks, saves or both); game clock advance per combat round (default 6 seconds, 0 for manual); ability score generation method; feats enabled; whether damage absorbed by temporary hit points at 0 HP still causes a death save failure (yes by default, with a house-rule option); optional mid-combat surprise (off by default). When a combatant joins a running encounter the DM chooses join options (initiative roll mode, timing, starting conditions, first-turn restriction). Maximum HP is a modifiable stat. When it rises, current HP rises by the same amount; when it falls below current HP, current HP becomes the new maximum; when a temporary increase ends, only the clamp applies; a creature at 0 HP is not raised (decided).
 
 **Resources.** `Resource(key, current, max, recharge)` with recharge in `TURN, SHORT_REST, LONG_REST, DAWN, NEVER`. `SlotPool` holds slots by spell level; only the used counts are stored, totals derive from class levels.
 
-**Durations.** `ROUNDS(n, start or end of a named turn)`, `UNTIL_END_OF_TURN`, `GAME_TIME(seconds)`, `UNTIL_REST(short or long)`, `PERMANENT`. A round is 6 seconds of game time. Game time advances only through the DM, a rest or travel, never with real time.
+**Durations.** `ROUNDS(n, start or end of a named turn)`, `UNTIL_END_OF_TURN`, `GAME_TIME(seconds)`, `UNTIL_REST(short or long)`, `PERMANENT`. A round is 6 seconds of game time. Game time advances only through the DM, a rest or travel, never with real time. In combat, each completed round advances the clock by a DM-set amount (default 6 seconds; decision E-9). The rules constant of 6 seconds per round (10 rounds per minute) does not change.
 
 **Dice.**
 
@@ -206,7 +210,7 @@ public record Modifier(String targetStat, ModOp op, int value,
 public interface RandomSource { int nextInt(int bound); }   // 0..bound-1, uniform; production: SecureRandom
 
 public record DieRoll(int face, boolean kept) {}
-public record RollResult(String expression, List<DieRoll> dice, int modifier, int total) {}
+public record RollTerm(String label, String source, List<DieRoll> dice, int fixed, int signedSubtotal) {}  // RollResult holds List<RollTerm>, total, naturalD20, mode
 
 public final class DiceExpression {
     public static DiceExpression parse(String s);            // throws on malformed or over-limit input
@@ -214,7 +218,7 @@ public final class DiceExpression {
 }
 ```
 
-Grammar: `NdX` plus optional keep or drop (`kh`, `kl`, `dh`, `dl` with a count), reroll and minimum-value modifiers, and `+` or `-` an integer. Examples: `2d20kh1` (advantage), `4d6dl1` (ability scores), `3d8+4`. Limits: X from 2 to 1000, N from 1 to 100, caps on total dice and expression length. Draw each die with the bounded `nextInt` (never `random() * X` or modulo). Record every face and whether it was kept. A critical hit doubles the number of dice, and the critical threshold is a rule parameter, not a hard-coded 20.
+Grammar: `NdX` plus optional keep or drop (`kh`, `kl`, `dh`, `dl` with a count), reroll and minimum-value modifiers, and `+` or `-` an integer. Examples: `2d20kh1` (advantage), `4d6dl1` (ability scores), `3d8+4`. Limits: X from 2 to 1000, N from 1 to 100, caps on total dice and expression length. Draw each die with the bounded `nextInt` (never `random() * X` or modulo). Record every face and whether it was kept. A roll is an ordered list of labeled, signed terms (dice groups or fixed numbers; bonus and penalty dice such as Bless and Bane are extra terms), and the grammar accepts sums like d8+3d6+3 and d20+3-d4. A reroll replaces a die once; a d20 floor (Reliable Talent) applies to each d20 before the kept die is chosen; each dice term carries a crit-doubling flag (a critical hit doubles dice, not modifiers); the natural d20 is recorded; the critical threshold is a rule parameter, not a hard-coded 20. See Ruleset Specification section 3.8.
 
 **Actions and results.**
 
@@ -357,7 +361,7 @@ public interface Pathfinder {
 
 ### 9.1 Prerequisites
 
-JDK 25, Git, Docker with Compose and Buildx. CMake and a C++17 compiler only if you work on the pathfinder.
+JDK 21, Git, Docker with Compose v2 and buildx. CMake and a C++17 compiler only if you work on the pathfinder.
 
 ### 9.2 First run and dev loop
 
@@ -460,7 +464,7 @@ Publishing `8080:8080` exposes the app on all interfaces so LAN players can reac
 
 ```
 # app/Dockerfile
-FROM eclipse-temurin:25-jdk AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -468,7 +472,7 @@ RUN ./mvnw -B -ntp dependency:go-offline
 COPY src src
 RUN ./mvnw -B -ntp -DskipTests package
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:21-jre
 RUN useradd --system --uid 10001 app
 WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
@@ -531,7 +535,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '25', cache: maven}
+        with: {distribution: temurin, java-version: '21', cache: maven}
       - run: ./mvnw -B -ntp spotless:check test
         working-directory: app
   integration:
@@ -540,7 +544,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '25', cache: maven}
+        with: {distribution: temurin, java-version: '21', cache: maven}
       - run: ./mvnw -B -ntp verify -Pintegration
         working-directory: app
   pathfinder:
@@ -559,7 +563,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '25', cache: maven}
+        with: {distribution: temurin, java-version: '21', cache: maven}
       - run: docker build -t pathfinder:ci pathfinder
       - run: ./mvnw -B -ntp verify -Pcontract -Dpathfinder.image=pathfinder:ci
         working-directory: app
@@ -617,19 +621,19 @@ Every bug fix starts with a failing regression test. Do not test getters or fram
 
 ## 12. Build order
 
-**Step 0, project-specific baseline (identifiers and core versions now recorded):** the repository is `SamarthBadola/Tabletop-RPG-Simulator`, owned by `SamarthBadola`; Maven coordinates and the Java root package are listed in this brief and `docs/DECISION-LOG.md`. Before publishing more project content, confirm whether the repository should remain public, select the project's own-code license, and copy the required SRD 5.1 attribution text verbatim from the authoritative SRD source into `NOTICE`.
+**Step 0, from the human before coding:** repository name, group id and root package; GitHub owner for GHCR; chosen Java and Spring Boot versions; the SRD 5.1 attribution text (copied verbatim from the SRD) for `NOTICE`.
 
 **Step 1, walking skeleton.** Maven project with wrapper; Spring Boot app with health endpoints; PostgreSQL via Compose; Flyway baseline; register and login (the first user is the instance admin); Dockerfile; compose file; CI with the required checks; README quick start. *Done when:* a fresh clone runs `init-env.sh` then `docker compose up`, the first account registers at `http://localhost:8080`, and CI is green on the pull request.
 
-**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, and over-limit or malformed input is rejected.
+**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass.
 
-**Step 3, kernel and architecture tests.** `Ability`, `AbilityScores`, `Stat` and `Modifier` computation with the order and rounding rules, durations, ArchUnit rules active. *Done when:* tests prove the modifier order (`SET`, `ADD`, `MULTIPLY` with floor, `MIN`/`MAX`) and a deliberate violation of each ArchUnit rule fails the build.
+**Step 3, kernel and architecture tests.** `Ability`, `AbilityScores`, `Stat` and `Modifier` computation with the order and rounding rules, durations, ArchUnit rules active, and the Ruleset Specification Part A rules (RS-ABL, RS-PRF, RS-D20, RS-ADV, RS-CHK, RS-SAV, RS-LVL, RS-MOD, RS-TIM) with their worked examples as tests. *Done when:* tests prove the modifier order (`SET`, `ADD`, `MULTIPLY` with floor, `MIN`/`MAX`) and a deliberate violation of each ArchUnit rule fails the build.
 
 **Step 4, campaign, session and access.** Migrations for campaigns, members, invites, sessions, scenes, game clock and audience columns; the invite flow; per-campaign authorization. *Done when:* a second user can join only with a valid invite, cannot read another campaign (404), and a paused session blocks actions with `SESSION_NOT_ACTIVE`.
 
 **Step 5, content pack skeleton.** `content_pack` and definition tables, JSON schema validation, immutable in-memory loading, the attribution page, an empty SRD pack manifest. No game data yet.
 
-**Stop here.** Steps 6 onward need the ruleset specification, content schema specification, grid and geometry specification, and UX and API specification with the threat model. Ask the human for them. After that the order is: character creation (Fighter) with the derived sheet; combat core; Rogue, Paladin and Bard features with trigger points; reaction window; rests, pause and resume; spells and concentration; grid UI, movement and the Java pathfinder; monster roster and artwork upload; the C++ pathfinder with fallback and contract tests; then the live player view.
+**Stop here.** Steps 6 onward need more specifications. The Ruleset Specification now has Part A (foundations) and Part B (combat and conditions, section 7); Parts C to H, the content schema specification, the grid and geometry specification, and the UX and API specification with the threat model are still needed before the matching steps. Ask the human for them. After that the order is: character creation (Fighter) with the derived sheet; combat core; Rogue, Paladin and Bard features with trigger points; reaction window; rests, pause and resume; spells and concentration; grid UI, movement and the Java pathfinder; monster roster and artwork upload; the C++ pathfinder with fallback and contract tests; then the live player view.
 
 ## 13. Definition of done, commits and pull requests
 
@@ -649,6 +653,20 @@ Commits use Conventional Commits, for example `feat(engine): parse keep-highest 
 - Which spells form the tier-2 set, and which SRD monsters go in each level band.
 - Surprise handling, how DM overrides are shown to players, corner-cutting default, final upload limits.
 - Exact SRD 5.1 lists (spells, monsters, conditions) and the attribution text, verified against the SRD document.
-- Java and Spring Boot versions to pin.
+- Spring Boot version to record (Java 25 and PostgreSQL 16.15 were chosen in Step 1).
 - Which events are captured automatically for the journal (v1.5).
-- Anything in this brief that conflicts with a more specific document.
+- Anything in this brief that conflicts with a more specific document. Engine decisions E-1 to E-5 and E-8 to E-13 are decided (see the Ruleset Specification); E-6 and E-7 wait for the spellcasting and class parts.
+
+## 15. Version and revision history
+
+Current version: **1.6**. Companion document versions this brief was written against: Ruleset Specification 0.6, Requirements Specification 1.4, Decision Log 1.5, Architecture 5.0.
+
+| Version | Date | Changes |
+| --- | --- | --- |
+| 1.0 | 2026-10-11 | Created: working rules, project summary, tech stack, repository layout, architecture rules, kernel and engine contracts, data model, pathfinder, setup, CI/CD, testing, build order |
+| 1.1 | 2026-10-12 | Dockerfile exec form fixed; rule 2 and the Step 3 criteria updated after Ruleset Specification Part A |
+| 1.2 | 2026-10-14 | Part A audit applied: roll terms, two modifier types, stacking, advantage scope, ability score model (DEC-074), feats as content; Step 2 and Step 3 done-when criteria |
+| 1.3 | 2026-10-14 | Ability score generation registry, game clock note, decided engine decisions |
+| 1.4 | 2026-10-14 | Campaign settings and hit point rules paragraph |
+| 1.5 | 2026-10-15 | Part B (combat and conditions) referenced in the stop-here note; more campaign settings |
+| 1.6 | 2026-10-16 | Version numbering and revision history added; all Part B engine decisions closed |

@@ -1,5 +1,7 @@
 # Progress Tracker
 
+> **Canonical tracker:** [Tabletop RPG Simulator Decision Log and Progress Tracker v1.5](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file is retained as a quick progress mirror for compatibility with existing repository checks. Record authoritative milestone/status changes in the consolidated tracker and keep this summary aligned.
+
 Last reconciled: 2026-10-12.
 
 ## Current milestone: Step 2 — dice engine (walking skeleton accepted)
