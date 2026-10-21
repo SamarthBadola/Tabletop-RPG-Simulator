@@ -34,14 +34,23 @@ The attribution is also recorded in [NOTICE](NOTICE). Do not add non-SRD officia
 
 ## Current status
 
-The walking-skeleton implementation was merged in PR #6, followed by CI/governance maintenance in PRs #9, #10 and #12. CI runs repository hygiene, formatting/unit tests, PostgreSQL integration tests, secret scanning and source-built Compose smoke on pull requests and branch pushes. All five jobs passed on [PR #12 CI](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260399502) and [the post-merge `main` run](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260733720).
+**Step 1 — walking skeleton: accepted.** On 2026-10-12, the project owner reported a successful laptop source-build startup: the app image built, PostgreSQL became healthy, the application started, and first-account registration and sign-in succeeded.
 
-**Step 1 — walking skeleton is accepted.** On 2026-10-12, the project owner reported a successful laptop startup using the source-build Compose command: the app image built, PostgreSQL reported healthy, the application started, and first-account registration and sign-in succeeded.
+The initial full image build took approximately **197.8 seconds**. This is a cold-build baseline, not a diagnosis; build-time optimization is tracked in the combined Decision Log and Progress Tracker.
 
-The first complete image build took approximately **198 seconds** on that laptop. This is the initial cold-build baseline, not yet a performance diagnosis. Build-time optimization is a tracked follow-up: measure cold and warm builds and identify the dominant costs before changing Docker layers, Maven dependency caching, image size or build-cache configuration.
+**Current milestone: Step 2 — dice engine.** Before implementation, review the canonical documents below and close the specific syntax/limit questions listed in the AI handoff. Do not invent missing rules.
 
-The next implementation milestone is Step 2, the dice engine. Read [the AI handoff](docs/AI-HANDOFF.md), [the progress tracker](docs/PROGRESS.md), [the decision log](docs/DECISION-LOG.md), [repository governance](docs/REPOSITORY-GOVERNANCE.md), [the build brief](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md), and [architecture v4](docs/architecture.md) before continuing.
+## Project specification set
 
+- [Requirements Specification v1.4](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
+- [Architecture v5.0](docs/architecture.md)
+- [AI Build Brief v1.6](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+- [Ruleset Specification v0.6 (draft)](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+- [Decision Log and Progress Tracker v1.5](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [AI handoff and unresolved implementation questions](docs/AI-HANDOFF.md)
+- [Repository governance](docs/REPOSITORY-GOVERNANCE.md)
+
+The ruleset specification is the authority for implemented D&D mechanics. A more specific specification takes precedence over the build brief. If documents conflict or an implementation-critical detail is missing, stop and ask the project owner. The Java 25/Spring Boot 4.1.1/PostgreSQL 16.15 baseline already implemented in the repository remains in force unless the owner explicitly changes it.
 ## Local startup
 
 Use Bash (Git Bash or WSL on Windows). From the repository root:
