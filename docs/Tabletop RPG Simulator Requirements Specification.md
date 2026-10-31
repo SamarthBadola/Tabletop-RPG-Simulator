@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Requirements Specification (v1.4)
+# Tabletop RPG Simulator: Requirements Specification (v1.5)
 
 Enterprise Web Application (Java) course project. Draft 1, 11 October 2026. Ruleset: D&D System Reference Document 5.1 (2014 rules), CC-BY-4.0. Companion to `Architecture (v5.0)`.
 
@@ -96,13 +96,13 @@ Priority: **M** must, **S** should, **C** could. Milestone: **A** levels 1 to 5,
 
 | ID | Requirement | Pri | Ms |
 | --- | --- | --- | --- |
-| FR-DIC-001 | The system shall evaluate expressions of the form NdX with an optional integer modifier. | M | A |
+| FR-DIC-001 | The system shall evaluate dice expressions that are sums of dice groups (NdX, with optional keep or drop, reroll and floor modifiers) and fixed integers, each added or subtracted; the exact notation is in the Ruleset Specification, section 3.10. | M | A |
 | FR-DIC-002 | The system shall support keep-highest, keep-lowest, drop-highest and drop-lowest (for example `2d20kh1`, `4d6dl1`). | M | A |
-| FR-DIC-003 | The system shall accept any die size from 2 to 1000 and any dice count from 1 to 100. | M | A |
+| FR-DIC-003 | The system shall accept any die size from 2 to 1000 and any dice count from 1 to 100 per group, with at most 200 dice, 20 terms and 200 characters per expression. | M | A |
 | FR-DIC-004 | If an expression is malformed or exceeds the limits, then the system shall reject it with `VALIDATION_FAILED` and shall not roll. | M | A |
 | FR-DIC-005 | The system shall draw each die uniformly from its range using an injectable random source. | M | A |
 | FR-DIC-006 | The system shall return every face rolled and whether it was kept, with each result. | M | A |
-| FR-DIC-007 | The system shall support reroll and minimum-value modifiers on individual dice. | S | B |
+| FR-DIC-007 | The system shall support reroll-once and minimum-value (floor) modifiers on dice groups, as needed by Great Weapon Fighting and similar features. | M | A |
 | FR-DIC-008 | The system shall be able to compute the exact outcome distribution of an expression for previews. | C | B |
 
 ### 3.4 Characters (FR-CHR)
@@ -264,7 +264,7 @@ Numeric figures are targets to verify, not promises.
 
 ## 5. Constraints and external interfaces
 
-- **Technology:** Java 21, Spring Boot, Thymeleaf with HTMX, PostgreSQL with Flyway, a C++17 pathfinder service, Docker Compose. Confirm against the course rubric (see section 10).
+- **Technology:** Java 25, Spring Boot 4.1.1, Thymeleaf with HTMX, PostgreSQL with Flyway, a C++17 pathfinder service, Docker Compose. Confirm against the course rubric (see section 10).
 - **Licensing:** SRD 5.1 is used under CC-BY-4.0 with the attribution statement given in the SRD itself. The D&D Beyond Basic Rules are not Creative Commons and are not used. Openly licensed third-party packs record their own licence per record; share-alike licences such as ORC need their obligations checked before bundling. This is not legal advice.
 - **Pathfinder interface:** a versioned REST/JSON contract (`/v1/path`, `/v1/reach`, later `/v1/area` and `/v1/los`) with enforced limits; defined in `Architecture (v5.0)` section 7.
 - **Content pack interface:** a JSON schema for packs and homebrew features, to be published in the repository.
@@ -438,7 +438,7 @@ The seams register is maintained in Architecture (v5.0), section 15.
 
 ## 13. Version and revision history
 
-Current version: **1.4**.
+Current version: **1.5**.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -447,3 +447,4 @@ Current version: **1.4**.
 | 1.2 | 2026-10-14 | Ability score generation methods (FR-CHR-002, v2 scope), hit point method, advancement, maximum HP rule, ability improvement warning, natural 20 setting, clock advance (FR-CHR-011 to FR-CHR-015, FR-ACT-010, FR-CLK-003) |
 | 1.3 | 2026-10-15 | Join options for mid-combat arrivals, temporary hit points at 0 HP, optional mid-combat surprise (FR-ENC-012 to FR-ENC-014) |
 | 1.4 | 2026-10-16 | Version numbering and revision history added; no requirement changes |
+| 1.5 | 2026-10-21 | Reconciliation: the technology baseline now matches the repository (Java 25, Spring Boot 4.1.1); dice requirements aligned with the Ruleset Specification (FR-DIC-001 and FR-DIC-003 describe sums of terms and the concrete limits; FR-DIC-007 reroll-once and floor raised to Must in v1, because Great Weapon Fighting is a level 1 Fighter option) |

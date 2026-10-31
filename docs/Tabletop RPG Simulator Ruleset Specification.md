@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Ruleset Specification (v0.6, draft)
+# Tabletop RPG Simulator: Ruleset Specification (v0.8, draft)
 
 Oct 15, 2026 · @Samarth
 
@@ -224,6 +224,178 @@ The dice engine must support these rules. Rules that come from a class, spell or
 - Two clerics each cast Bless on the same fighter: one +1d4 applies. Bless and Bardic Inspiration on the same attack: both apply, a d4 and a Bardic die.
 - Armor class 15 from armor, +1 from a ring and +2 from a spell: 18, because different sources add. The same spell cast twice still adds +2 once.
 - Strength 14 and an effect that sets the score to 19 only if higher: 19. A character with 21 stays at 21.
+
+### 3.10 Dice notation, limits and the roll API (for Build Step 2)
+
+This section answers the open implementation questions for the dice engine. The decisions in it are **decided (D-1 to D-6 in 3.11, accepted 2026-10-21); changing one later** only changes parser constants or the error table, not the design.
+
+**Two layers.** (1) The **parser**, `DiceExpression.parse(String)`, turns text into an expression of unlabeled terms and can print its canonical form. It knows nothing about labels or sources. (2) The **composition API**, `RollPlan`, lets the kernel and engine assemble a roll from labeled terms (a d20, an ability modifier, a Bless die, a damage die) and evaluate it. Rolling a bare expression typed by a DM (`2d6+3`) uses the same machinery: each term is labeled with its own canonical text and has no source.
+
+**Grammar** (letters are case-insensitive; the canonical form is lowercase)
+
+```
+expression = [ ws ] [ sign ] term { ws sign ws term } [ ws ] ;
+sign       = '+' | '-' ;
+term       = dice-group | integer ;
+integer    = digit { digit } ;
+dice-group = [ count ] 'd' size { modifier } ;
+count      = digit { digit } ;          (omitted means 1)
+size       = digit { digit } ;
+modifier   = keep-drop | reroll | floor ;
+keep-drop  = ( 'kh' | 'kl' | 'dh' | 'dl' ) number ;
+reroll     = 'r<=' number ;
+floor      = 'min' number ;
+ws         = { ' ' | tab } ;
+```
+
+**Modifier meanings**
+
+| Token | Meaning | Example |
+| --- | --- | --- |
+| `khN` | keep the N highest dice | `2d20kh1` (advantage) |
+| `klN` | keep the N lowest dice | `2d20kl1` (disadvantage) |
+| `dhN` | drop the N highest dice | `4d6dh1` |
+| `dlN` | drop the N lowest dice | `4d6dl1` (ability scores) |
+| `r<=N` | reroll once any die showing N or less; the new result is final | `1d8r<=2` (Great Weapon Fighting), `1d20r<=1` (halfling Lucky) |
+| `minN` | any die showing less than N counts as N | `1d20min10` (Reliable Talent) |
+
+**Evaluation order for one dice group** (fixed, whatever the order the modifiers were typed in): roll all the dice, in order; reroll pass; floor pass; keep or drop selection; sum the kept values. When several dice tie for selection, the earlier die is the one selected: `kh` keeps the earlier of equal highest dice, `dh` drops the earlier of equal highest dice, and likewise for the lowest.
+
+**Validity rules**
+
+| Part | Valid range or rule |
+| --- | --- |
+| Count | 1 to 100 (0 is invalid) |
+| Die size | 2 to 1000 |
+| `kh` and `kl` number | 1 to the count |
+| `dh` and `dl` number | 1 to the count minus 1 (at least one die must remain) |
+| `r<=` number | 1 to the size minus 1 |
+| `min` number | 2 to the size |
+| Modifiers | each kind (keep-drop, reroll, floor) at most once per group; at most one keep-drop token per group (so `kh1dl1` and `kh1kh1` are conflicts); modifiers are only allowed on dice groups |
+| Integer literal | 0 to 1,000,000 |
+| First term | may carry a leading sign (`-d4`, `+3`); a sign with no term after it, or two signs in a row, is a syntax error |
+| Operators | only `+` and `-`; no multiplication, division, parentheses or percentile dice (`d%` is a syntax error) |
+
+**Limits** (a `DiceLimits` record with these defaults; one place to change them)
+
+| Limit | Default |
+| --- | --- |
+| Die size | 2 to 1000 |
+| Dice per group | 100 |
+| Total dice per expression (all groups, before keep and drop) | 200 |
+| Total dice after critical doubling | 400 |
+| Terms per expression | 20 |
+| Expression length | 200 characters |
+| Integer literal | 1,000,000 |
+
+Within these limits the largest possible magnitude is about 20.2 million, far below the 32-bit integer limit, so overflow cannot happen; arithmetic still uses exact operations (`addExact`) and throws if it ever did.
+
+**Whitespace, case and characters.** ASCII only. Spaces and tabs are allowed at both ends and around signs, never inside a term: `2 d6`, `d 6` and `kh 1` are syntax errors. Letters in any case (`2D20KH1` equals `2d20kh1`). Leading zeros in numbers are accepted (`007` is 7). Non-ASCII digits and look-alike characters are syntax errors. An empty or blank input is its own error.
+
+**Canonical form** (`toString()`): lowercase, no whitespace, an explicit count, modifiers in the order keep-drop, reroll, floor, and no leading `+`. `D8 + 3D6 + 3` prints as `1d8+3d6+3`, and parsing a canonical form gives an equal expression (a round-trip property).
+
+**Errors.** The parser throws `DiceParseException` (an unchecked exception in the pure engine, extending `IllegalArgumentException`) carrying a stable code, the 0-based position in the input, the offending token, and for limit errors the limit's name and value. The web layer maps it to `VALIDATION_FAILED` (HTTP 400, a caller fault, never logged at ERROR) with the dice error code in the details.
+
+| Code | When |
+| --- | --- |
+| `DICE_EMPTY` | the input is empty or only whitespace |
+| `DICE_SYNTAX` | an unexpected character or token: whitespace inside a term, doubled or trailing sign, unknown modifier, non-ASCII character, `d%` |
+| `DICE_VALUE_OUT_OF_RANGE` | a number outside its allowed range; the detail names the field (count, size, keep-drop number, reroll threshold, floor, literal) |
+| `DICE_MODIFIER_CONFLICT` | a modifier kind repeated, or more than one keep-drop token on a group |
+| `DICE_LIMIT_EXCEEDED` | a total limit exceeded; the detail names it (total dice, terms, length, dice after doubling) |
+
+Evaluating a valid expression cannot fail. A random source that returns a value outside its bound is a programming error (`IllegalStateException`).
+
+**Randomness and draw order**
+
+- `RandomSource.nextInt(bound)` returns 0 to bound minus 1. A die face is the draw plus 1.
+- Terms are evaluated left to right. Within a dice group all initial dice are drawn first, in order, then the rerolls for the eligible dice, in die order, one draw each.
+- Tests use `ForcedDice`: it takes die faces (1 to the die size) and returns face minus 1, fails loudly if a face is out of range for the requested size, and the test asserts that every forced value was consumed. Statistical tests use `SeededRandom(seed)`. Production uses a `SecureRandom`-backed source.
+
+**Result model**
+
+```java
+public record DieRoll(int rolled, int value, boolean kept, boolean rerolled, boolean floored) {}
+// rolled = the first draw; value = after reroll and floor; kept = counted in the subtotal
+
+public record RollTerm(String label, String source, int sign, String expression,
+                       List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit) {}
+// subtotal = sign x sum of kept values (dice term) or sign x fixed (fixed term)
+
+public enum RollMode { NORMAL, ADVANTAGE, DISADVANTAGE }
+public record RollResult(List<RollTerm> terms, int total, Integer naturalD20, RollMode mode) {}
+// total = sum of subtotals; naturalD20 = the kept value of the d20 test die, if the plan has one
+```
+
+**Composition API**
+
+```java
+RollPlan plan = RollPlan.builder()
+    .d20(RollMode.ADVANTAGE)                       // 2d20kh1; DISADVANTAGE gives 2d20kl1; NORMAL gives 1d20
+    .fixed("Dexterity modifier", "ability:DEX", 3)
+    .fixed("Proficiency", "proficiency", 2)
+    .bonusDice("Bless", "spell:bless", DiceExpression.parse("1d4"))
+    .penaltyDice("Bane", "spell:bane", DiceExpression.parse("1d4"))
+    .build();
+RollResult result = plan.roll(rng);
+```
+
+- `d20(mode)` adds the d20 test die term and marks it, so the result carries `naturalD20`. It accepts optional reroll and floor settings for that die.
+- `dice(label, source, expression, doublesOnCrit)` adds a labeled dice expression (a damage roll); `fixed` adds a fixed number; `bonusDice` and `penaltyDice` add a positive or negative dice term.
+- `doubleDiceForCritical()` returns a new plan in which every term flagged `doublesOnCrit` has its dice counts doubled (modifiers unchanged), re-checking the limit on dice after doubling.
+- `DiceExpression.roll(rng)` is the standalone path described above.
+- **Not part of Step 2:** the d20 test comparison (hit, miss, critical, DC), contests, advantage source resolution, probability distributions (FR-DIC-008), and anything from combat. Step 2 stops at producing a correct `RollResult`.
+
+**Test contract (minimum)**
+
+| Case | Expected |
+| --- | --- |
+| `d20` | valid; canonical `1d20` |
+| `2D20KH1` | valid; canonical `2d20kh1` |
+| `4d6dl1` | valid |
+| `d8+3d6+3` | valid; canonical `1d8+3d6+3` |
+| `d20+3-d4` | valid; the `d4` term is negative |
+| `  -d4 ` | valid; canonical `-1d4` |
+| `1d20min10` | valid |
+| `2d6r<=2` | valid |
+| `100d1000` | valid (the boundary) |
+| empty string and `   ` | `DICE_EMPTY` |
+| `0d6`, `1d1`, `1d1001`, `101d6` | `DICE_VALUE_OUT_OF_RANGE` |
+| `4d6kh5`, `4d6dl4`, `1d20r<=20`, `1d20min21`, `1000001` | `DICE_VALUE_OUT_OF_RANGE` |
+| `4d6kh1dl1`, `4d6kh1kh1` | `DICE_MODIFIER_CONFLICT` |
+| `2 d6`, `d`, `1d`, `d%`, `2d6++3`, `2d6+` | `DICE_SYNTAX` |
+| an Arabic-Indic digit in a count | `DICE_SYNTAX` |
+| `100d6+101d6` | `DICE_LIMIT_EXCEEDED` (total dice) |
+| 21 terms, or 201 characters | `DICE_LIMIT_EXCEEDED` |
+
+**Worked examples with forced dice** (faces in draw order)
+
+| Example | Faces | Expected |
+| --- | --- | --- |
+| Attack with Bless: d20, +3, +2, bonus 1d4 | 12, 3 | terms 12, +3, +2, +3; total 20; natural 12 |
+| Attack with Bane: d20, +5, penalty 1d4 | 12, 2 | total 15 |
+| Damage `1d8+3d6+3` | 5, 2, 4, 6 | 5 + 12 + 3 = 20 |
+| Advantage `2d20kh1` with +5 | 3, 18 | natural 18; total 23; the second die is kept |
+| Reliable Talent `2d20kh1min10` | 7, 15 | values 10 and 15; keep 15 |
+| Reliable Talent, both low | 7, 4 | values 10 and 10; the earlier die is kept; total 10 |
+| Great Weapon Fighting `1d8r<=2` | 2, 1 | rerolled once; the value is 1 and is used |
+| Reroll once only `1d8r<=2` | 2, 2 | rerolled once; the value stays 2 |
+| Draw order `2d6r<=2` | 1, 5, 6 | initial dice 1 and 5; die 1 rerolls and draws 6; values 6 and 5; total 11 |
+| Tie selection `2d20kh1` | 10, 10 | the first die is kept; the second is dropped |
+| Critical doubling of `1d8+3d6+3` with the dice flagged | counts 1 and 3 become 2 and 6 | the +3 is unchanged |
+
+Statistical check (seeded): 200,000 rolls of a d20; each face appears between 9,500 and 10,500 times (the expected value is 10,000, so this is about five standard deviations).
+
+### 3.11 Dice engine decisions (decided)
+
+| ID | Question | Decision |
+| --- | --- | --- |
+| D-1 | Reroll and floor syntax | `r<=N` (reroll once) and `minN` (floor), with keep and drop as `khN`, `klN`, `dhN`, `dlN`; fixed evaluation order; each kind at most once per group |
+| D-2 | Concrete safety limits | 200 dice, 20 terms and 200 characters per expression; 400 dice after doubling; literals up to 1,000,000 |
+| D-3 | Where labels and sources come from | The parser is label-free; the `RollPlan` composition API attaches labels and sources; a bare expression is labeled by its own term text |
+| D-4 | Whitespace, case, repeated or conflicting modifiers, keep and drop counts, overflow | As in section 3.10: ASCII only, whitespace around signs only, case-insensitive, strict ranges, conflicts rejected, overflow impossible within limits |
+| D-5 | Error contract | One `DiceParseException` with five stable codes, mapped to `VALIDATION_FAILED` at the web boundary |
+| D-6 | Draw order and forced-dice testing | Initial dice then rerolls per group, left to right; `ForcedDice` takes faces and asserts that all were consumed |
 
 ## 4. What Part A means for the engine (Build Steps 2 and 3)
 
@@ -469,7 +641,7 @@ Death states: alive, dying (at 0 with success and failure counts), stable (uncon
 
 ## 8. Version and revision history
 
-Current version: **0.6 (draft)**. The specification stays at 0.x until Parts C to H are written, and becomes 1.0 when it is complete.
+Current version: **0.8 (draft)**. The specification stays at 0.x until Parts C to H are written, and becomes 1.0 when it is complete.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -479,3 +651,5 @@ Current version: **0.6 (draft)**. The specification stays at 0.x until Parts C t
 | 0.4 | 2026-10-14 | Part B (combat and conditions) drafted from the full SRD Combat and Conditions chapters; engine decisions E-14 to E-21 proposed |
 | 0.5 | 2026-10-15 | Part B decisions E-14, E-16, E-17, E-19, E-20, E-21 decided; join options for mid-combat arrivals (RS-CMB-007 to RS-CMB-009); temporary hit points at 0 HP researched |
 | 0.6 | 2026-10-16 | E-15 and E-18 decided; version numbering and revision history added |
+| 0.7 | 2026-10-21 | Dice engine made implementable: exact notation grammar (keep and drop, reroll once, floor), validity rules, concrete limits, error codes, draw order, result model, roll composition API, test contract and worked examples with forced dice (section 3.10); proposed defaults D-1 to D-6 (section 3.11) |
+| 0.8 | 2026-10-21 | Dice engine decisions D-1 to D-6 accepted (sections 3.10 and 3.11 now decided); no change to their content |

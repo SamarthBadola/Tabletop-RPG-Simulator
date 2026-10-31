@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: AI Build Brief (v1.6)
+# Tabletop RPG Simulator: AI Build Brief (v1.8)
 
 Oct 15, 2026 · @Samarth
 
@@ -7,7 +7,7 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 ## 1. Rules for working on this project
 
 1. Read this brief end to end before writing code. Companion documents, if provided: Requirements Specification, `Architecture (v5.0)`, Decision Log. If they disagree with this brief, tell the human.
-2. The ruleset specification is the source of truth for D&D mechanics and is **only partly written: Part A (foundations) exists, Parts B to H do not**. Do not implement game rules from memory. Until the relevant part exists, build only what Part A covers (dice engine and kernel types, with the Part A worked examples as tests) plus skeleton, schema, auth and CI.
+2. The ruleset specification is the source of truth for D&D mechanics and is **partly written: Parts A (foundations) and B (combat and conditions) exist, Parts C to H do not**. Do not implement game rules from memory. Follow the build order in section 12: each step names the parts of the specification it may use (Steps 2 and 3 use Part A only; combat starts at Step 6 and uses Part B). Do not implement rules from a part before the step that needs it.
 3. Keep it simple. Build the simplest thing that meets the current step. Add a seam only if it is in the seams register (5.6). Do not build deferred features.
 4. Work in small tasks, each with a done-when you can demonstrate by running it. Commit per task using Conventional Commits.
 5. Tests first for the engine. Never weaken, skip or edit a test to make it pass; fix the code. Report failures honestly instead of leaving them red or faking green.
@@ -39,9 +39,9 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 
 | Layer | Choice | Notes |
 | --- | --- | --- |
-| Language | Java 21 (LTS, Temurin) | The newest LTS is acceptable if the toolchain supports it; record the choice. |
+| Language | Java 25 (LTS, Temurin) | Implemented in Step 1 (Temurin 25.0.4.1); this is the project baseline (DEC-084). |
 | Build | Maven with wrapper | Profiles `integration` and `contract`. Unit tests `*Test`, integration `*IT`. |
-| Framework | Spring Boot (newest stable) | Web MVC, Validation, Security, Data JPA, Actuator. |
+| Framework | Spring Boot 4.1.1 (as implemented) | Web MVC, Validation, Security, Data JPA, Actuator. |
 | Views | Thymeleaf plus HTMX | Self-hosted `htmx.js`, no CDN, no SPA. Controllers return HTML fragments for interactive actions. |
 | Database | PostgreSQL 16 | Hibernate, Flyway. `spring.jpa.open-in-view=false`. Never H2. |
 | Resilience | Resilience4j | Circuit breaker and timeouts only. No retries, bulkheads or rate limiters on the pathfinder. |
@@ -209,8 +209,8 @@ public record Modifier(String targetStat, ModOp op, int value,
 ```java
 public interface RandomSource { int nextInt(int bound); }   // 0..bound-1, uniform; production: SecureRandom
 
-public record DieRoll(int face, boolean kept) {}
-public record RollTerm(String label, String source, List<DieRoll> dice, int fixed, int signedSubtotal) {}  // RollResult holds List<RollTerm>, total, naturalD20, mode
+public record DieRoll(int rolled, int value, boolean kept, boolean rerolled, boolean floored) {}
+public record RollTerm(String label, String source, int sign, String expression, List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit) {}  // RollResult holds List<RollTerm>, total, naturalD20, mode
 
 public final class DiceExpression {
     public static DiceExpression parse(String s);            // throws on malformed or over-limit input
@@ -218,7 +218,7 @@ public final class DiceExpression {
 }
 ```
 
-Grammar: `NdX` plus optional keep or drop (`kh`, `kl`, `dh`, `dl` with a count), reroll and minimum-value modifiers, and `+` or `-` an integer. Examples: `2d20kh1` (advantage), `4d6dl1` (ability scores), `3d8+4`. Limits: X from 2 to 1000, N from 1 to 100, caps on total dice and expression length. Draw each die with the bounded `nextInt` (never `random() * X` or modulo). Record every face and whether it was kept. A roll is an ordered list of labeled, signed terms (dice groups or fixed numbers; bonus and penalty dice such as Bless and Bane are extra terms), and the grammar accepts sums like d8+3d6+3 and d20+3-d4. A reroll replaces a die once; a d20 floor (Reliable Talent) applies to each d20 before the kept die is chosen; each dice term carries a crit-doubling flag (a critical hit doubles dice, not modifiers); the natural d20 is recorded; the critical threshold is a rule parameter, not a hard-coded 20. See Ruleset Specification section 3.8.
+Grammar: `NdX` plus optional keep or drop (`kh`, `kl`, `dh`, `dl` with a count), reroll and minimum-value modifiers, and `+` or `-` an integer. Examples: `2d20kh1` (advantage), `4d6dl1` (ability scores), `3d8+4`. Limits: X from 2 to 1000, N from 1 to 100, at most 200 dice, 20 terms and 200 characters per expression, 400 dice after critical doubling, and integer literals up to 1,000,000. Draw each die with the bounded `nextInt` (never `random() * X` or modulo). Record every face and whether it was kept. A roll is an ordered list of labeled, signed terms (dice groups or fixed numbers; bonus and penalty dice such as Bless and Bane are extra terms), and the grammar accepts sums like d8+3d6+3 and d20+3-d4. A reroll replaces a die once; a d20 floor (Reliable Talent) applies to each d20 before the kept die is chosen; each dice term carries a crit-doubling flag (a critical hit doubles dice, not modifiers); the natural d20 is recorded; the critical threshold is a rule parameter, not a hard-coded 20. See Ruleset Specification sections 3.8 and 3.10.
 
 **Actions and results.**
 
@@ -361,7 +361,7 @@ public interface Pathfinder {
 
 ### 9.1 Prerequisites
 
-JDK 21, Git, Docker with Compose v2 and buildx. CMake and a C++17 compiler only if you work on the pathfinder.
+JDK 25, Git, Docker with Compose v2 and buildx. CMake and a C++17 compiler only if you work on the pathfinder.
 
 ### 9.2 First run and dev loop
 
@@ -464,7 +464,7 @@ Publishing `8080:8080` exposes the app on all interfaces so LAN players can reac
 
 ```
 # app/Dockerfile
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:25-jdk AS build
 WORKDIR /src
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -472,7 +472,7 @@ RUN ./mvnw -B -ntp dependency:go-offline
 COPY src src
 RUN ./mvnw -B -ntp -DskipTests package
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 RUN useradd --system --uid 10001 app
 WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
@@ -535,7 +535,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '21', cache: maven}
+        with: {distribution: temurin, java-version: '25', cache: maven}
       - run: ./mvnw -B -ntp spotless:check test
         working-directory: app
   integration:
@@ -544,7 +544,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '21', cache: maven}
+        with: {distribution: temurin, java-version: '25', cache: maven}
       - run: ./mvnw -B -ntp verify -Pintegration
         working-directory: app
   pathfinder:
@@ -563,7 +563,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '21', cache: maven}
+        with: {distribution: temurin, java-version: '25', cache: maven}
       - run: docker build -t pathfinder:ci pathfinder
       - run: ./mvnw -B -ntp verify -Pcontract -Dpathfinder.image=pathfinder:ci
         working-directory: app
@@ -625,7 +625,7 @@ Every bug fix starts with a failing regression test. Do not test getters or fram
 
 **Step 1, walking skeleton.** Maven project with wrapper; Spring Boot app with health endpoints; PostgreSQL via Compose; Flyway baseline; register and login (the first user is the instance admin); Dockerfile; compose file; CI with the required checks; README quick start. *Done when:* a fresh clone runs `init-env.sh` then `docker compose up`, the first account registers at `http://localhost:8080`, and CI is green on the pull request.
 
-**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass.
+**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass. The notation, limits, error codes, composition API and test contract are in Ruleset Specification section 3.10; its decisions D-1 to D-6 are decided (DEC-085), so implement them as written.
 
 **Step 3, kernel and architecture tests.** `Ability`, `AbilityScores`, `Stat` and `Modifier` computation with the order and rounding rules, durations, ArchUnit rules active, and the Ruleset Specification Part A rules (RS-ABL, RS-PRF, RS-D20, RS-ADV, RS-CHK, RS-SAV, RS-LVL, RS-MOD, RS-TIM) with their worked examples as tests. *Done when:* tests prove the modifier order (`SET`, `ADD`, `MULTIPLY` with floor, `MIN`/`MAX`) and a deliberate violation of each ArchUnit rule fails the build.
 
@@ -659,7 +659,7 @@ Commits use Conventional Commits, for example `feat(engine): parse keep-highest 
 
 ## 15. Version and revision history
 
-Current version: **1.6**. Companion document versions this brief was written against: Ruleset Specification 0.6, Requirements Specification 1.4, Decision Log 1.5, Architecture 5.0.
+Current version: **1.8**. Companion document versions this brief was written against: Ruleset Specification 0.8, Requirements Specification 1.5, Decision Log 1.7, Architecture 5.0.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -670,3 +670,5 @@ Current version: **1.6**. Companion document versions this brief was written aga
 | 1.4 | 2026-10-14 | Campaign settings and hit point rules paragraph |
 | 1.5 | 2026-10-15 | Part B (combat and conditions) referenced in the stop-here note; more campaign settings |
 | 1.6 | 2026-10-16 | Version numbering and revision history added; all Part B engine decisions closed |
+| 1.7 | 2026-10-21 | Reconciliation: the Java baseline now matches the repository (Java 25, Spring Boot 4.1.1); the spec-status wording and build-order rule fixed (Parts A and B exist, each step names the parts it may use); Step 2 points to the dice notation in Ruleset Specification 3.10, with the result records, limits and error behavior updated |
+| 1.8 | 2026-10-21 | Dice notation decisions D-1 to D-6 are decided, so Step 2 implements Ruleset Specification 3.10 as written; companion versions updated |

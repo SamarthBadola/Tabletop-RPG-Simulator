@@ -1,48 +1,73 @@
 # AI and Contributor Handoff
 
-Last reconciled: 2026-10-21. Re-check the files and live GitHub state before acting on time-sensitive details.
+Last reconciled: 2026-10-31. Re-check the files and live GitHub state before relying on time-sensitive settings or CI results.
 
-## Read these sources first
+## Canonical documents
 
-1. [Requirements Specification v1.4](Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
+1. [Requirements Specification v1.5](Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
 2. [Architecture v5.0](architecture.md)
-3. [AI Build Brief v1.6](Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
-4. [Ruleset Specification v0.6 (draft)](Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-5. [Decision Log and Progress Tracker v1.5](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+3. [AI Build Brief v1.8](Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+4. [Ruleset Specification v0.8 (draft)](Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+5. [Decision Log and Progress Tracker v1.7](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
 6. [Repository governance](REPOSITORY-GOVERNANCE.md)
-7. `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `NOTICE`, `LICENSE`, and `.github/workflows/ci.yml` as relevant.
 
-Use the ruleset specification as the source of truth for D&D mechanics. More specific specifications outrank the build brief. Do not silently reconcile conflicting requirements or invent unstated rules; record the conflict and ask the owner.
+Ruleset Specification is authoritative for D&D mechanics. Steps 2 and 3 may use Part A only. Part B exists as a draft but is reserved for the combat step specified by Build Brief v1.8. Parts C–H and the later content/grid/UX specifications remain incomplete.
 
-## Verified repository baseline
+## Verified platform and workflow constraints
 
 - Repository: `SamarthBadola/Tabletop-RPG-Simulator`.
-- Step 1 (walking skeleton) passed the owner-reported laptop acceptance test on 2026-10-12: the source-built Compose stack started, PostgreSQL became healthy, the app started, and first-account registration plus sign-in succeeded.
-- Current implementation baseline: Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1, Maven Wrapper 3.10.0, PostgreSQL 16.15.
-- Initial cold image build was approximately 197.8 seconds. Treat this as a measurement to investigate, not as a reason for speculative build changes. Track cold/warm rebuild time, dependency download, compilation/package, image export/size, and app readiness separately.
-- PR #14 (`actions/setup-java` 6.1.0) was merged by the owner on 2026-10-19. Keep third-party Actions pinned to full commit SHAs with readable version comments.
-- Never merge PRs on the owner's behalf. Create the PR, report evidence and limitations, and wait for the owner to review and merge it.
+- Step 1 was accepted on the owner's laptop: source-built Compose stack started, PostgreSQL became healthy, application started, and first administrator registration/sign-in succeeded.
+- Implemented baseline: Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1, Maven Wrapper 3.10.0, PostgreSQL 16.15.
+- Initial cold image build was approximately 197.8 seconds. The consolidated tracker identifies Maven dependency resolution as the main measured cost (~146 seconds); re-measure cold/warm builds after Step 5 before optimizing.
+- PR #14 (`actions/setup-java` 6.1.0) was merged by the owner. Third-party Actions stay pinned to full commit SHAs with readable version comments.
+- The active `main-quality-gates` ruleset requires `repo-hygiene`, `secrets`, `DCO`, `unit`, `integration`, and `compose-smoke` (verified live 2026-10-31).
+- Never merge a PR on the owner's behalf. Create/update the PR, report evidence and limitations, and leave all merge decisions to the owner.
+- Never weaken, skip, or edit tests to make them pass. Engine tests are written first.
 
-## Current milestone: Step 2 — dice engine
+## Step 2 scope: dice engine only
 
-Implement only after the owner confirms the unresolved syntax/limit details below. The planned engine is pure Java/JDK-only. Its core concepts are `RandomSource`, `DiceExpression` and parser, `DieRoll`, `RollTerm`, and `RollResult`. Use bounded uniform `nextInt(bound)` draws (no modulo or floating-point scaling), retain every die face and whether it was kept, retain ordered signed terms and natural d20/mode metadata, and inject randomness so worked tests can force results.
+Build Brief v1.8 section 12 and Ruleset Specification v0.8 section 3.10/3.11 now decide the core parser contract (DEC-085, D-1 to D-6). Implement it as written once the residual questions below are settled.
 
-Step 2 done-when from Build Brief v1.6: malformed and over-limit expressions are rejected; parser/property/uniformity tests pass; and Ruleset Specification section 3.8 examples cover term lists, bonus/penalty dice, natural d20, one reroll per die, and d20 floor behavior. The build guide calls for tests first and no weakening/skipping tests.
+- Pure Java/JDK-only `engine.dice` package; no Spring, JPA, HTTP or filesystem I/O.
+- `DiceExpression.parse(String)` parses a label-free ordered expression; canonicalization is lowercase, explicit dice count, no whitespace, no leading plus.
+- Grammar: dice groups and signed integer terms joined by `+`/`-`; `khN`, `klN`, `dhN`, `dlN`, `r<=N`, and `minN` modifiers.
+- Validity: 1–100 dice/group, die size 2–1000, keep/drop constraints, reroll threshold 1..size-1, floor 2..size, modifier conflicts rejected, integer literals 0..1,000,000; ASCII only; spaces/tabs only around operators.
+- Limits: 200 dice/expression before keep/drop, 20 terms, 200 characters, 400 dice after critical doubling.
+- Stable parser errors: `DICE_EMPTY`, `DICE_SYNTAX`, `DICE_VALUE_OUT_OF_RANGE`, `DICE_MODIFIER_CONFLICT`, `DICE_LIMIT_EXCEEDED`; web boundary maps these to `VALIDATION_FAILED` (400).
+- Evaluation: terms left-to-right; per group all initial draws first, then one reroll pass in die order, then floor, then keep/drop and subtotal. Tie selection favours earlier dice as specified.
+- `RandomSource.nextInt(bound)` is uniform and bounded. Production uses `SecureRandom`; tests use seeded and forced-dice sources, asserting every forced face was consumed.
+- `RollPlan` composes labeled/source terms and can designate the d20, its mode, and dice terms that double on critical hits. A critical doubles dice counts, never fixed modifiers.
+- Step 2 stops at producing a correct `RollResult`. No check-vs-DC comparison, combat, critical-hit adjudication, advantage-source resolution, or probability-distribution preview (FR-DIC-008).
 
-Do not implement Step 3 kernel/modifier behavior or the combat engine as part of this dice-engine task unless the owner explicitly expands the scope. The architecture and supplied specifications should be treated as design references, not authorization to jump ahead in the build order.
+## Step 2 residual questions before implementation
 
-## Conflicts and open questions to resolve before coding
+These were found by cross-reading Ruleset Specification v0.8 sections 3.3, 3.8 and 3.10. The previously identified Java 21/25 conflict, Part A/Part B status conflict, modifier notation, numeric caps, broad parser whitespace/case rules, and high-level error contract have been addressed by the new documents. The following details are still ambiguous or internally inconsistent:
 
-1. **Java-version conflict in the supplied documents.** Requirements Specification v1.4 section 5 and Build Brief v1.6 section 3 mention Java 21, while the existing project code, `app/pom.xml`, Dockerfile, and previous owner-approved decision use Java 25. Keep Java 25 for the existing implementation; ask before changing the baseline. The source documents are kept verbatim in this PR so the discrepancy remains visible for owner review.
-2. **Stale Part A/Part B status within Build Brief v1.6.** Section 1 says Parts B–H do not exist, but later Stop-here text refers to Part B and the supplied Ruleset Specification v0.6 includes a drafted Part B. The supplied tracker also records Part B as drafted with its engine decisions closed. Treat Part A section 3.8 as the Step 2 rules source; do not implement Part B combat yet.
-3. **Reroll/floor modifier syntax is not specified.** The ruleset says to support reroll and minimum-value/d20-floor modifiers, but does not define their literal expression tokens or precedence/combination grammar. Confirm the exact parser notation before implementation.
-4. **Numeric safety caps are incomplete.** Die size (2–1000) and group dice count (1–100) are specified, but maximum total dice per expression and maximum expression length are only referred to generically. Choose and record concrete limits before implementing validation.
-5. **Term labels and sources are required, but are not encoded by the shown expression examples.** Confirm whether parsed expressions receive generic terms and higher-level callers attach labels/sources, or whether you expect a separate composition API.
-6. **Parser edge behavior needs decisions** where the specs do not define it: whitespace/case handling, keep/drop counts equal to or greater than the group size, repeated modifiers, and integer overflow. Propose defaults only for owner approval; do not quietly choose semantics.
-7. **Ruleset verification debt V-1 remains open.** The ruleset marks Inspiration, Multiclassing, Backgrounds, class chapters, Spellcasting and item wording as needing verification. That does not block a generic dice primitive, but do not claim dependent class/game-rule behavior is verified.
+1. **Every face must be retained, but `DieRoll` cannot represent every face when reroll and floor both apply.** The record currently contains `rolled` (first face), `value` (after reroll and floor), and booleans. Example: `1d20r<=9min10` rolls 2, rerolls to 7, then floors to 10; the result records 2 and 10 but loses the actual reroll face 7. Proposed fix: add an optional reroll face (`Integer rerolledValue`) or an ordered `List<Integer> faces`; retain the post-floor `value` separately.
+2. **Advantage/disadvantage d20 reroll targeting conflicts with group reroll semantics.** RS-ADV-004 says that when a rule permits replacing one of two d20s, the player chooses only one. The generic `r<=N` modifier rerolls every die in a group that meets the threshold. `RollPlan.d20(mode)` mentions optional reroll settings but does not say how one die is selected when the mode rolls two. The API needs a target index/selection input for the one-die d20 replacement case, distinct from generic per-die `r<=N` behavior.
+3. **`RollPlan.dice(...)` does not define whether its `DiceExpression` must contain exactly one dice group.** `RollTerm` represents one dice group or one fixed integer, but `dice(label, source, expression, ...)` accepts a `DiceExpression`, whose grammar permits multiple terms such as `d8+3d6+3`. Decide whether `dice(...)` rejects anything except one dice-group expression (and callers add each labeled group/fixed term separately), or whether the API expands a composite expression into several `RollTerm`s and defines how labels/sources are assigned.
+4. **Composition-level limits are not explicit.** Parser limits apply to one expression, while `RollPlan` can combine multiple expressions and fixed terms. Define that the 20-term/200-dice limits apply to the complete `RollPlan` as well (recommended), and that `doubleDiceForCritical()` rechecks the 400-dice post-doubling cap across the complete plan. Because `RollResult` has one `naturalD20` and one `mode`, also state whether a plan may contain at most one designated `.d20(...)` term (recommended).
+5. **Signed fixed terms in `RollPlan` are unspecified.** The parser supports `+` and `-` integer terms, while the composition example only shows `fixed(..., 3)` and the result has a separate `sign`. Decide whether `fixed(label, source, signedValue)` accepts negative values and derives `sign`, or whether the API requires an explicit sign/magnitude (or a separate penalty-fixed method).
+6. **One parser test vector has two simultaneous violations.** The test table expects `100d6+101d6` to produce `DICE_LIMIT_EXCEEDED` for 201 total dice, but the second group also violates the maximum of 100 dice/group and should produce `DICE_VALUE_OUT_OF_RANGE`. Use a valid-group aggregate case such as `100d6+100d6+1d6` for the total-dice limit test, or explicitly define validation precedence. The current expected result is ambiguous.
+
+### Implementation details that can be handled defensively once the contract is settled
+
+- Parse numeric tokens without integer overflow; an arbitrarily large numeric token (within the 200-character expression cap) must yield the specified stable range/limit exception, never leak `NumberFormatException`.
+- Keep parser error precedence deterministic when multiple constraints fail. Prefer a cheap input-length guard, then lexical/syntax and per-field range checks, then aggregate expression limits, unless the owner chooses another ordering.
+- Clarify whether newline-only input is `DICE_EMPTY` or `DICE_SYNTAX`; the grammar permits only spaces and tabs as whitespace.
+- Make result and expression collections immutable with defensive copies (`List.copyOf`) so the records cannot be mutated after evaluation.
+- Validate builder inputs (non-null/nonblank labels; define whether a missing source is represented as `null`) and reject an empty `RollPlan`.
+- Add explicit tests for leading-zero canonicalization (`007` -> `7`), overflow-sized numeric tokens, newline input, plan-level cap boundaries, and reroll+floor face preservation.
+
+## Cross-document reconciliation notes
+
+- Requirements Specification v1.5 still lists 'write the ruleset specification' as an open question even though Ruleset Specification v0.8 now exists. Its surprise-handling open question also overlaps with Part B E-14, which now decides that the engine suggests Stealth vs passive Perception and the DM confirms (with ties decided by the DM); what remains open is how DM overrides are presented in the UI.
+- Decision Log and Progress Tracker v1.7 still labels the architecture row as v4 and says the required CI checks are not confirmed. The repository contains Architecture v5.0, and the live `main-quality-gates` ruleset now requires the six contexts listed above. Its OQ-03 'How is surprise handled?' is also stale relative to E-14.
+- Build Brief v1.8 section 14 still lists surprise handling and recording the Spring Boot version as open items, although E-14 and DEC-084 resolve the relevant baseline/decision. DM override presentation remains an open UX question.
+- The Requirements Specification section 8 says undo/replay is out of scope, while FR-LOG-003 lists undoing the last action as a 'Could' milestone-B requirement. This is a later scope contradiction, not a Step 2 blocker.
 
 ## Next action
 
-First, have the owner confirm the dice grammar tokens, total-dice cap, expression-length cap, term-label/source boundary, and relevant malformed-input semantics. Then implement Step 2 on a short-lived branch with worked-example and property tests, open a PR, and leave merge responsibility with the owner.
+Have the owner decide the five API/data-model questions and whether to correct the conflicting test vector as suggested. Then implement Step 2 tests-first on a short-lived branch, run the full required gates, open/update a PR, and leave it open for the owner to review and merge.
 
-Stop after Step 5. Obtain the content-schema, grid/geometry, and UX/API-with-threat-model specifications before moving to their corresponding later implementation steps.
+Stop after Step 5. Obtain the content-schema, grid/geometry, and UX/API-with-threat-model specifications before implementing the corresponding later features.

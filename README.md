@@ -42,15 +42,18 @@ The initial full image build took approximately **197.8 seconds**. This is a col
 
 ## Project specification set
 
-- [Requirements Specification v1.4](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
+- [Requirements Specification v1.5](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
 - [Architecture v5.0](docs/architecture.md)
-- [AI Build Brief v1.6](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
-- [Ruleset Specification v0.6 (draft)](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-- [Decision Log and Progress Tracker v1.5](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
-- [AI handoff and unresolved implementation questions](docs/AI-HANDOFF.md)
+- [AI Build Brief v1.8](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+- [Ruleset Specification v0.8 (draft)](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+- [Decision Log and Progress Tracker v1.7](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [AI handoff and Step 2 contract review](docs/AI-HANDOFF.md)
 - [Repository governance](docs/REPOSITORY-GOVERNANCE.md)
 
-The ruleset specification is the authority for implemented D&D mechanics. A more specific specification takes precedence over the build brief. If documents conflict or an implementation-critical detail is missing, stop and ask the project owner. The Java 25/Spring Boot 4.1.1/PostgreSQL 16.15 baseline already implemented in the repository remains in force unless the owner explicitly changes it.
+The Ruleset Specification is the source of truth for D&D mechanics. Step 2 and Step 3 use Part A only; Part B is reserved for the combat implementation step specified in the build brief. Where a more specific document disagrees with the brief, the specific document wins. Where an implementation-critical ambiguity remains, stop and ask rather than inventing a rule.
+
+The implemented platform baseline remains Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1, Maven Wrapper 3.10.0, and PostgreSQL 16.15 unless the project owner explicitly approves a change.
+
 ## Local startup
 
 Use Bash (Git Bash or WSL on Windows). From the repository root:
