@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Decision Log and Progress Tracker (v1.5)
+# Tabletop RPG Simulator: Decision Log and Progress Tracker (v1.7)
 
 Oct 15, 2026 · @Samarth
 
@@ -70,6 +70,8 @@ Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Sup
 | DEC-081 | Rules | When maximum HP rises, current HP rises by the same amount. When it falls below current HP, current HP becomes the new maximum. When a temporary increase ends, only the clamp applies. A creature at 0 HP is not raised. | Matches how effects like Aid and level-ups feel in play; avoids silent revival | Decided | Ruleset spec RS-LVL-007, E-5 |
 | DEC-082 | Rules | Combat defaults: the DM confirms surprise (the engine suggests Stealth versus passive Perception; on a tie the DM decides); overlapping movement costs add; cover is set by the DM per attack in v1 (automatic from the grid in v1.5); monsters die at 0 HP unless marked to use the player rules; Tiny creatures occupy one cell in v1; 'can see' is true unless blinded, invisible or marked obscured until the vision work. | The SRD is silent or ambiguous; simple defaults with DM control | Decided | Ruleset spec E-14, E-16, E-17, E-19, E-20, E-21 |
 | DEC-083 | Rules | A combatant joining a running fight is rolled into the initiative order by default, and the DM can choose join options (initiative roll mode, timing, starting conditions, first-turn restriction). Mid-combat surprise on existing combatants is an optional house rule, off by default. Damage absorbed by temporary hit points at 0 HP still counts as damage taken (death save failure, concentration check), with a house-rule setting. | Community practice for joiners; official clarification for temporary hit points | Decided | Ruleset spec E-15, E-18, RS-CMB-007 to RS-CMB-009 |
+| DEC-084 | Technology | The baseline is what Step 1 implemented: Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1 and PostgreSQL 16.15. The Requirements Specification and the AI Build Brief, which said Java 21, were corrected to match. | Java 25 is an LTS release and Spring Boot 4 is current; the repository already runs on them (decision recorded in OQ-08) | Decided | Brief section 3, Requirements section 5, OQ-08 |
+| DEC-085 | Engine | Dice notation and API (Ruleset Specification 3.10, defaults D-1 to D-6): tokens khN, klN, dhN, dlN, r<=N (reroll once) and minN (floor); limits of 200 dice, 20 terms and 200 characters per expression, 400 dice after critical doubling, literals up to 1,000,000; a label-free parser plus a RollPlan composition API; five stable error codes; a defined draw order and a forced-dice test double. | Lets the Step 2 dice engine be built without guessing | Decided | Ruleset spec 3.10, 3.11 |
 
 ## Superseded decisions
 
@@ -93,7 +95,7 @@ Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Sup
 | OQ-05 | Corner-cutting default for diagonal moves past walls (proposed: forbid) | Grid spec | Proposed |
 | OQ-06 | Final upload limits (proposed: 5 MB, dimension cap) | Threat model | Proposed |
 | OQ-07 | Verify SRD 5.1 lists (spells, monsters, conditions) and copy the attribution text verbatim | Ruleset spec, NOTICE file | Open |
-| OQ-08 | Which versions to pin. Step 1 chose Java 25 (Temurin 25.0.4.1) and PostgreSQL 16.15; the Spring Boot version still needs recording here. | Step 1 | decided (Temurin java 25 due to LTS and springboot 4) |
+| OQ-08 | Resolved 2026-10-21: Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1 and PostgreSQL 16.15, as implemented in Step 1 (DEC-084). | Step 1 | decided (Temurin java 25 due to LTS and springboot 4) |
 | OQ-09 | Vision phasing (proposed: DM-revealed areas, radius, then SRD light and senses, all v2) | v2 plan | Proposed |
 | OQ-10 | Which events are captured automatically for the journal? | Journal design | Open |
 | OQ-11 | Team split by module | Planning | Deferred |
@@ -219,7 +221,7 @@ Measure each time: cold build, warm code-only rebuild, rebuild after a `pom.xml`
 
 ## Version and revision history
 
-Current version: **1.5**. This is a living document: the version number goes up with every batch of decisions or status changes.
+Current version: **1.7**. This is a living document: the version number goes up with every batch of decisions or status changes.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -229,3 +231,15 @@ Current version: **1.5**. This is a living document: the version number goes up 
 | 1.3 | 2026-10-14 | DEC-078 to DEC-081 (natural 20 option, hit point method, advancement, maximum HP changes); XP advancement added to v1.5 |
 | 1.4 | 2026-10-15 | Part A closed; Ruleset Specification Part B drafted; DEC-082 (combat defaults); OQ-14 |
 | 1.5 | 2026-10-16 | E-15 and E-18 decided (DEC-083); OQ-14 resolved; version numbering and revision history added |
+| 1.6 | 2026-10-21 | Reconciliation after the Step 2 review: DEC-084 (technology baseline matches the repository) and DEC-085 (dice notation and API, proposed); OQ-08 resolved; versioning policy clarified |
+| 1.7 | 2026-10-21 | DEC-085 decided: the dice notation, limits, error codes, composition API and test contract in Ruleset Specification 3.10 (defaults D-1 to D-6) are accepted for Step 2 |
+
+## Versioning policy
+
+Every project document has a version in its title and a revision history at the end. The rule for changing a version:
+
+- **Bump the minor version** when a requirement, rule, decision, contract or build step changes in meaning. Examples: a new or changed requirement, a new engine rule, a decision made, a new section of a specification.
+- **Keep the version** for wording fixes, corrected labels and pointer updates that change no requirement, rule, decision or contract. Record these as a dated correction line in the revision history.
+- **Bump the major version** when the design is restructured or a whole part is added (for the architecture, a new design generation; the Ruleset Specification moves from 0.x to 1.0 when Parts C to H are complete).
+- Documents that only point at others (the Project Design Guide) are not bumped when companion versions change; their pointer line is updated and logged as a correction.
+- Before handing documents to another AI, check the companion versions listed in the AI Build Brief against the current versions.
