@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25.0.4.1_1-jdk-noble AS build
+FROM eclipse-temurin:25.0.5_8-jdk-noble AS build
 WORKDIR /src
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
@@ -6,7 +6,7 @@ RUN chmod +x ./mvnw && ./mvnw -B -ntp dependency:go-offline
 COPY src src
 RUN ./mvnw -B -ntp -DskipTests package
 
-FROM eclipse-temurin:25.0.4.1_1-jre-noble
+FROM eclipse-temurin:25.0.5_8-jre-noble
 RUN useradd --system --uid 10001 app
 WORKDIR /app
 COPY --from=build --chown=app:app /src/target/tabletop-rpg-simulator.jar /app/app.jar
