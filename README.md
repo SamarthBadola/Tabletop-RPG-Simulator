@@ -38,15 +38,15 @@ The attribution is also recorded in [NOTICE](NOTICE). Do not add non-SRD officia
 
 The initial full image build took approximately **197.8 seconds**. This is a cold-build baseline, not a diagnosis; build-time optimization is tracked in the combined Decision Log and Progress Tracker.
 
-**Current milestone: Step 2 — dice engine.** Before implementation, review the canonical documents below and close the specific syntax/limit questions listed in the AI handoff. Do not invent missing rules.
+**Current milestone: Step 2 — dice engine.** The parser, dice notation, limits, result model, RollPlan API, error contract and deterministic test contract are specified in Ruleset Specification v0.12.1; decisions D-1 to D-13 are accepted (DEC-085 and DEC-086). The next engineering task is tests-first implementation, limited to producing correct RollResult values.
 
 ## Project specification set
 
-- [Requirements Specification v1.5](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
-- [Architecture v5.0](docs/architecture.md)
-- [AI Build Brief v1.8](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
-- [Ruleset Specification v0.8 (draft)](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-- [Decision Log and Progress Tracker v1.7](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [Requirements Specification v1.7.1](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
+- [Architecture v5.1](docs/architecture.md)
+- [AI Build Brief v1.10.2](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+- [Ruleset Specification v0.12.1 (draft)](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+- [Decision Log and Progress Tracker v1.11.1](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
 - [AI handoff and Step 2 contract review](docs/AI-HANDOFF.md)
 - [Repository governance](docs/REPOSITORY-GOVERNANCE.md)
 
