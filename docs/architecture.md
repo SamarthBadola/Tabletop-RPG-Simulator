@@ -1,8 +1,8 @@
-# Tabletop RPG Simulator: Architecture (v5.0)
+# Tabletop RPG Simulator: Architecture (v5.1)
 
 Oct 16, 2026 · @Samarth
 
-How the system is built and why. Current version **5.0**; the revision history is at the end. Companion documents: Requirements Specification (what it must do), Ruleset Specification (the D&D mechanics), Decision Log and Progress Tracker (decisions and status), AI Build Brief (setup, CI/CD, compose and Dockerfiles, full DDL and the build order), Project Design Guide (plain-language overview). This document holds the design and its reasons; code that the Build Brief already contains (CI workflows, compose file, schema DDL) is not repeated here, so there is one source of truth. Diagrams are written as Mermaid source.
+How the system is built and why. Current version **5.1**; the revision history is at the end. Companion documents: Requirements Specification (what it must do), Ruleset Specification (the D&D mechanics), Decision Log and Progress Tracker (decisions and status), AI Build Brief (setup, CI/CD, compose and Dockerfiles, full DDL and the build order), Project Design Guide (plain-language overview). This document holds the design and its reasons; code that the Build Brief already contains (CI workflows, compose file, schema DDL) is not repeated here, so there is one source of truth. Diagrams are written as Mermaid source.
 
 ## 0. What changed in v5
 
@@ -159,7 +159,7 @@ A stat value is computed from a base plus the active modifiers, never stored. Co
 Two details from the Ruleset Specification:
 
 1. Skill, save and attack totals have a separate proficiency component, `floor(bonus x multiplier)`, and `multiply` targets that multiplier, never the total.
-2. There are two modifier types: stat modifiers (persistent) and roll bonuses (applied when a roll is made, fixed or dice, possibly consumed). The same source never stacks with itself (the most potent applies, then the most recent), while different sources add.
+2. There are two modifier types: stat modifiers (persistent) and roll bonuses (applied when a roll is made, fixed or dice, possibly consumed). The same source never stacks with itself (the most potent applies, then the most recent), while different sources add. Suppressed instances are kept and resume if the applying one ends first, and the rule covers every modifier source with the same name, including class features and items.
 
 Ability scores are themselves modifiable stats (DEC-074): base plus improvements plus modifiers, clamped to a ceiling (default 30) and a floor of 0, with a per-ability maximum (default 20) that caps improvements.
 
@@ -323,6 +323,7 @@ Settings live on the campaign (a validated JSON document) and are part of the sa
 | Damage absorbed by temporary hit points at 0 HP | counts as damage taken (death save failure) | house rule available: no failure when fully absorbed |
 | Mid-combat surprise | off | optional house rule: combatants caught off guard by an arrival |
 | Join options for a combatant entering a running fight | normal roll, at its initiative | DM chooses roll mode, timing, starting conditions and first-turn restriction per join |
+| Duplicate proficiency replacement | broad: skill and tool proficiencies from any two sources | the DM can narrow it to overlaps with the background, or turn it off |
 
 Hit point rule: when a maximum rises, current hit points rise by the same amount; when it falls below current hit points, current becomes the new maximum; when a temporary increase ends only the clamp applies; a creature at 0 hit points is not raised.
 
@@ -968,7 +969,7 @@ Stays out of the 8 weeks unless time remains: the rest of v1.5 (journal, checkpo
 
 ## 19. Version and revision history
 
-Current version: **5.0**. Earlier versions were circulated as the file `architecture.md`; this Claude Doc replaces it, and 5.0 supersedes the file marked v4.
+Current version: **5.1**. Earlier versions were circulated as the file `architecture.md`; this Claude Doc replaces it, and 5.0 supersedes the file marked v4.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -977,3 +978,4 @@ Current version: **5.0**. Earlier versions were circulated as the file `architec
 | 3.0 | 2026-10-11 | Requirements decisions: SRD 5.1, kernel and content split, reaction windows, content packs and homebrew, dice engine, self-hosted Docker, seams register |
 | 4.0 | 2026-10-11 | Second review: square grid and distance metric, vision seam, sessions, scenes, game clock and audience, save/resume, multiclass-ready schema, LAN play, assets, release split |
 | 5.0 | 2026-10-16 | Ruleset Specification Parts A and B applied: ability scores as modifiable stats, two modifier types and stacking, term-based dice rolls, feats as content, campaign settings section, clock advance setting, derived maximum HP constraint fix, join options and temporary hit point rules; CI, compose and DDL code moved to the AI Build Brief; converted to a Claude Doc; version numbering added |
+| 5.1 | 2026-11-14 | New campaign setting for duplicate proficiency replacement (E-22); the stacking rule now keeps suppressed instances and covers same-named class features and items (verified in the Ruleset Specification, 0.11) |
