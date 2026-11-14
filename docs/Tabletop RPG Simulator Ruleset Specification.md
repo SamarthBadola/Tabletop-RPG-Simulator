@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Ruleset Specification (v0.8, draft)
+# Tabletop RPG Simulator: Ruleset Specification (v0.12, draft)
 
 Oct 15, 2026 · @Samarth
 
@@ -10,15 +10,15 @@ The source of truth for the D&D mechanics the engine implements, based on SRD 5.
 - **Worked examples** use **forced dice** (the dice results are stated), so tests need no random seed. Format: Given, When, Then. Test names should quote the rule ID.
 - **Status** per rule: Specified, Needs decision, or Not yet written.
 - **Engine decision** marks a place where the SRD is silent or leaves it to the DM, so we chose a default. Each is listed in section 5 for confirmation.
-- **Sources read for Part A:** the SRD 5.1 chapters Using Ability Scores and Beyond 1st Level, read in full from an online rendition of the SRD text, plus the Combat chapter for the round length. Not yet read: Inspiration, Multiclassing, Backgrounds, the class chapters and Spellcasting; rules that depend on them are marked for verification. Where Part A cross-references a later chapter, the rule says so and is marked for verification.
+- **Sources read for Part A:** the SRD 5.1 chapters Using Ability Scores and Beyond 1st Level, read in full from an online rendition of the SRD text, plus the Combat chapter for the round length. Verified on 2026-10-30 against SRD text (renditions of the SRD and the Basic Rules text, not the official PDF): Inspiration, Backgrounds, Multiclassing, the Rogue, Fighter and Bard entries, spellcasting basics and the belt and manual entries. The residual verification items in V-3 were cleared on 2026-11-14. Where Part A cross-references a later chapter, the rule says so and is marked for verification.
 - The SRD attribution notice is copied verbatim into the repository `NOTICE` file; this document paraphrases.
 
 ## 1. Document map and status
 
 | Part | Contents | Status | Gates |
 | --- | --- | --- | --- |
-| A. Foundations | Ability scores, proficiency, d20 tests, advantage, checks, saves, levels and hit points, time | Specified (revised 2026-10-14; verification debt V-1 open) | Build Steps 2 and 3 |
-| B. Combat | Initiative, turns, action economy, movement, attacks, critical hits, damage, resistance, death, cover, conditions | Specified (draft; all Part B engine decisions decided) | Combat core |
+| A. Foundations | Ability scores, proficiency, d20 tests, advantage, checks, saves, levels and hit points, time | Specified (revised 2026-10-14; verification debt V-1 cleared 2026-10-30) | Build Steps 2 and 3 |
+| B. Combat | Initiative, turns, action economy, movement, attacks, critical hits, damage, resistance, death, cover, conditions | Specified (draft; V-2 cleared 2026-11-14; all Part B engine decisions decided) | Combat core |
 | C. Rest and resources | Short and long rests, hit dice, recharge | Not yet written | Rests |
 | D. Classes | The five MVP classes, tables and features, levels 1 to 5 then to 12 | Not yet written | Class features |
 | E. Spellcasting | Slots, preparation, concentration, areas of effect, the curated tier-2 list | Not yet written | Spells |
@@ -43,10 +43,10 @@ The source of truth for the D&D mechanics the engine implements, based on SRD 5.
 | RS-ABL-001 | Every creature has six abilities: Strength, Dexterity, Constitution, Intelligence, Wisdom, Charisma, each with a score from 1 to 30. 10 or 11 is the human average; 18 is about the most a person usually reaches; adventurers can reach 20; monsters and divine beings can reach 30. Monster stat blocks give their scores directly. | `Ability` enum; scores stored as `pc_ability` rows, 1 to 30 |
 | RS-ABL-002 | The modifier is the score minus 10, divided by 2, rounded down. It runs from -5 (score 1) to +10 (score 30). | `modifier = Math.floorDiv(score - 10, 2)` |
 | RS-ABL-003 | The spellcasting ability is Intelligence for wizards; Wisdom for clerics, druids and rangers; Charisma for bards, paladins, sorcerers and warlocks. Fighters and rogues have none in SRD 5.1. | Class definition data: `spellcasting_ability` |
-| RS-ABL-004 | A level-up ability score improvement (and a feat's increase) cannot raise a score above that ability's maximum, which is 20 unless something raises it. Some effects raise a score and its maximum together (the Manual of Bodily Health raises both by 2). The SRD treats 30 as the top of the scale. The score the engine uses is the base plus the ability stat's modifiers, clamped to a ruleset ceiling (default 30, a setting) and floored at 0. | Validation on level-up choices; \`AbilityScores.score\` applies the ability stat's modifiers ; \`maxScore(ability)\` caps improvements and a ceiling setting clamps the result (decision DEC-074, proposed) |
+| RS-ABL-004 | A level-up ability score improvement (and a feat's increase) cannot raise a score above that ability's maximum, which is 20 unless something raises it. Some effects raise a score and its maximum together (the Manual of Bodily Health raises both by 2). The SRD treats 30 as the top of the scale. The score the engine uses is the base plus the ability stat's modifiers, clamped to a ruleset ceiling (default 30, a setting) and floored at 0. | Validation on level-up choices; \`AbilityScores.score\` applies the ability stat's modifiers ; \`maxScore(ability)\` caps improvements and a ceiling setting clamps the result (decision DEC-074, decided) |
 | RS-ABL-005 | Before an improvement is applied, the player is warned if it would take a score above its maximum, told how much would be lost, and can reallocate. If they proceed anyway, the improvement is applied up to the maximum and the excess is lost (engine decision E-8, decided). | Pre-apply validation returns a warning with the excess that would be lost; the clamp applies only on confirmation |
 | RS-ABL-006 | Effects can reduce a score to 0. What happens at 0 is defined by the effect that reduced it (for example a drain that kills), so the engine records an ability-at-zero event and lets that effect decide. The modifier formula still applies at 0 (-5). | Ability-at-zero event; consequence defined by the effect |
-| RS-ABL-007 | Ability scores at character creation come from a generation method chosen by the DM for the campaign from a built-in list of common-practice methods: standard array (15, 14, 13, 12, 10, 8); point buy (27 points, base scores 8 to 15 before bonuses, costing 0, 1, 2, 3, 4, 5, 7 and 9 points for 8 to 15); roll 4d6 and drop the lowest, six times, assigned freely; roll 3d6, six times, assigned freely; or manual entry by the DM. Species bonuses apply afterwards. For example 15, 14, 13, 12, 10, 8 costs exactly 27 points. These are common practice, not SRD text (verify); DM-created methods are version 2. | Registry of built-in method definitions (key, kind, parameters); rolled values come from the dice engine and are logged |
+| RS-ABL-007 | Ability scores at character creation come from a generation method chosen by the DM for the campaign from a built-in list of common-practice methods: standard array (15, 14, 13, 12, 10, 8); point buy (27 points, base scores 8 to 15 before bonuses, costing 0, 1, 2, 3, 4, 5, 7 and 9 points for 8 to 15); roll 4d6 and drop the lowest, six times, assigned freely; roll 3d6, six times, assigned freely; or manual entry by the DM. Species bonuses apply afterwards. For example 15, 14, 13, 12, 10, 8 costs exactly 27 points. These are common-practice methods, not SRD rules; DM-created methods are version 2. | Registry of built-in method definitions (key, kind, parameters); rolled values come from the dice engine and are logged |
 
 Reference: score to modifier. 1 gives -5; 2-3 gives -4; 4-5 gives -3; 6-7 gives -2; 8-9 gives -1; 10-11 gives 0; 12-13 gives +1; 14-15 gives +2; 16-17 gives +3; 18-19 gives +4; 20-21 gives +5; each further pair adds 1, up to 30 giving +10.
 
@@ -66,12 +66,12 @@ Reference: score to modifier. 1 gives -5; 2-3 gives -4; 4-5 gives -3; 6-7 gives 
 
 | ID | Rule | Engine mapping |
 | --- | --- | --- |
-| RS-PRF-001 | A character's proficiency bonus depends on total character level across all classes (confirm in Multiclassing): +2 at levels 1 to 4, +3 at 5 to 8, +4 at 9 to 12, +5 at 13 to 16, +6 at 17 to 20. Monsters have the bonus built into their stat block: the engine reads their attack, save and skill bonuses and spell DCs from the stat block instead of recomputing them. | `prof_bonus = floor((level - 1) / 4) + 2`; monsters read the stat block field |
+| RS-PRF-001 | A character's proficiency bonus depends on total character level across all classes (Multiclassing, verified: your proficiency bonus is always based on your total character level): +2 at levels 1 to 4, +3 at 5 to 8, +4 at 9 to 12, +5 at 13 to 16, +6 at 17 to 20. Monsters have the bonus built into their stat block: the engine reads their attack, save and skill bonuses and spell DCs from the stat block instead of recomputing them. | `prof_bonus = floor((level - 1) / 4) + 2`; monsters read the stat block field |
 | RS-PRF-002 | The bonus is added to a given roll or number at most once, even if several rules grant it. | One proficiency component per roll; duplicates collapse |
 | RS-PRF-003 | The bonus can be multiplied or divided before it is applied (doubled for expertise, halved for the bard's Jack of All Trades), but only once, and only the bonus is multiplied, never the whole check. Halves round down. | `component = floor(prof_bonus x multiplier)`, multiplier in 0, 1/2, 1, 2 |
 | RS-PRF-004 | If you lack proficiency, an effect that multiplies the bonus gives nothing: 0 times anything is 0. | Multiplier 0 stays 0 under `MULTIPLY` |
-| RS-PRF-005 | Attack rolls and saving throws do not normally multiply the bonus. Half proficiency (the bard's Jack of All Trades) applies to ability checks only (confirm in Part D). | Default multiplier 1 for proficient attacks and saves |
-| RS-PRF-006 | Proficiencies come in kinds: skills, tools, saving throws, weapons, armor and languages. Each is stored with its source. The same proficiency from two sources counts once; where character creation would grant a duplicate, the character chooses a replacement of the same kind (confirm in Backgrounds). | pc\_proficiency rows with kind, key and source; duplicates collapse |
+| RS-PRF-005 | Attack rolls and saving throws do not normally multiply the bonus. Half proficiency (the bard's Jack of All Trades) applies to ability checks only (verified in the Bard entry: half the proficiency bonus, rounded down, on any ability check that does not already include the bonus). | Default multiplier 1 for proficient attacks and saves |
+| RS-PRF-006 | Proficiencies come in kinds: skills, tools, saving throws, weapons, armor and languages. Each is stored with its source. The same proficiency from two sources counts once; where character creation would grant a duplicate, the character chooses a replacement of the same kind (Backgrounds, verified; the SRD states it for skill and tool proficiencies, E-22). | pc\_proficiency rows with kind, key and source; duplicates collapse; the replacement prompt follows a campaign setting (E-22) |
 
 **Kernel impact.** A skill, save or attack total is a formula with a separate proficiency-multiplier component. The `MULTIPLY` modifier operation targets that multiplier (for example `skill:stealth:prof_multiplier`), never the final total, or expertise would double the ability modifier as well.
 
@@ -95,7 +95,7 @@ The three main rolls are ability checks, saving throws and attack rolls. Each ro
 | RS-ADV-004 | When a rule lets you reroll or replace a d20 and you rolled two, you replace only one of them, your choice. | Reroll targets a single die; result recomputed |
 | RS-ADV-005 | The DM may grant advantage or impose disadvantage for circumstances. | DM action with a source label recorded in the log |
 | RS-ADV-006 | Every source of advantage or disadvantage has a scope: the kind of roll (attack, ability check, saving throw), optionally one ability, and any conditions (for example disadvantage on attack rolls while frightened). Only sources whose scope matches the roll count. | AdvantageSource with a scope predicate and a label |
-| RS-ADV-007 | Inspiration (awarded by the DM): a character has it or does not and cannot stockpile it. Spending it gives advantage on one attack roll, saving throw or ability check. Not yet read in the SRD; confirm. | Boolean on the character; creates one advantage source when spent |
+| RS-ADV-007 | Inspiration (awarded by the DM): a character has it or does not and cannot stockpile it. Spending it gives advantage on one attack roll, saving throw or ability check. Verified in the SRD Inspiration text: spending it gives advantage on one attack roll, saving throw or ability check, and a character can instead give its inspiration to another player as a reward for good roleplaying. | Boolean on the character; creates one advantage source when spent |
 
 The roll result records the mode, every source of advantage and disadvantage by name, both dice, and which die was kept.
 
@@ -142,7 +142,7 @@ Skills by ability: **Strength** Athletics. **Dexterity** Acrobatics, Sleight of 
 | --- | --- | --- |
 | RS-SAV-001 | A save is d20 + ability modifier + proficiency component if proficient in that ability's saves + other modifiers. It can be affected by advantage and disadvantage. | `save:<ability>` stat formula |
 | RS-SAV-002 | Every class grants proficiency in at least two saves; some monsters have save proficiencies. | Class and monster data |
-| RS-SAV-003 | The DC comes from the effect. For a spell it is determined by the caster's spellcasting ability and proficiency bonus (the exact formula is confirmed in Part E; the commonly used value is 8 + proficiency bonus + spellcasting modifier). | Needs verification in Part E |
+| RS-SAV-003 | The DC comes from the effect. For a spell it is determined by the caster's spellcasting ability and proficiency bonus (verified: spell save DC = 8 + proficiency bonus + spellcasting ability modifier, and the spell attack modifier = proficiency bonus + spellcasting ability modifier). | Verified (E-6 decided) |
 | RS-SAV-004 | What success and failure mean is defined by the effect: often no harm or reduced harm on success. | Effect definitions carry `onSuccess` and `onFailure` outcomes |
 | RS-SAV-005 | An effect can force a save to succeed or fail automatically (for example some conditions make a creature automatically fail Strength and Dexterity saves; Part B). No d20 is rolled and the log records the override and its source. | SaveOverride with a source; result flagged AUTO\_FAIL or AUTO\_SUCCESS |
 | RS-SAV-006 | Death saving throws and concentration checks are saves with their own rules (Parts B and E). | Parts B and E |
@@ -155,12 +155,12 @@ Skills by ability: **Strength** Athletics. **Dexterity** Acrobatics, Sleight of 
 | --- | --- | --- |
 | RS-LVL-001 | A character gains a level on reaching the experience total: level 2 at 300, 3 at 900, 4 at 2,700, 5 at 6,500, 6 at 14,000, 7 at 23,000, 8 at 34,000, 9 at 48,000, 10 at 64,000, 11 at 85,000, 12 at 100,000 (full table to level 20 in data). One award can cross several thresholds; level-up choices are then made one level at a time. | `class_level_def` or a shared advancement table |
 | RS-LVL-002 | Advancement is by milestone by default: the DM decides when characters gain a level. XP advancement is an option the DM can select (planned for v1.5); the thresholds stay in the data. The MVP content cap is level 12; XP beyond it is kept but grants no level. | Campaign setting `advancement = XP or MILESTONE` ; milestone is the default and XP is a later option (engine decision E-4, decided) |
-| RS-LVL-003 | Each level gives one more Hit Die. The hit point gain is the Hit Die roll plus the Constitution modifier (minimum 1), or the fixed value in the class entry (the die's average, rounded up: d6 gives 4, d8 gives 5, d10 gives 6, d12 gives 7), with the Constitution modifier added in both cases (confirm against the class entries in Part D). | Store the raw die result (or the fixed value) per level; campaign setting for the hit point method: player's choice (default), fixed average only, or rolled only |
+| RS-LVL-003 | Each level gives one more Hit Die. The hit point gain is the Hit Die roll plus the Constitution modifier (minimum 1), or the fixed value in the class entry (the die's average, rounded up: d6 gives 4, d8 gives 5, d10 gives 6, d12 gives 7), with the Constitution modifier added in both cases (verified in the class entries: Rogue d8 with 5, Fighter d10 with 6, Bard d8 with 5, Wizard d6 with 4, Paladin d10 with 6). | Store the raw die result (or the fixed value) per level; campaign setting for the hit point method: player's choice (default), fixed average only, or rolled only |
 | RS-LVL-004 | If the Constitution modifier changes, the hit point maximum changes as though the new modifier had applied from level 1: it moves by the modifier difference times the character's level. | `maxHp = sum over levels of max(1, raw_i + conMod)` |
 | RS-LVL-005 | Where a class grants an ability score improvement you raise one score by 2 or two scores by 1, never above 20. Feats are an optional rule: at an improvement a character may take a feat instead. A character can hold any number of feats, limited only by how many are granted (the DM can grant extras). The SRD ships one feat (Grappler); others come from packs and homebrew. A feat is content: its effects, prerequisites and any choices (such as which ability or skill) live in its definition. | `pc_asi` rows by class and class level |
-| RS-LVL-006 | Level-one hit points use the class's rules (maximum of the Hit Die plus Constitution modifier); to be confirmed in Part D. | Part D |
+| RS-LVL-006 | Level-one hit points use the class's rules (maximum of the Hit Die plus Constitution modifier); verified in the Rogue entry (E-7 decided). | Part D |
 | RS-LVL-007 | Hit point maximum is a modifiable stat: the derived base (the sum of per-level gains) plus modifiers from effects, such as spells and features that raise it and drain effects that lower it. When the maximum rises, current hit points rise by the same amount; when it falls, current hit points are clamped to the new maximum if they exceed it (E-5). When a temporary increase ends, that counts as a fall: clamp only. A maximum reduced to 0 is resolved by the effect that did it. | maxHp stat with modifiers; current HP clamped to it |
-| RS-LVL-008 | Proficiency bonus uses total character level. Class features that scale with level use the class level unless stated otherwise (confirm in Multiclassing and Part D). Hit dice are tracked per die size. | Class level rows; hit dice per die size |
+| RS-LVL-008 | Proficiency bonus uses total character level. Class features that scale with level use the class level unless stated otherwise (verified in Multiclassing: proficiency bonus by total level; hit points from the higher-level entry after level 1; hit dice pooled by die size and tracked separately for different sizes; features gained per class level; same-named features such as Extra Attack, Channel Divinity and Unarmored Defense do not stack; spell slots from combined levels, with paladin and ranger levels counting half, rounded down). Hit dice are tracked per die size. | Class level rows; hit dice per die size |
 
 **Examples (Fighter, d10, forced values)**
 
@@ -191,8 +191,8 @@ The dice engine must support these rules. Rules that come from a class, spell or
 | RS-DIE-001 | A roll is an ordered list of terms. A term is a dice group (dice of one size, with optional keep, drop, reroll or floor modifiers) or a fixed whole number, added or subtracted. Examples: d20 + 3 + 2; d8 + 3d6 + 3 (weapon die, extra damage dice, modifier); d20 + 3 - d4. | `RollResult` holds a list of `RollTerm`s, each with a label, a source, its dice and a signed subtotal; the total is their sum |
 | RS-DIE-002 | Each term keeps its own label and source (for example the Dexterity modifier, proficiency, Bless) so the log can show where every number came from. | Terms are never merged before logging |
 | RS-DIE-003 | The natural roll is the face of the d20 before any modifier; with advantage or disadvantage it is the kept die. Natural results drive critical hits and automatic misses (Part B). | `naturalD20` on the result |
-| RS-DIE-004 | When a rule lets you reroll a die, the new result replaces the old one and you must use it, unless the rule says you may choose. A given die is rerolled at most once per use of the rule. Great Weapon Fighting works this way in SRD 5.1 (reroll a 1 or 2 on a damage die for a two-handed melee attack and use the new roll); the halfling's Lucky trait rerolls a natural 1 on a d20. Both are to be verified in the class and race chapters. | Reroll modifier: threshold, once per die, replace |
-| RS-DIE-005 | A rule can treat a low d20 result as a minimum value (the rogue's Reliable Talent treats a roll of 9 or lower as 10 on checks that add the proficiency bonus). With advantage or disadvantage the floor applies to each d20 before the kept die is chosen. To verify in Part D. | Floor modifier applied per die |
+| RS-DIE-004 | When a rule lets you reroll a die, the new result replaces the old one and you must use it, unless the rule says you may choose. A given die is rerolled at most once per use of the rule. Great Weapon Fighting works this way in SRD 5.1 (reroll a 1 or 2 on a damage die for a two-handed melee attack and use the new roll); the halfling's Lucky trait rerolls a natural 1 on a d20. Both verified: Great Weapon Fighting is a Fighter fighting style that lets you reroll a 1 or 2 on a damage die for a two-handed melee attack and use the new roll, and the halfling's Lucky trait rerolls a 1 on a d20 attack roll, ability check or saving throw and uses the new roll. | Reroll modifier: threshold, once per die, replace |
+| RS-DIE-005 | A rule can treat a low d20 result as a minimum value (the rogue's Reliable Talent treats a roll of 9 or lower as 10 on checks that add the proficiency bonus). With advantage or disadvantage the floor applies to each d20 before the kept die is chosen. Verified (Rogue, Reliable Talent at level 11): whenever you make an ability check that lets you add your proficiency bonus, you can treat a d20 roll of 9 or lower as a 10. | Floor modifier applied per die |
 | RS-DIE-006 | A critical hit doubles the number of damage dice, not the modifiers. Extra damage dice from features such as Sneak Attack double as well (Part B). | Each dice term carries a `doublesOnCrit` flag |
 | RS-DIE-007 | Spells and features can add bonus dice to a specific roll (Bless adds 1d4 to attack rolls and saving throws; Bardic Inspiration adds a die to a check, attack or save; Guidance adds 1d4 to a check) and penalty dice (Bane subtracts 1d4). These are roll bonuses (section 3.9), added as extra terms. | Extra labeled terms, positive or negative |
 | RS-DIE-008 | Whether a damage or healing total can drop below 0 is settled in Part B. A check or save total can be any integer. | Clamp only where a rule says so |
@@ -213,8 +213,8 @@ The dice engine must support these rules. Rules that come from a class, spell or
 | ID | Rule | Engine mapping |
 | --- | --- | --- |
 | RS-MOD-001 | Two kinds of modifier. A stat modifier is a persistent change to a computed stat (armor class, speed, an ability score, maximum HP, a skill total) and is part of computing it. A roll bonus applies only when a particular roll is made; it can be a fixed number or dice and can be consumed. | `Modifier` (stat) and `RollBonus` (roll) are separate types |
-| RS-MOD-002 | Stacking: the effects of different spells or features add together while they overlap; the same spell or feature affecting the same target more than once does not stack with itself. Only the most potent instance applies, or the most recent if they are equal. (Spellcasting, combining magical effects; verify in Part E.) | Every modifier carries a `stackKey` (its source identity) and a comparable potency |
-| RS-MOD-003 | Order for stat modifiers: set, then add, then multiply (round down), then minimum and maximum, as decided in DEC-021. An effect that sets a score only if it is higher (the giant-strength belts; verify in Part F) is a maximum operation. | Fixed pipeline order |
+| RS-MOD-002 | Stacking: the effects of different spells or features add together while they overlap; the same spell or feature affecting the same target more than once does not stack with itself. Only the most potent instance applies, or the most recent if they are equal. (Spellcasting, combining magical effects, verified: the effects of different spells add; the same spell cast several times does not combine, and the most potent effect applies, as with two clerics casting Bless on one target. When castings are equally potent, the most recent applies (verified). Suppressed instances are kept, and an earlier one resumes if the applying one ends first. The DMG errata extends the rule to same-named game features (class features, items), so it applies to every modifier source with the same name.) | Every modifier carries a `stackKey` (its source identity) and a comparable potency |
+| RS-MOD-003 | Order for stat modifiers: set, then add, then multiply (round down), then minimum and maximum, as decided in DEC-021. An effect that sets a score only if it is higher (the giant-strength belts, verified: the score changes to the belt's score, and the belt has no effect if the wearer's score is already equal or higher; it requires attunement) is a maximum operation. | Fixed pipeline order |
 | RS-MOD-004 | Lifetime: a modifier is permanent (with a recorded source, such as a species trait or a consumed item), lasts while an item is worn or attuned, lasts for a duration (rounds, until the end of a turn, game time, until a rest), or lasts until used. Ending the source ends the modifier. A permanent effect is never undone retroactively by a later change elsewhere. | Duration kinds from the architecture |
 | RS-MOD-005 | The proficiency bonus is never stacked: it is one component (RS-PRF-002) however many modifiers mention it. | One component per roll |
 | RS-MOD-006 | The DM can add a labeled one-off modifier, roll bonus, advantage or disadvantage to any roll; it is recorded in the log with its source. | DM override action |
@@ -227,7 +227,7 @@ The dice engine must support these rules. Rules that come from a class, spell or
 
 ### 3.10 Dice notation, limits and the roll API (for Build Step 2)
 
-This section answers the open implementation questions for the dice engine. The decisions in it are **decided (D-1 to D-6 in 3.11, accepted 2026-10-21); changing one later** only changes parser constants or the error table, not the design.
+This section answers the open implementation questions for the dice engine. The decisions in it are **decided (D-1 to D-6 in 3.11, accepted 2026-10-21, and D-7 to D-13, accepted 2026-10-30); changing one later** only changes parser constants or the error table, not the design.
 
 **Two layers.** (1) The **parser**, `DiceExpression.parse(String)`, turns text into an expression of unlabeled terms and can print its canonical form. It knows nothing about labels or sources. (2) The **composition API**, `RollPlan`, lets the kernel and engine assemble a roll from labeled terms (a d20, an ability modifier, a Bless die, a damage die) and evaluate it. Rolling a bare expression typed by a DM (`2d6+3`) uses the same machinery: each term is labeled with its own canonical text and has no source.
 
@@ -315,8 +315,8 @@ Evaluating a valid expression cannot fail. A random source that returns a value 
 **Result model**
 
 ```java
-public record DieRoll(int rolled, int value, boolean kept, boolean rerolled, boolean floored) {}
-// rolled = the first draw; value = after reroll and floor; kept = counted in the subtotal
+public record DieRoll(int rolled, Integer rerollFace, int value, boolean kept, boolean rerolled, boolean floored) {}
+// rolled = the first draw; rerollFace = the replacement face if rerolled, else null; value = the effective value after reroll and floor; kept = counted in the subtotal
 
 public record RollTerm(String label, String source, int sign, String expression,
                        List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit) {}
@@ -324,7 +324,7 @@ public record RollTerm(String label, String source, int sign, String expression,
 
 public enum RollMode { NORMAL, ADVANTAGE, DISADVANTAGE }
 public record RollResult(List<RollTerm> terms, int total, Integer naturalD20, RollMode mode) {}
-// total = sum of subtotals; naturalD20 = the kept value of the d20 test die, if the plan has one
+// total = sum of subtotals; naturalD20 = the effective value (after reroll and floor) of the kept d20 test die, if the plan has one
 ```
 
 **Composition API**
@@ -340,8 +340,8 @@ RollPlan plan = RollPlan.builder()
 RollResult result = plan.roll(rng);
 ```
 
-- `d20(mode)` adds the d20 test die term and marks it, so the result carries `naturalD20`. It accepts optional reroll and floor settings for that die.
-- `dice(label, source, expression, doublesOnCrit)` adds a labeled dice expression (a damage roll); `fixed` adds a fixed number; `bonusDice` and `penaltyDice` add a positive or negative dice term.
+- `d20(mode)` adds the d20 test die term and marks it, so the result carries `naturalD20`. It accepts an optional floor setting for that die. It does not offer a group reroll: replacing one die of an advantage or disadvantage pair is the separate replaceD20 operation (D-8).
+- `dice(label, source, expression, doublesOnCrit)` adds one labeled dice group (an expression with exactly one dice group and no fixed terms; a composite expression is rejected, D-9); `fixed` adds a signed fixed number (the term keeps the sign and the magnitude separately, D-11); `bonusDice` and `penaltyDice` add a positive or negative dice term.
 - `doubleDiceForCritical()` returns a new plan in which every term flagged `doublesOnCrit` has its dice counts doubled (modifiers unchanged), re-checking the limit on dice after doubling.
 - `DiceExpression.roll(rng)` is the standalone path described above.
 - **Not part of Step 2:** the d20 test comparison (hit, miss, critical, DC), contests, advantage source resolution, probability distributions (FR-DIC-008), and anything from combat. Step 2 stops at producing a correct `RollResult`.
@@ -365,7 +365,7 @@ RollResult result = plan.roll(rng);
 | `4d6kh1dl1`, `4d6kh1kh1` | `DICE_MODIFIER_CONFLICT` |
 | `2 d6`, `d`, `1d`, `d%`, `2d6++3`, `2d6+` | `DICE_SYNTAX` |
 | an Arabic-Indic digit in a count | `DICE_SYNTAX` |
-| `100d6+101d6` | `DICE_LIMIT_EXCEEDED` (total dice) |
+| `100d6+100d6+1d6` | `DICE_LIMIT_EXCEEDED` (total dice) |
 | 21 terms, or 201 characters | `DICE_LIMIT_EXCEEDED` |
 
 **Worked examples with forced dice** (faces in draw order)
@@ -383,6 +383,9 @@ RollResult result = plan.roll(rng);
 | Draw order `2d6r<=2` | 1, 5, 6 | initial dice 1 and 5; die 1 rerolls and draws 6; values 6 and 5; total 11 |
 | Tie selection `2d20kh1` | 10, 10 | the first die is kept; the second is dropped |
 | Critical doubling of `1d8+3d6+3` with the dice flagged | counts 1 and 3 become 2 and 6 | the +3 is unchanged |
+| Reroll then floor, 1d20r<=9min10 | 2, 7 | rolled 2, rerollFace 7, value 10; naturalD20 is 10; all three faces are kept in the history |
+| Replace one d20 of a pair: advantage 2d20kh1, then replaceD20 on die 0 (a rule such as a reroll of a natural 1) | 1, 14, then 9 | die 0 becomes rolled 1, rerollFace 9, value 9; die 1 (14) stays kept; naturalD20 is 14 |
+| Signed fixed term, fixed(label, source, -2) | none | sign -1, magnitude 2, subtotal -2 |
 
 Statistical check (seeded): 200,000 rolls of a d20; each face appears between 9,500 and 10,500 times (the expected value is 10,000, so this is about five standard deviations).
 
@@ -396,6 +399,23 @@ Statistical check (seeded): 200,000 rolls of a d20; each face appears between 9,
 | D-4 | Whitespace, case, repeated or conflicting modifiers, keep and drop counts, overflow | As in section 3.10: ASCII only, whitespace around signs only, case-insensitive, strict ranges, conflicts rejected, overflow impossible within limits |
 | D-5 | Error contract | One `DiceParseException` with five stable codes, mapped to `VALIDATION_FAILED` at the web boundary |
 | D-6 | Draw order and forced-dice testing | Initial dice then rerolls per group, left to right; `ForcedDice` takes faces and asserts that all were consumed |
+| D-7 | Reroll history in the result | DieRoll gains a nullable rerollFace. rolled is the first face, rerollFace the replacement, value the effective value after reroll and floor, so all faces survive |
+| D-8 | Rerolling one d20 of an advantage or disadvantage pair (RS-ADV-004) | The group reroll r<=N applies to every eligible die in a dice group. For d20 tests, RollPlan.d20() offers only the floor, and RollResult.replaceD20(index, rng) returns a new result with exactly one die replaced (the new face is final and the die is marked rerolled); the input result remains unchanged, and dependent kept flags, subtotals, total and naturalD20 are recomputed. The caller decides eligibility and who chooses |
+| D-9 | What RollPlan.dice() accepts | Exactly one dice group: no fixed terms and no sums. A composite expression is rejected; a fromExpression helper expands a typed expression into separate terms |
+| D-10 | Limits across a whole plan | The 20-term, 200-dice and 400-dice-after-doubling limits count across the entire plan; at most one designated d20 test term per plan |
+| D-11 | Signed fixed terms | fixed(label, source, int) takes a signed integer; the term stores the sign and the magnitude separately; the subtotal is sign times magnitude |
+| D-12 | What naturalD20 is after a reroll and a floor | The effective value of the kept d20 test die, after any reroll and floor. A rule that says to treat a roll as a 10 makes it a 10 for later rules; the history keeps every face. Research: Reliable Talent says to treat a roll of 9 or lower as a 10, official guidance is that a 1 or 20 has no special effect on ability checks, and community consensus reads the treated roll as the roll. The Rogue chapter wording was verified as part of V-1 (cleared 2026-10-30) |
+| D-13 | Implementation checks | As listed under the table |
+
+**Implementation checks (D-13)**
+
+- **Numeric tokens:** a run of more than 9 digits is rejected before parsing with `DICE_VALUE_OUT_OF_RANGE`; a `NumberFormatException` must never escape.
+- **Error precedence:** the empty check comes first, then the length limit; scanning then goes left to right and the first syntax, range or conflict error wins; the term-count limit triggers at the 21st term; the total-dice limit is checked after the whole expression is parsed.
+- **Whitespace:** only space and tab; newline, carriage return, other control characters and non-breaking spaces are `DICE_SYNTAX`.
+- **Immutability:** expressions, terms and results are immutable, and every collection is a defensive copy (`List.copyOf`).
+- **Builder validation:** an empty plan is rejected at build time; a label must be non-blank, at most 64 characters and free of control characters; a source may be null but follows the same rule when present; API misuse throws `IllegalArgumentException` or `IllegalStateException`, never `DiceParseException`.
+- **Canonicalization:** leading zeros normalize (`007` prints as `7`).
+- **Tests to add:** tie selection for `kh`, `kl`, `dh` and `dl`; reroll and floor preserving all faces and the `naturalD20` rule; `replaceD20`; plan-wide limits including `100d6+100d6+1d6`; oversized numeric tokens; newline-only input.
 
 ## 4. What Part A means for the engine (Build Steps 2 and 3)
 
@@ -422,15 +442,17 @@ Statistical check (seeded): 200,000 rolls of a d20; each face appears between 9,
 | E-3 | Fixed or rolled hit points per level | Decided (player chooses): the player chooses per level between the rolled value and the fixed average (the rulebook's own default), and the DM can force either through a campaign setting. In one forum poll of 121 groups, about 44% let players choose, 26% force the average and 9% force rolls (21% other). Variants such as rolling with a minimum of half the die are common but not built in for version 1. |
 | E-4 | Level-up by XP or milestone | Decided: milestone is the default; XP advancement is a DM-selectable option planned for v1.5, with the XP column and thresholds kept in the data model from v1 |
 | E-5 | Current HP when maximum changes | Decided: when the maximum rises, current HP rises by the same amount; when it falls, current HP becomes the new maximum only if it was higher; when a temporary increase ends, clamp only. Exception (decided): a creature at 0 HP is not raised, so a stat change cannot silently end a dying state |
-| E-6 | Spell save DC formula and spell attack bonus | Confirm in Part E |
-| E-7 | Level-one hit points | Confirm in Part D |
+| E-6 | Spell save DC formula and spell attack bonus | Decided: DC = 8 + proficiency bonus + spellcasting ability modifier; spell attack modifier = proficiency bonus + spellcasting ability modifier (verified in the SRD spellcasting text) |
+| E-7 | Level-one hit points | Decided: the maximum of the hit die plus the Constitution modifier (verified in the Rogue entry) |
 | E-8 | An ability improvement that would pass the maximum | Decided: warn the player before the improvement is applied (the choice screen shows that the score would pass the maximum and what would be lost) so they can reallocate; if they proceed, apply up to the maximum and lose the excess |
 | E-9 | Game clock during combat | Decided: two separate values. The rules constant stays 6 seconds per round (10 rounds per minute) because every SRD duration is calibrated to it. The clock advance per completed round is a DM setting, default 6 seconds, including 0 for manual only. |
-| E-10 | Ability score generation methods (standard array, point buy, rolling 4d6 and dropping the lowest) | Decided: version 1 ships a built-in list of common-practice methods (standard array, point buy, roll 4d6 drop lowest, roll 3d6, manual entry by the DM) from which the DM selects per campaign; DM-created methods are version 2. Not found in the SRD text read so far; verify |
+| E-10 | Ability score generation methods (standard array, point buy, rolling 4d6 and dropping the lowest) | Decided: version 1 ships a built-in list of common-practice methods (standard array, point buy, roll 4d6 drop lowest, roll 3d6, manual entry by the DM) from which the DM selects per campaign; DM-created methods are version 2. Decided as common-practice options, not SRD rules |
 | E-11 | Roll bonuses (including dice) as a separate type from stat modifiers | Decided: two types (RS-MOD-001) |
 | E-12 | Stacking rule for repeated effects | Decided: the same source does not stack with itself (most potent, then most recent); different sources add (RS-MOD-002) |
 | E-13 | A d20 floor effect combined with advantage or disadvantage | Decided: apply to each die before choosing the kept one (RS-DIE-005) |
-| V-1 | Verification debt: Inspiration, Multiclassing, Backgrounds, the class chapters, Spellcasting (combining effects, spell DC) and item wording (belts, manuals) | Read these before marking the dependent rules Specified |
+| V-1 | Cleared 2026-10-30: Inspiration, Multiclassing (proficiency by total level, spell slots), Backgrounds, the Rogue, Fighter and Bard entries, Spellcasting (spell DC, spell attack, combining effects) and the belt and manual wording were verified against SRD text | Done; two small residuals are tracked in V-3 |
+| E-22 | Scope of the duplicate proficiency replacement rule (RS-PRF-006) | Decided (broad reading by default): apply the SRD rule to skill and tool proficiencies from any two sources (the character picks a different proficiency of the same kind). Some tables apply it only to overlaps with the background, so a campaign setting offers broad (default), background only, or off |
+| V-3 | Small residual verification items after clearing V-1 (cleared 2026-11-14) | Cleared: (1) the tie-break is verified: the most recent effect applies when castings are equally potent; (2) multiclass hit dice pooling by die size and features by class level are verified; (3) the Bard (d8, Dexterity and Charisma saves), Wizard (d6, Intelligence and Wisdom saves) and Paladin (d10, Wisdom and Charisma saves) entries are verified, with the 1st-level and fixed hit point values following the stated rule |
 
 ## 6. Next
 
@@ -476,7 +498,7 @@ The turn budget holds: action, bonus action, movement remaining (in cost units),
 | RS-MOV-004 | Difficult terrain: each foot of movement costs 1 extra foot, even if several things in the space count as difficult terrain. The space of another creature, hostile or not, counts as difficult terrain. | Cost map: difficult and occupied cells cost double (architecture 7.3) |
 | RS-MOV-005 | Prone: dropping prone costs no movement. Standing up costs movement equal to half the speed, and is impossible if that much movement is not left or if the speed is 0. A prone creature can only crawl (or use magic such as teleportation); each foot crawled costs 1 extra foot, so one foot of crawling in difficult terrain costs 3. | Stand-up cost; crawl cost; extra costs add (E-16) |
 | RS-MOV-006 | A creature can move through a non-hostile creature's space, and through a hostile creature's space only if that creature is at least two sizes larger or smaller. Nobody can willingly end a move in another creature's space, friend or foe. Leaving a hostile creature's reach provokes an opportunity attack (RS-ATK-008). | `noStop` cells; hostile cells blocked unless the size difference is 2 or more |
-| RS-MOV-007 | A flying creature that is knocked prone, has its speed reduced to 0 or otherwise cannot move falls, unless it can hover or magic holds it aloft. Fall damage is in Part H. | Fall trigger; Part H |
+| RS-MOV-007 | A flying creature that is knocked prone, has its speed reduced to 0 or otherwise cannot move falls, unless it can hover or magic holds it aloft. Fall damage (verified): at the end of a fall a creature takes 1d6 bludgeoning damage per 10 feet fallen, to a maximum of 20d6, and lands prone unless it avoids taking damage from the fall. | Fall trigger; Part H |
 | RS-MOV-008 | Size and space: Tiny 2.5 by 2.5 ft; Small and Medium 5 by 5; Large 10 by 10; Huge 15 by 15; Gargantuan 20 by 20 or more. Space is the area a creature controls in combat, not its physical size. Eight Medium creatures fit around one Medium creature, and as many as 20 around a Gargantuan one. | `footprint(anchor, size)`; Tiny occupies a whole cell in version 1 (E-20) |
 | RS-MOV-009 | Squeezing: a creature can squeeze through a space large enough for a creature one size smaller. While squeezing it spends 1 extra foot per foot, has disadvantage on attack rolls and Dexterity saving throws, and attack rolls against it have advantage. | Squeeze flag from the footprint check; modifiers while in the space |
 
@@ -490,11 +512,12 @@ The turn budget holds: action, bonus action, movement remaining (in cost units),
 | RS-ACT-004 | **Disengage:** movement does not provoke opportunity attacks for the rest of the turn. | Turn flag |
 | RS-ACT-005 | **Dodge:** until the start of its next turn, attack rolls against the creature have disadvantage if it can see the attacker, and its Dexterity saves have advantage. Lost if it becomes incapacitated or its speed drops to 0. | Timed effect with advantage sources scoped by direction (against it) and by roll kind (Dexterity saves) |
 | RS-ACT-006 | **Help:** the helper gives a creature advantage on its next ability check for a task, if made before the start of the helper's next turn; or, for an attack, gives an ally advantage on its first attack roll against a creature within 5 feet of the helper, if the ally attacks before the helper's next turn. | One-shot advantage source with an expiry |
-| RS-ACT-007 | **Hide:** a Dexterity (Stealth) check; success gives the benefits in RS-ATK-005. | Check request |
-| RS-ACT-008 | **Ready:** choose a perceivable trigger and a response (an action, or moving up to the speed). When the trigger occurs the creature can use its reaction right after it, or ignore it; one reaction per round. A readied spell is cast normally but held: it needs a casting time of 1 action and concentration, and fizzles without effect if concentration breaks. | `ReadiedAction` entity; the DM confirms the trigger; held spell with concentration |
+| RS-ACT-007 | **Hide:** a Dexterity (Stealth) check; success gives the benefits in RS-ATK-005. Verified: until discovered, the check is contested by the Wisdom (Perception) of any creature that actively searches, and other creatures notice you by comparing the Stealth check with their passive Wisdom (Perception), which is 10 plus the Wisdom modifier and other bonuses or penalties (plus 5 with advantage, minus 5 with disadvantage). The SRD gives no tie rule, so the DM decides (E-14). You cannot hide from a creature that can see you clearly. | Check request |
+| RS-ACT-008 | **Ready:** choose a perceivable trigger and a response (an action, or moving up to the speed). When the trigger occurs the creature can use its reaction right after it, or ignore it; one reaction per round. A readied spell is cast normally (its slot is spent) but held: it needs a casting time of 1 action and concentration, and fizzles without effect if concentration breaks. Concentration is on one spell at a time, so readying a spell while concentrating on another ends the first (verified, RS-ACT-012). | `ReadiedAction` entity; the DM confirms the trigger; held spell with concentration |
 | RS-ACT-009 | **Search:** devote attention to finding something; the DM calls for a Wisdom (Perception) or Intelligence (Investigation) check. | Check request |
 | RS-ACT-010 | **Use an Object:** an action when an object requires it or when a second object is used in the turn. | `UseObjectAction` |
 | RS-ACT-011 | An improvised action: the DM decides whether it is possible and what roll it needs. | `ImprovisedAction` resolved by a DM check or save request |
+| RS-ACT-012 | Concentration (Spellcasting, verified): normal activity such as moving and attacking does not interfere. It ends if the creature casts another spell that requires concentration (no roll), takes damage and fails a Constitution saving throw (DC 10 or half the damage taken, whichever is higher, with a separate save for each source of damage), or is incapacitated or dies. The DM may require a DC 10 Constitution save for environmental effects such as a wave. A creature can end it at any time, with no action. Damage that temporary hit points absorb still counts as damage taken (E-18). | One concentration slot per creature; the damage-taken event triggers a Constitution save request whose roll bonuses and advantage apply; casting a second concentration spell ends the first |
 
 ### 7.5 Making an attack
 
@@ -540,7 +563,7 @@ The turn budget holds: action, bonus action, movement remaining (in cost units),
 | RS-DMG-003 | Critical hit: roll all of the attack's damage dice twice and add them, then add the modifiers as normal. Extra damage dice from features such as Sneak Attack are rolled twice as well. | Dice terms with the crit-doubling flag (RS-DIE-006) |
 | RS-DMG-004 | Damage types: acid, bludgeoning, cold, fire, force, lightning, necrotic, piercing, poison, psychic, radiant, slashing, thunder. Types have no rules of their own; other rules such as resistance rely on them. | Damage type registry with these defaults (extensible, FR-CNT-008) |
 | RS-DMG-005 | Resistance to a damage type halves that damage; vulnerability doubles it. Both apply after all other modifiers to damage, resistance first. Several instances of resistance or vulnerability to the same type count as one. Halves round down. | One flag per type; applied in the damage pipeline |
-| RS-DMG-006 | Immunity: a creature immune to a damage type takes none of it (stat blocks list immunities; wording to confirm in the Monsters chapter). | Immunity flag per type |
+| RS-DMG-006 | Immunity (Monsters chapter, verified): some creatures are immune to certain damage types, and some are resistant or immune to damage from nonmagical attacks (a magical attack is delivered by a spell, a magic item or another magical source). Some creatures are also immune to certain conditions. Immunity means no damage of that type, or no effect of that condition. Objects are immune to poison and psychic damage. | Immunity and resistance flags per damage type with an optional nonmagical qualifier (stat blocks may add 'not silvered or adamantine'); every damage instance carries a magical flag; a condition immunity list per creature |
 | RS-DMG-007 | Healing adds hit points to the current total, capped at the maximum; the excess is lost. A dead creature cannot regain hit points until magic such as Revivify restores it to life. | Heal effect clamps to `maxHp` |
 | RS-DMG-008 | Temporary hit points are a separate buffer: lost first, leftover damage carries over to real hit points. They can exceed the maximum, cannot be restored by healing, and do not add together: the creature keeps the old amount or takes the new one. At 0 hit points they do not restore consciousness or stabilize but still absorb damage. They last until used up or a long rest unless the effect gives a duration. | `hpTemp` field with a replace-not-add rule |
 | RS-DMG-009 | A creature reduced to 0 hit points either dies outright or falls unconscious. | Death state machine (below) |
@@ -618,7 +641,7 @@ Death states: alive, dying (at 0 with success and failure counts), stable (uncon
 | E-19 | Monsters reduced to 0 HP | Decided: they die, unless the DM marks a combatant to use the player rules or to be knocked out |
 | E-20 | Footprint of Tiny creatures | Decided: one whole cell in version 1 |
 | E-21 | What counts as 'can see' (Dodge, unseen attackers, ranged attacks in melee) | Decided: true unless the viewer is blinded, the target is invisible, or the DM marks obscuring conditions, until Part H and the vision work define lighting |
-| V-2 | Verification debt for Part B | Immunity wording (Monsters), hiding and passive Perception (Adventuring), concentration for readied spells (Part E), falling damage (Part H) |
+| V-2 | Verification debt for Part B (cleared 2026-11-14) | Cleared: immunity wording (Monsters chapter), hiding and passive Perception (Using Ability Scores and Combat), concentration including readied spells (Spellcasting and Combat) and falling damage (Adventuring, The Environment) are verified against SRD text and now stated in RS-DMG-006, RS-ACT-007, RS-ACT-008, RS-ACT-012 and RS-MOV-007 |
 
 **Examples (forced dice)**
 
@@ -641,7 +664,7 @@ Death states: alive, dying (at 0 with success and failure counts), stable (uncon
 
 ## 8. Version and revision history
 
-Current version: **0.8 (draft)**. The specification stays at 0.x until Parts C to H are written, and becomes 1.0 when it is complete.
+Current version: **0.12.1 (draft)**. The specification stays at 0.x until Parts C to H are written, and becomes 1.0 when it is complete.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -653,3 +676,8 @@ Current version: **0.8 (draft)**. The specification stays at 0.x until Parts C t
 | 0.6 | 2026-10-16 | E-15 and E-18 decided; version numbering and revision history added |
 | 0.7 | 2026-10-21 | Dice engine made implementable: exact notation grammar (keep and drop, reroll once, floor), validity rules, concrete limits, error codes, draw order, result model, roll composition API, test contract and worked examples with forced dice (section 3.10); proposed defaults D-1 to D-6 (section 3.11) |
 | 0.8 | 2026-10-21 | Dice engine decisions D-1 to D-6 accepted (sections 3.10 and 3.11 now decided); no change to their content |
+| 0.9 | 2026-10-30 | Dice engine refinements from the Step 2 review (D-7 to D-13): reroll history, replacing one d20 of a pair, single-group dice(), plan-wide limits, signed fixed terms, naturalD20 as the effective value (researched), implementation checks; the aggregate-limit test case corrected |
+| 0.10 | 2026-10-30 | Verification debt V-1 cleared against SRD text: Inspiration, Backgrounds, Multiclassing, Rogue, Fighter and Bard entries, spellcasting basics, belt and manual wording. E-6 (spell save DC and attack modifier) and E-7 (level-one hit points) decided; E-22 proposed; residuals tracked as V-3 |
+| 0.11 | 2026-11-14 | V-3 cleared: the equal-potency tie-break (most recent applies, suppressed instances resume), multiclass hit dice and feature rules, and the Bard, Wizard and Paladin entries verified; E-22 decided (broad reading by default, with a campaign setting to narrow it or turn it off) |
+| 0.12 | 2026-11-14 | Part B verification debt V-2 cleared: immunity (with the nonmagical qualifier and condition immunity), hiding against passive Perception, concentration rules (new RS-ACT-012, readied spells), falling damage |
+| 0.12.1 | 2026-11-14 | Correction: Part A and Part B verification status aligned with V-1, V-2 and V-3 clearance; DEC-074 and E-10 status wording corrected; d20 replacement immutability and plan-level d20 terminology clarified; no rules changes |
