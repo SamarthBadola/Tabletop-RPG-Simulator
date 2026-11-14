@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Decision Log and Progress Tracker (v1.7)
+# Tabletop RPG Simulator: Decision Log and Progress Tracker (v1.11)
 
 Oct 15, 2026 · @Samarth
 
@@ -6,7 +6,7 @@ Every major decision for the project, plus where the work stands. Edit statuses 
 
 ## How to read this
 
-Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Superseded**. Work status: Not started, In progress, Done, Blocked, Cut. Refs point to the Requirements Specification (R) and `the Architecture document (v5.0)` (A, with ADR numbers).
+Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Superseded**. Work status: Not started, In progress, Done, Blocked, Cut. Refs point to the Requirements Specification (R) and `the Architecture document (v5.1)` (A, with ADR numbers).
 
 ## Decision log
 
@@ -72,6 +72,10 @@ Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Sup
 | DEC-083 | Rules | A combatant joining a running fight is rolled into the initiative order by default, and the DM can choose join options (initiative roll mode, timing, starting conditions, first-turn restriction). Mid-combat surprise on existing combatants is an optional house rule, off by default. Damage absorbed by temporary hit points at 0 HP still counts as damage taken (death save failure, concentration check), with a house-rule setting. | Community practice for joiners; official clarification for temporary hit points | Decided | Ruleset spec E-15, E-18, RS-CMB-007 to RS-CMB-009 |
 | DEC-084 | Technology | The baseline is what Step 1 implemented: Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1 and PostgreSQL 16.15. The Requirements Specification and the AI Build Brief, which said Java 21, were corrected to match. | Java 25 is an LTS release and Spring Boot 4 is current; the repository already runs on them (decision recorded in OQ-08) | Decided | Brief section 3, Requirements section 5, OQ-08 |
 | DEC-085 | Engine | Dice notation and API (Ruleset Specification 3.10, defaults D-1 to D-6): tokens khN, klN, dhN, dlN, r<=N (reroll once) and minN (floor); limits of 200 dice, 20 terms and 200 characters per expression, 400 dice after critical doubling, literals up to 1,000,000; a label-free parser plus a RollPlan composition API; five stable error codes; a defined draw order and a forced-dice test double. | Lets the Step 2 dice engine be built without guessing | Decided | Ruleset spec 3.10, 3.11 |
+| DEC-086 | Engine | Dice engine refinements (Ruleset Specification D-7 to D-13): DieRoll keeps the reroll face; replacing one d20 of an advantage pair is a separate replaceD20 operation; dice() takes one dice group; term, dice and d20 limits count across a whole plan with at most one d20 test die; fixed terms are signed; naturalD20 is the effective value after reroll and floor; extra validation and test rules. | Found in the Step 2 review; naturalD20 researched (Reliable Talent says to treat the roll as a 10) | Decided | Ruleset spec 3.10, 3.11 |
+| DEC-087 | Rules | Verification debt V-1 is cleared against SRD text (Inspiration, Backgrounds, Multiclassing, Rogue, Fighter and Bard entries, spellcasting basics, belt and manual wording). E-6 (spell save DC = 8 + proficiency bonus + spellcasting ability modifier; spell attack modifier = proficiency bonus + spellcasting ability modifier) and E-7 (level-one hit points = hit die maximum + Constitution modifier) are decided. E-22 (scope of the duplicate proficiency replacement rule) is proposed; V-3 tracks two small residuals. | Sources were SRD renditions and Basic Rules text, not the official PDF | Decided | Ruleset spec 0.10: V-1, E-6, E-7, E-22, V-3 |
+| DEC-088 | Rules | E-22 decided: duplicate skill and tool proficiencies from any two sources are replaced by another of the same kind (broad reading), with a campaign setting to narrow it to overlaps with the background or turn it off. V-3 cleared: equally potent castings of the same spell resolve to the most recent (suppressed instances resume), multiclass hit dice pool by die size, and the Bard, Wizard and Paladin class data are verified. | The SRD rule is stated for skills and tools; the broad reading follows its literal wording | Decided | Ruleset spec 0.11: E-22, V-3, RS-MOD-002, RS-LVL-008 |
+| DEC-089 | Rules | Part B verification debt V-2 is cleared against SRD text: immunity (with the nonmagical qualifier and condition immunity; every damage instance carries a magical flag), hiding against passive Perception (no tie rule, so the DM decides), concentration rules (new RS-ACT-012, including readied spells and one concentration spell at a time) and falling damage (1d6 bludgeoning per 10 feet, up to 20d6, lands prone). | Sources were SRD renditions and Basic Rules text, not the official PDF | Decided | Ruleset spec 0.12: V-2, RS-DMG-006, RS-ACT-007, RS-ACT-008, RS-ACT-012, RS-MOV-007 |
 
 ## Superseded decisions
 
@@ -90,7 +94,7 @@ Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Sup
 | --- | --- | --- | --- |
 | OQ-01 | Which spells form the tier-2 (full automation) set? | Ruleset spec | Open |
 | OQ-02 | Which SRD monsters per level band (1-3, 3-5, 5-6, 6-9, 10-12)? | Content schema, seed data | Open |
-| OQ-03 | How is surprise handled? | Ruleset spec | Open |
+| OQ-03 | Resolved: the DM confirms surprise; the engine suggests Stealth versus passive Perception and a tie is the DM's call (Ruleset Specification E-14). | Ruleset spec | Resolved |
 | OQ-04 | How are DM overrides shown to players? | UX spec | Open |
 | OQ-05 | Corner-cutting default for diagonal moves past walls (proposed: forbid) | Grid spec | Proposed |
 | OQ-06 | Final upload limits (proposed: 5 MB, dimension cap) | Threat model | Proposed |
@@ -110,11 +114,11 @@ Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Sup
 | Item | Status | Notes |
 | --- | --- | --- |
 | Requirements Specification | Done | Draft, updated with review 2 |
-| Architecture document (v4) | Done |  |
+| Architecture document (v5.1, a Claude Doc) | Done |  |
 | Decision Log and Progress Tracker | Done | This document |
 | AI Build Brief | Done |  |
 | Project Design Guide for Collaborators | Done |  |
-| Ruleset specification | In progress | Parts A (foundations, settled) and B (combat, drafted 2026-10-14) done; Parts C to H pending. Source of truth for D&D mechanics. |
+| Ruleset specification | In progress | Parts A and B specified; verification debts V-1, V-2 and V-3 cleared; Parts C to H pending. Source of truth for D&D mechanics. |
 | Content schema specification | Not started | Contract for packs and homebrew |
 | Grid and geometry specification | Not started | Metrics, footprints, area shapes, cost map |
 | UX and API specification, threat model | Not started |  |
@@ -124,8 +128,8 @@ Decision status: **Decided**, **Proposed** (needs confirmation), **Open**, **Sup
 
 | Week | Item | Status | Notes |
 | --- | --- | --- | --- |
-| 1 | Repo, Compose stack and image build (verified 2026-10-12); required CI checks (not yet confirmed) | done | setup the github repo, created CI pipeline, used github actions to enforce code hygenie and check runs, setup rulesets and created documentation |
-| 1 | First-run admin (verified 2026-10-12); invite flow (Step 4) | In progress | first-run admin sucessfully completed, the invitation flow is pending |
+| 1 | Repo, Compose stack, image build and required CI checks (confirmed 2026-10-30) | done | setup the github repo, created CI pipeline, used github actions to enforce code hygenie and check runs, setup rulesets and created documentation |
+| 1 | First-run admin (verified 2026-10-12); invite flow (Step 4) | Done | first-run admin sucessfully completed, the invitation flow is pending |
 | 1 | Dice engine and parser with property tests | In progress |  |
 | 1 | ArchUnit rules (engine purity, ability accessor) | In progress |  |
 | 1 | Schema for sessions, scenes, game clock, audience | Not started |  |
@@ -221,7 +225,7 @@ Measure each time: cold build, warm code-only rebuild, rebuild after a `pom.xml`
 
 ## Version and revision history
 
-Current version: **1.7**. This is a living document: the version number goes up with every batch of decisions or status changes.
+Current version: **1.11.1**. This is a living document: the version number goes up with every batch of decisions or status changes.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -233,13 +237,19 @@ Current version: **1.7**. This is a living document: the version number goes up 
 | 1.5 | 2026-10-16 | E-15 and E-18 decided (DEC-083); OQ-14 resolved; version numbering and revision history added |
 | 1.6 | 2026-10-21 | Reconciliation after the Step 2 review: DEC-084 (technology baseline matches the repository) and DEC-085 (dice notation and API, proposed); OQ-08 resolved; versioning policy clarified |
 | 1.7 | 2026-10-21 | DEC-085 decided: the dice notation, limits, error codes, composition API and test contract in Ruleset Specification 3.10 (defaults D-1 to D-6) are accepted for Step 2 |
+| 1.7.1 | 2026-10-30 | Corrections after the cross-document review: the architecture row now says v5.0 (a Claude Doc); OQ-03 (surprise) resolved by E-14; versioning policy gains a patch level so two copies never share a number |
+| 1.8 | 2026-10-30 | DEC-086 (dice engine refinements from the Step 2 review); the patch-level versioning rule in force; 1.7.1 corrections included |
+| 1.9 | 2026-10-30 | Required CI checks confirmed (Step 1 repository row done); DEC-087 records the clearing of verification debt V-1 and the decisions E-6 and E-7 |
+| 1.10 | 2026-11-14 | DEC-088: E-22 decided and verification residuals V-3 cleared |
+| 1.11 | 2026-11-14 | DEC-089: Part B verification debt V-2 cleared |
+| 1.11.1 | 2026-11-14 | Correction: current Architecture references updated to v5.1 and the Ruleset Specification progress row aligned with V-1, V-2 and V-3 clearance; no decision changes |
 
 ## Versioning policy
 
 Every project document has a version in its title and a revision history at the end. The rule for changing a version:
 
 - **Bump the minor version** when a requirement, rule, decision, contract or build step changes in meaning. Examples: a new or changed requirement, a new engine rule, a decision made, a new section of a specification.
-- **Keep the version** for wording fixes, corrected labels and pointer updates that change no requirement, rule, decision or contract. Record these as a dated correction line in the revision history.
+- **Bump the patch number (for example 1.5 to 1.5.1) for wording fixes, corrected labels and pointer updates that change no requirement, rule, decision or contract, and record them as a dated correction in the revision history. Two copies of a document must never share a version number**.
 - **Bump the major version** when the design is restructured or a whole part is added (for the architecture, a new design generation; the Ruleset Specification moves from 0.x to 1.0 when Parts C to H are complete).
-- Documents that only point at others (the Project Design Guide) are not bumped when companion versions change; their pointer line is updated and logged as a correction.
+- Documents that only point at others (the Project Design Guide) do not list companion version numbers, so they need no update when a companion changes.
 - Before handing documents to another AI, check the companion versions listed in the AI Build Brief against the current versions.
