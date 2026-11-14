@@ -1,6 +1,8 @@
 # Decision Log
 
-Record non-obvious choices here. Update this log in the same PR as the implementation that establishes the decision. Last reconciled: 2026-10-12.
+> **Authority note (2026-10-21):** Current product/system decisions and milestone status are maintained in [Tabletop RPG Simulator Decision Log and Progress Tracker v1.11.1](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file preserves earlier repository/implementation ADR detail; where a product or architecture decision conflicts with the consolidated specification set, consult the linked current documents. Live GitHub ruleset settings remain documented in `REPOSITORY-GOVERNANCE.md`.
+
+Record non-obvious choices here. Update this log in the same PR as the implementation that establishes the decision. Last reconciled: 2026-11-14.
 
 | ID | Topic | Status | Decision / note |
 |---|---|---|---|
@@ -39,5 +41,5 @@ Pin versions in build manifests and Dockerfiles. Verify releases and dependency 
 ## Open questions
 
 - Resolve ADR-009 before building release automation.
-- The detailed ruleset specification is not written; do not implement game mechanics from memory.
-- Later human decisions include spell/monster subsets, surprise handling, DM overrides, corner-cutting default, upload limits, and journal event capture. Ask when those topics reach implementation.
+- The Ruleset Specification is the source of truth for D&D mechanics. Step 2 and Step 3 use Part A only; D-1 to D-13 are decided for the Step 2 dice engine. Do not implement later mechanics from memory.
+- Remaining questions outside Step 2 include the tier-2 spell and monster subsets, DM-override presentation, diagonal corner-cutting default, final upload limits, and journal event capture. Surprise handling is decided by E-14.

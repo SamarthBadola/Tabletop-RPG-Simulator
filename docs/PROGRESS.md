@@ -1,6 +1,8 @@
 # Progress Tracker
 
-Last reconciled: 2026-10-12.
+> **Canonical tracker:** [Tabletop RPG Simulator Decision Log and Progress Tracker v1.11.1](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file is retained as a quick progress mirror for compatibility with existing repository checks. Record authoritative milestone/status changes in the consolidated tracker and keep this summary aligned.
+
+Last reconciled: 2026-11-14.
 
 ## Current milestone: Step 2 — dice engine (walking skeleton accepted)
 
@@ -46,11 +48,14 @@ The implementation is merged on \`main\`. The project owner reported that the la
 - [x] Run the laptop source-build Compose startup, confirm PostgreSQL healthy and the application started, and verify first-account registration and sign-in (project-owner report, 2026-10-12).
 - [x] Record the local acceptance result in the README, progress tracker and AI handoff.
 
-### Step 2 — dice engine (after Step 1 is complete)
+### Step 2 — dice engine (contract decided; implementation next)
 
-- [ ] Define the dice-expression grammar and limits from project specifications.
-- [ ] Implement \`RandomSource\`, parser, and immutable \`RollResult\`.
-- [ ] Add parser, malformed/over-limit rejection, range/property, keep/drop, and seeded uniformity tests.
+The Step 2 contract is specified in Ruleset Specification v0.12.1, with D-1 to D-13 accepted (DEC-085 and DEC-086). Use Part A only and stop at producing \`RollResult\`; do not add combat adjudication or probability-distribution previews.
+
+- [ ] Implement the label-free \`DiceExpression\` parser, canonicalization, validity checks, stable errors and expression limits.
+- [ ] Implement uniform \`RandomSource\`, immutable die/term/result records, \`RollPlan\`, plan-wide limits, critical-doubling copy and one-die \`replaceD20\` semantics.
+- [ ] Add the specified \`ForcedDice\` worked examples and assert all forced faces are consumed.
+- [ ] Add property/boundary tests, all four keep/drop tie tests, malformed and oversized numeric-token tests, immutable collection tests, and the seeded 200,000-roll d20 uniformity test.
 
 ### Step 3 — kernel and architecture tests
 
@@ -67,7 +72,7 @@ The implementation is merged on \`main\`. The project owner reported that the la
 - [ ] Add content-pack and definition tables, JSON schema validation, immutable in-memory loading, an attribution page, and an empty SRD pack manifest.
 - [ ] No SRD game data yet.
 
-**Stop after Step 5.** Ask for the ruleset specification, content schema specification, grid/geometry specification, and UX/API specification with threat model before implementing later gameplay features. Do not invent D&D rules from memory.
+**Stop after Step 5.** Parts A and B of the Ruleset Specification now exist; Parts C to H, the content-schema specification, grid/geometry specification, and UX/API specification with threat model are still needed before their corresponding later build steps. Do not invent D&D rules from memory.
 
 ## CI status
 
@@ -89,7 +94,7 @@ Treat this as a tracked quality improvement before the full stack grows substant
 
 ## Working agreement
 
-1. Read \`docs/AI-HANDOFF.md\`, this tracker, \`docs/DECISION-LOG.md\`, \`docs/REPOSITORY-GOVERNANCE.md\`, the full build brief, and architecture v4 before coding.
+1. Read \`docs/AI-HANDOFF.md\`, this tracker, \`docs/DECISION-LOG.md\`, \`docs/REPOSITORY-GOVERNANCE.md\`, the current build brief and Architecture v5.1 before coding.
 2. Work one focused PR at a time from a short-lived branch. Use Conventional Commits and do not push directly to \`main\`.
 3. Keep code efficient and simple. Prefer clear names over redundant comments; document public contracts and non-obvious constraints only.
 4. Define observable done-when criteria, run the relevant tests, report actual outcomes, and update docs in the same PR.
