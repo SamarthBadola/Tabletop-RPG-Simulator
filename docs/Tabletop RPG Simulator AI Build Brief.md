@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: AI Build Brief (v1.8)
+# Tabletop RPG Simulator: AI Build Brief (v1.10.1)
 
 Oct 15, 2026 · @Samarth
 
@@ -6,7 +6,7 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 
 ## 1. Rules for working on this project
 
-1. Read this brief end to end before writing code. Companion documents, if provided: Requirements Specification, `Architecture (v5.0)`, Decision Log. If they disagree with this brief, tell the human.
+1. Read this brief end to end before writing code. Companion documents, if provided: Requirements Specification, `Architecture (v5.1)`, Decision Log. If they disagree with this brief, tell the human.
 2. The ruleset specification is the source of truth for D&D mechanics and is **partly written: Parts A (foundations) and B (combat and conditions) exist, Parts C to H do not**. Do not implement game rules from memory. Follow the build order in section 12: each step names the parts of the specification it may use (Steps 2 and 3 use Part A only; combat starts at Step 6 and uses Part B). Do not implement rules from a part before the step that needs it.
 3. Keep it simple. Build the simplest thing that meets the current step. Add a seam only if it is in the seams register (5.6). Do not build deferred features.
 4. Work in small tasks, each with a done-when you can demonstrate by running it. Commit per task using Conventional Commits.
@@ -194,11 +194,11 @@ public record Modifier(String targetStat, ModOp op, int value,
                        DurationSpec duration, String source) {}
 ```
 
-**Stat computation.** A stat is computed, never stored: base value, then `SET`, then `ADD`, then `MULTIPLY` (fractions round down, as in the SRD), then `MIN` and `MAX`. Advantage and disadvantage are collected separately: extra sources of the same kind never stack, and any advantage together with any disadvantage cancels to a normal roll. Skill, save and attack totals are formulas with a separate proficiency component, floor(proficiency bonus x multiplier); MULTIPLY targets that multiplier, never the total (Ruleset Specification, Part A). Maximum HP is derived from stored raw hit die results and the current Constitution modifier, then adjusted by modifiers; current HP is clamped to it. There are two modifier types: stat modifiers (persistent integers) and roll bonuses (applied when a roll is made; fixed or dice; may be consumed). Modifiers carry a stack key and a potency: the same source does not stack with itself (most potent, then most recent) and different sources add. Advantage and disadvantage sources carry a scope (roll kind, ability, conditions). See Ruleset Specification section 3.9. Kernel stats: AC, initiative, speed, max HP, attack bonus, save bonuses, skill bonuses, spell save DC, `sense:sight`, `sense:darkvision`, `sense:blindsight`, `sense:truesight`.
+**Stat computation.** A stat is computed, never stored: base value, then `SET`, then `ADD`, then `MULTIPLY` (fractions round down, as in the SRD), then `MIN` and `MAX`. Advantage and disadvantage are collected separately: extra sources of the same kind never stack, and any advantage together with any disadvantage cancels to a normal roll. Skill, save and attack totals are formulas with a separate proficiency component, floor(proficiency bonus x multiplier); MULTIPLY targets that multiplier, never the total (Ruleset Specification, Part A). Maximum HP is derived from stored raw hit die results and the current Constitution modifier, then adjusted by modifiers; current HP is clamped to it. There are two modifier types: stat modifiers (persistent integers) and roll bonuses (applied when a roll is made; fixed or dice; may be consumed). Modifiers carry a stack key and a potency: the same source does not stack with itself (most potent, then most recent) and different sources add. Suppressed instances are kept and resume if the applying one ends first, and the rule covers every modifier source with the same name. Advantage and disadvantage sources carry a scope (roll kind, ability, conditions). See Ruleset Specification section 3.9. Kernel stats: AC, initiative, speed, max HP, attack bonus, save bonuses, skill bonuses, spell save DC, `sense:sight`, `sense:darkvision`, `sense:blindsight`, `sense:truesight`.
 
 **Ability scores (DEC-074).** An ability score is a stat: the stored base plus recorded improvements, then the ability stat's modifiers, clamped to a ruleset ceiling (default 30) and a floor of 0. Each ability also has a maximum (default 20, raised by some effects together with the score) that caps level-up and feat improvements when they are chosen; any excess is lost. A score of 0 records an ability-at-zero event and the causing effect decides the consequence. The stored base stays between 1 and 30; extra points come from modifiers. Feats are content (DEC-073): a character can hold any number, each stored with its source and choices. An improvement that would pass the maximum shows a warning before it is applied, with the excess that would be lost. Ability score generation at creation uses a registry of built-in methods (standard array, point buy, roll 4d6 drop lowest, roll 3d6, manual entry) that the DM selects per campaign; DM-created methods are version 2.
 
-**Campaign settings and HP rules from the Ruleset Specification.** Campaign settings so far: hit point method (player chooses per level between rolled and fixed average by default, or the DM forces one); advancement (milestone by default, XP as a later option, with the XP column and thresholds kept in the data); natural 20 and natural 1 on ability checks and saves (off by default; the DM can enable it for checks, saves or both); game clock advance per combat round (default 6 seconds, 0 for manual); ability score generation method; feats enabled; whether damage absorbed by temporary hit points at 0 HP still causes a death save failure (yes by default, with a house-rule option); optional mid-combat surprise (off by default). When a combatant joins a running encounter the DM chooses join options (initiative roll mode, timing, starting conditions, first-turn restriction). Maximum HP is a modifiable stat. When it rises, current HP rises by the same amount; when it falls below current HP, current HP becomes the new maximum; when a temporary increase ends, only the clamp applies; a creature at 0 HP is not raised (decided).
+**Campaign settings and HP rules from the Ruleset Specification.** Campaign settings so far: hit point method (player chooses per level between rolled and fixed average by default, or the DM forces one); advancement (milestone by default, XP as a later option, with the XP column and thresholds kept in the data); natural 20 and natural 1 on ability checks and saves (off by default; the DM can enable it for checks, saves or both); game clock advance per combat round (default 6 seconds, 0 for manual); ability score generation method; feats enabled; whether damage absorbed by temporary hit points at 0 HP still causes a death save failure (yes by default, with a house-rule option); optional mid-combat surprise (off by default); duplicate proficiency replacement (any two sources by default; the DM can narrow it to the background or turn it off). When a combatant joins a running encounter the DM chooses join options (initiative roll mode, timing, starting conditions, first-turn restriction). Maximum HP is a modifiable stat. When it rises, current HP rises by the same amount; when it falls below current HP, current HP becomes the new maximum; when a temporary increase ends, only the clamp applies; a creature at 0 HP is not raised (decided).
 
 **Resources.** `Resource(key, current, max, recharge)` with recharge in `TURN, SHORT_REST, LONG_REST, DAWN, NEVER`. `SlotPool` holds slots by spell level; only the used counts are stored, totals derive from class levels.
 
@@ -209,7 +209,7 @@ public record Modifier(String targetStat, ModOp op, int value,
 ```java
 public interface RandomSource { int nextInt(int bound); }   // 0..bound-1, uniform; production: SecureRandom
 
-public record DieRoll(int rolled, int value, boolean kept, boolean rerolled, boolean floored) {}
+public record DieRoll(int rolled, Integer rerollFace, int value, boolean kept, boolean rerolled, boolean floored) {}
 public record RollTerm(String label, String source, int sign, String expression, List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit) {}  // RollResult holds List<RollTerm>, total, naturalD20, mode
 
 public final class DiceExpression {
@@ -625,7 +625,7 @@ Every bug fix starts with a failing regression test. Do not test getters or fram
 
 **Step 1, walking skeleton.** Maven project with wrapper; Spring Boot app with health endpoints; PostgreSQL via Compose; Flyway baseline; register and login (the first user is the instance admin); Dockerfile; compose file; CI with the required checks; README quick start. *Done when:* a fresh clone runs `init-env.sh` then `docker compose up`, the first account registers at `http://localhost:8080`, and CI is green on the pull request.
 
-**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass. The notation, limits, error codes, composition API and test contract are in Ruleset Specification section 3.10; its decisions D-1 to D-6 are decided (DEC-085), so implement them as written.
+**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass. The notation, limits, error codes, composition API and test contract are in Ruleset Specification section 3.10; its decisions D-1 to D-13 are decided (DEC-085 and DEC-086), so implement them as written.
 
 **Step 3, kernel and architecture tests.** `Ability`, `AbilityScores`, `Stat` and `Modifier` computation with the order and rounding rules, durations, ArchUnit rules active, and the Ruleset Specification Part A rules (RS-ABL, RS-PRF, RS-D20, RS-ADV, RS-CHK, RS-SAV, RS-LVL, RS-MOD, RS-TIM) with their worked examples as tests. *Done when:* tests prove the modifier order (`SET`, `ADD`, `MULTIPLY` with floor, `MIN`/`MAX`) and a deliberate violation of each ArchUnit rule fails the build.
 
@@ -651,15 +651,15 @@ Commits use Conventional Commits, for example `feat(engine): parse keep-highest 
 ## 14. Open items to confirm with the human
 
 - Which spells form the tier-2 set, and which SRD monsters go in each level band.
-- Surprise handling, how DM overrides are shown to players, corner-cutting default, final upload limits.
+- How DM overrides are shown to players, the corner-cutting default and final upload limits (surprise handling is decided: Ruleset Specification E-14).
 - Exact SRD 5.1 lists (spells, monsters, conditions) and the attribution text, verified against the SRD document.
-- Spring Boot version to record (Java 25 and PostgreSQL 16.15 were chosen in Step 1).
+- Versions are decided (DEC-084): Java 25, Spring Boot 4.1.1 and PostgreSQL 16.15; nothing to confirm.
 - Which events are captured automatically for the journal (v1.5).
-- Anything in this brief that conflicts with a more specific document. Engine decisions E-1 to E-5 and E-8 to E-13 are decided (see the Ruleset Specification); E-6 and E-7 wait for the spellcasting and class parts.
+- Anything in this brief that conflicts with a more specific document. Dice-engine decisions D-1 to D-13 are decided (DEC-085 and DEC-086). E-6 and E-7 are decided, E-22 is decided, and verification debts V-1, V-2 and V-3 are cleared (DEC-087 to DEC-089).
 
 ## 15. Version and revision history
 
-Current version: **1.8**. Companion document versions this brief was written against: Ruleset Specification 0.8, Requirements Specification 1.5, Decision Log 1.7, Architecture 5.0.
+Current version: **1.10.2**. Companion document versions this brief was written against: Ruleset Specification 0.12.1, Requirements Specification 1.7.1, Decision Log 1.11.1, Architecture 5.1.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -672,3 +672,8 @@ Current version: **1.8**. Companion document versions this brief was written aga
 | 1.6 | 2026-10-16 | Version numbering and revision history added; all Part B engine decisions closed |
 | 1.7 | 2026-10-21 | Reconciliation: the Java baseline now matches the repository (Java 25, Spring Boot 4.1.1); the spec-status wording and build-order rule fixed (Parts A and B exist, each step names the parts it may use); Step 2 points to the dice notation in Ruleset Specification 3.10, with the result records, limits and error behavior updated |
 | 1.8 | 2026-10-21 | Dice notation decisions D-1 to D-6 are decided, so Step 2 implements Ruleset Specification 3.10 as written; companion versions updated |
+| 1.9 | 2026-10-30 | Dice engine refinements from the Step 2 review: DieRoll gains rerollFace; decisions D-1 to D-13 (Ruleset Specification 3.10 and 3.11) are decided. Corrections: the open items no longer list surprise handling or the Spring Boot version; companion versions updated |
+| 1.9.1 | 2026-10-30 | Correction: companion versions updated (Ruleset Specification 0.10, which clears verification debt V-1; Decision Log 1.9); no change to the build steps or contracts |
+| 1.10 | 2026-11-14 | New campaign setting for duplicate proficiency replacement (E-22); the stacking rule keeps suppressed instances and covers same-named features; companion versions updated |
+| 1.10.1 | 2026-11-14 | Correction: companion versions updated (Ruleset Specification 0.12, Requirements 1.7, Decision Log 1.11); no change to the build steps or contracts |
+| 1.10.2 | 2026-11-14 | Correction: Architecture reference updated to v5.1; companion versions updated to Requirements 1.7.1, Ruleset Specification 0.12.1 and Decision Log 1.11.1; resolved Part A and Part B verification statuses aligned; no build-step changes |
