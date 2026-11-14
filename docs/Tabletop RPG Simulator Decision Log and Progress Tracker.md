@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Decision Log and Progress Tracker (v1.11)
+# Tabletop RPG Simulator: Decision Log and Progress Tracker (v1.11.1)
 
 Oct 15, 2026 · @Samarth
 
