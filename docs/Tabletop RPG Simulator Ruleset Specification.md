@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Ruleset Specification (v0.12, draft)
+# Tabletop RPG Simulator: Ruleset Specification (v0.12.1, draft)
 
 Oct 15, 2026 · @Samarth
 
