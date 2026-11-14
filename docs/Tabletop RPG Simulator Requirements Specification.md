@@ -1,6 +1,6 @@
-# Tabletop RPG Simulator: Requirements Specification (v1.5)
+# Tabletop RPG Simulator: Requirements Specification (v1.7)
 
-Enterprise Web Application (Java) course project. Draft 1, 11 October 2026. Ruleset: D&D System Reference Document 5.1 (2014 rules), CC-BY-4.0. Companion to `Architecture (v5.0)`.
+Enterprise Web Application (Java) course project. Draft 1, 11 October 2026. Ruleset: D&D System Reference Document 5.1 (2014 rules), CC-BY-4.0. Companion to `Architecture (v5.1)`.
 
 ## 1. Introduction
 
@@ -264,11 +264,11 @@ Numeric figures are targets to verify, not promises.
 
 ## 5. Constraints and external interfaces
 
-- **Technology:** Java 25, Spring Boot 4.1.1, Thymeleaf with HTMX, PostgreSQL with Flyway, a C++17 pathfinder service, Docker Compose. Confirm against the course rubric (see section 10).
+- **Technology:** Java 25, Spring Boot 4.1.1, Thymeleaf with HTMX, PostgreSQL with Flyway, a C++17 pathfinder service, Docker Compose. The selected versions match the implemented Step 1 baseline recorded in DEC-084.
 - **Licensing:** SRD 5.1 is used under CC-BY-4.0 with the attribution statement given in the SRD itself. The D&D Beyond Basic Rules are not Creative Commons and are not used. Openly licensed third-party packs record their own licence per record; share-alike licences such as ORC need their obligations checked before bundling. This is not legal advice.
-- **Pathfinder interface:** a versioned REST/JSON contract (`/v1/path`, `/v1/reach`, later `/v1/area` and `/v1/los`) with enforced limits; defined in `Architecture (v5.0)` section 7.
+- **Pathfinder interface:** a versioned REST/JSON contract (`/v1/path`, `/v1/reach`, later `/v1/area` and `/v1/los`) with enforced limits; defined in `Architecture (v5.1)` section 7.
 - **Content pack interface:** a JSON schema for packs and homebrew features, to be published in the repository.
-- **Error contract:** stable codes (for example `NOT_YOUR_TURN`, `INVALID_PATH`, `ENCOUNTER_VERSION_CONFLICT`, `VALIDATION_FAILED`), defined in `Architecture (v5.0)` section 9.
+- **Error contract:** stable codes (for example `NOT_YOUR_TURN`, `INVALID_PATH`, `ENCOUNTER_VERSION_CONFLICT`, `VALIDATION_FAILED`), defined in `Architecture (v5.1)` section 9.
 
 ## 6. Data requirements
 
@@ -327,7 +327,7 @@ Principle D-08: build the simple version now, and leave one narrow seam where th
 - Job queue and the encounter-difficulty simulator (revisit after the core is done).
 - gRPC, multi-instance deployment, response caching, Kubernetes.
 - Mobile app, payments, AI dungeon master.
-- Undo and replay (the event log keeps the data, so it stays possible).
+- Full replay, and undo beyond the last action (undoing the last action is a v1.5 could-have, FR-LOG-003; the event log keeps the data, so replay stays possible).
 
 ## 9. Traceability (summary)
 
@@ -350,9 +350,9 @@ Principle D-08: build the simple version now, and leave one narrow seam where th
 3. **Milestone A:** confirmed: levels 1 to 5 first, then 5 to 12.
 4. **Monsters:** which SRD monsters are in the MVP set?
 5. **Spell list:** which spells form the tier 2 set? To be fixed in the ruleset specification.
-6. **Rules choices:** diagonal movement is decided (equal cost by default); surprise and how DM overrides are shown to players remain open.
+6. **Rules choices:** diagonal movement and surprise are decided (equal cost by default; the DM confirms surprise, Ruleset Specification E-14); how DM overrides are shown to players remains open.
 7. **SRD 5.1 verification items:** confirm the feat list (believed to be very small), the single background, the subclass list, the exact spell and monster lists, condition definitions, rest and death-save rules, and the attribution statement text.
-8. **Next document:** the ruleset specification with worked examples that become the first tests.
+8. **Next document:** resolved: the Ruleset Specification exists (see its revision history for the current version). The next documents are the content schema specification, the grid and geometry specification, and the UX and API specification with the threat model.
 
 ## 11. Release scope
 
@@ -422,6 +422,8 @@ The 8-week window is sized for v1 plus the first items of v1.5. Proposed order i
 | FR-ENC-012 | When a combatant joins a running encounter, the system shall let the DM choose join options: initiative roll mode (normal, advantage, disadvantage, fixed), timing (at its initiative or end of round), starting conditions, and a first-turn restriction (none or surprised). | S | v1 |
 | FR-ENC-013 | The system shall treat damage absorbed by temporary hit points as damage taken (death save failures at 0 HP, concentration checks) and shall provide a campaign setting for the house rule that fully absorbed damage causes no failure (default off). | S | v1 |
 | FR-ENC-014 | The system shall provide an optional campaign setting that lets the DM mark chosen combatants as caught off guard by a mid-combat arrival (default off). | C | v1.5 |
+| FR-CHR-016 | When a character would gain the same skill or tool proficiency from two sources, the system shall ask the player to choose a different proficiency of the same kind. A campaign setting lets the DM narrow this to overlaps with the background, or turn it off (default: any two sources). | S | v1 |
+| FR-ENC-015 | The system shall support damage resistance, vulnerability and immunity per damage type, including resistance and immunity that apply only to nonmagical damage, and immunity to conditions; every damage instance records whether it is magical. | S | v1 |
 
 ### 12.3 New non-functional requirements
 
@@ -434,11 +436,11 @@ The 8-week window is sized for v1 plus the first items of v1.5. Proposed order i
 | NFR-SEC-007 | Exports and checkpoints contain every campaign secret; only the DM can create, download or restore them. |
 | NFR-USA-003 | The layout is responsive so players can use phones or tablets on the local network. |
 
-The seams register is maintained in Architecture (v5.0), section 15.
+The seams register is maintained in Architecture (v5.1), section 15.
 
 ## 13. Version and revision history
 
-Current version: **1.5**.
+Current version: **1.7.1**.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -448,3 +450,7 @@ Current version: **1.5**.
 | 1.3 | 2026-10-15 | Join options for mid-combat arrivals, temporary hit points at 0 HP, optional mid-combat surprise (FR-ENC-012 to FR-ENC-014) |
 | 1.4 | 2026-10-16 | Version numbering and revision history added; no requirement changes |
 | 1.5 | 2026-10-21 | Reconciliation: the technology baseline now matches the repository (Java 25, Spring Boot 4.1.1); dice requirements aligned with the Ruleset Specification (FR-DIC-001 and FR-DIC-003 describe sums of terms and the concrete limits; FR-DIC-007 reroll-once and floor raised to Must in v1, because Great Weapon Fighting is a level 1 Fighter option) |
+| 1.5.1 | 2026-10-30 | Corrections after the cross-document review: open questions no longer list the Ruleset Specification as the next document or surprise as open; the out-of-scope line on undo and replay now agrees with FR-LOG-003 |
+| 1.6 | 2026-11-14 | New requirement FR-CHR-016: replacement of duplicate skill and tool proficiencies, with a campaign setting (decision E-22) |
+| 1.7 | 2026-11-14 | New requirement FR-ENC-015: damage resistance, vulnerability and immunity with the nonmagical qualifier and condition immunity (verified wording, Ruleset Specification 0.12) |
+| 1.7.1 | 2026-11-14 | Correction: Architecture references updated to v5.1 and the technology-baseline note aligned with the resolved no-rubric decision; no requirement changes |
