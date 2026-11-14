@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Requirements Specification (v1.7)
+# Tabletop RPG Simulator: Requirements Specification (v1.7.1)
 
 Enterprise Web Application (Java) course project. Draft 1, 11 October 2026. Ruleset: D&D System Reference Document 5.1 (2014 rules), CC-BY-4.0. Companion to `Architecture (v5.1)`.
 
