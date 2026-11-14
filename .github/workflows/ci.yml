@@ -4,11 +4,10 @@ on:
   pull_request:
   push:
     branches:
-      - '**'
+      - main
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -18,27 +17,25 @@ jobs:
   repo-hygiene:
     name: repo-hygiene
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check patch whitespace
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           HEAD_SHA: ${{ github.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            git diff --check "${BASE_SHA}...${HEAD_SHA}"
-          elif [[ ! "$BASE_SHA" =~ ^0+$ ]]; then
-            git diff --check "$BASE_SHA" "$HEAD_SHA"
-          else
-            git show --check --format= "$HEAD_SHA"
-          fi
+        run: bash .github/scripts/check-patch-whitespace.sh
+
+      - name: Test patch whitespace history fallbacks
+        run: bash .github/scripts/test-check-patch-whitespace.sh
 
       - name: Verify project context and policy files exist
         shell: bash
@@ -51,6 +48,8 @@ jobs:
           test -s SECURITY.md
           test -s .github/CODEOWNERS
           test -s .github/dco.yml
+          test -s .github/scripts/check-patch-whitespace.sh
+          test -s .github/scripts/test-check-patch-whitespace.sh
           test -s app/pom.xml
           test -s app/mvnw
           test -s app/.mvn/wrapper/maven-wrapper.properties
@@ -67,6 +66,48 @@ jobs:
           test -s docs/PROGRESS.md
           test -s docs/AI-HANDOFF.md
           test -s docs/REPOSITORY-GOVERNANCE.md
+
+      - name: Validate workflow YAML and immutable action references
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby -ryaml -e '
+            workflow_paths = Dir.glob(".github/workflows/*.{yml,yaml}").sort
+            abort "No GitHub Actions workflow files found." if workflow_paths.empty?
+
+            workflow_paths.each do |path|
+              workflow = YAML.safe_load_file(path, aliases: false)
+              abort "Workflow root must be a mapping: #{path}" unless workflow.is_a?(Hash)
+              abort "Workflow trigger section is missing: #{path}" unless workflow.key?("on") || workflow.key?(true)
+              abort "Workflow jobs section must be a non-empty mapping: #{path}" unless workflow["jobs"].is_a?(Hash) && !workflow["jobs"].empty?
+
+              visit = lambda do |node|
+                case node
+                when Hash
+                  node.each do |key, value|
+                    if key.to_s == "uses"
+                      abort "Invalid uses reference in #{path}: #{value.inspect}" unless value.is_a?(String)
+
+                      if value.start_with?("./")
+                        next
+                      elsif value.start_with?("docker://")
+                        abort "Docker action must be pinned by SHA-256 digest in #{path}: #{value}" unless value.match?(/@sha256:[0-9a-f]{64}\z/i)
+                      else
+                        reference = value.split("@", 2)[1]
+                        abort "External action must be pinned to a full 40-character commit SHA in #{path}: #{value}" unless reference&.match?(/\A[0-9a-f]{40}\z/i)
+                      end
+                    end
+                    visit.call(value)
+                  end
+                when Array
+                  node.each { |value| visit.call(value) }
+                end
+              end
+
+              visit.call(workflow)
+              puts "Validated workflow syntax and action pins: #{path}"
+            end
+          '
 
       - name: Validate Dependabot labels and Java 25 baseline
         shell: bash
@@ -100,9 +141,12 @@ jobs:
   unit:
     name: unit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Java
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
@@ -120,9 +164,12 @@ jobs:
     name: integration
     needs: unit
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Java
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
@@ -139,11 +186,16 @@ jobs:
   secrets:
     name: secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Check out full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Scan for leaked secrets
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
@@ -153,9 +205,12 @@ jobs:
   compose-smoke:
     needs: [integration]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Initialise local configuration
         run: ./deploy/scripts/init-env.sh
@@ -168,8 +223,22 @@ jobs:
 
       - name: Show service logs after a failure
         if: failure()
-        run: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --env-file deploy/.env logs
+        shell: bash
+        run: |
+          if [[ -f deploy/.env ]]; then
+            docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --env-file deploy/.env logs --no-color || true
+          else
+            echo "::notice::Skipping service logs because deploy/.env was not created."
+          fi
 
       - name: Stop stack and remove CI database
         if: always()
-        run: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --env-file deploy/.env down -v
+        shell: bash
+        run: |
+          if [[ -f deploy/.env ]]; then
+            if ! docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --env-file deploy/.env down -v --remove-orphans --timeout 30; then
+              echo "::warning::Compose cleanup failed; the ephemeral runner will be discarded."
+            fi
+          else
+            echo "::notice::Skipping Compose cleanup because deploy/.env was not created."
+          fi
