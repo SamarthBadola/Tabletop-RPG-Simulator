@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: AI Build Brief (v1.10.1)
+# Tabletop RPG Simulator: AI Build Brief (v1.10.2)
 
 Oct 15, 2026 · @Samarth
 
