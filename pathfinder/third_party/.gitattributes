@@ -1,0 +1,3 @@
+# Vendored code is not ours to reformat, so git's whitespace check skips it.
+# (The upstream LICENSE.MIT has a trailing space that our CI would otherwise reject.)
+* -whitespace
