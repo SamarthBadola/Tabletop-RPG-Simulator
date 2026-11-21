@@ -1,0 +1,7 @@
+{
+  "name": "C-13-diagonal-into-multiplier-3",
+  "description": "A forced diagonal into a multiplier 3 cell under true_diagonal costs 141 x 3.",
+  "endpoint": "/v1/path",
+  "request": {"width":2,"height":2,"cells":["10","03"],"metric":"true_diagonal","corners":"allow","start":[0,0],"goal":[1,1],"budget":1000},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,1]],"cost":423,"expansions":2}}
+}

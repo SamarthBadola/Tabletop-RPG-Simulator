@@ -1,0 +1,7 @@
+{
+  "name": "C-15-alternating",
+  "description": "Reach under alternating, parity 0.",
+  "endpoint": "/v1/reach",
+  "request": {"width":5,"height":3,"cells":["11111","11011","11111"],"metric":"alternating","start":[0,0],"budget":500},
+  "expect": {"status":200,"body":{"width":5,"height":3,"costs":[0,100,200,300,400,100,100,-1,400,400,200,200,300,400,500],"stop":["11111","11011","11111"]}}
+}

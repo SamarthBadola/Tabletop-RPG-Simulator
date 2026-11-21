@@ -1,0 +1,7 @@
+{
+  "name": "C-18-bad-geometry",
+  "description": "geometry is not square.",
+  "endpoint": "/v1/path",
+  "request": {"width":2,"height":1,"cells":["11"],"start":[0,0],"goal":[1,0],"budget":100,"geometry":"hex"},
+  "expect": {"status":422,"body":{"code":"INVALID_REQUEST","pointer":"/geometry"}}
+}

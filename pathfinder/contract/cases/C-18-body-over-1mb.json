@@ -1,0 +1,8 @@
+{
+  "name": "C-18-body-over-1mb",
+  "description": "The body is one byte over 1 MB.",
+  "endpoint": "/v1/path",
+  "request_generator": {"repeat":" ","times":1048577},
+  "request": "",
+  "expect": {"status":413,"body":{"code":"BODY_TOO_LARGE"}}
+}

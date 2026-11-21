@@ -1,0 +1,7 @@
+{
+  "name": "C-13-multipliers-reach",
+  "description": "Reach over the same row of multipliers.",
+  "endpoint": "/v1/reach",
+  "request": {"width":6,"height":1,"cells":["123411"],"start":[0,0],"budget":1100},
+  "expect": {"status":200,"body":{"width":6,"height":1,"costs":[0,200,500,900,1000,1100],"stop":["111111"]}}
+}

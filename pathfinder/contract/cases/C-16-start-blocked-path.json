@@ -1,0 +1,7 @@
+{
+  "name": "C-16-start-blocked-path",
+  "description": "The start cell is blocked; the creature can still leave it.",
+  "endpoint": "/v1/path",
+  "request": {"width":4,"height":1,"cells":["0111"],"start":[0,0],"goal":[3,0],"budget":1000},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,0],[2,0],[3,0]],"cost":300,"expansions":4}}
+}

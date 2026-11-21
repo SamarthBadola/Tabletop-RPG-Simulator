@@ -1,0 +1,8 @@
+{
+  "name": "C-18-wrong-content-type",
+  "description": "The content type is not application/json.",
+  "endpoint": "/v1/path",
+  "headers": {"Content-Type":"text/plain"},
+  "request": {"width":2,"height":1,"cells":["11"],"start":[0,0],"goal":[1,0],"budget":100},
+  "expect": {"status":415,"body":{"code":"UNSUPPORTED_MEDIA_TYPE"}}
+}

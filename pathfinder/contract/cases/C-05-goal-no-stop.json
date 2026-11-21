@@ -1,0 +1,7 @@
+{
+  "name": "C-05-goal-no-stop",
+  "description": "The goal cell is in noStop.",
+  "endpoint": "/v1/path",
+  "request": {"width":3,"height":1,"cells":["111"],"noStop":[[2,0]],"start":[0,0],"goal":[2,0],"budget":1000},
+  "expect": {"status":200,"body":{"found":false,"reason":"GOAL_NO_STOP","expansions":0}}
+}

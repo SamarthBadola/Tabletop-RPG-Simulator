@@ -1,0 +1,7 @@
+{
+  "name": "C-09-budget-one-less",
+  "description": "The budget is one unit below the cheapest path.",
+  "endpoint": "/v1/path",
+  "request": {"width":5,"height":2,"cells":["12111","11111"],"start":[0,0],"goal":[4,0],"budget":399},
+  "expect": {"status":200,"body":{"found":false,"reason":"NO_PATH_WITHIN_BUDGET","expansions":8}}
+}

@@ -1,0 +1,8 @@
+{
+  "name": "C-18-unknown-path",
+  "description": "An unknown path.",
+  "endpoint": "/v1/nope",
+  "method": "GET",
+  "request": "",
+  "expect": {"status":404,"body":{"code":"NOT_FOUND"}}
+}

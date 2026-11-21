@@ -1,0 +1,7 @@
+{
+  "name": "C-13-multipliers-row",
+  "description": "Entering cells with multipliers 2, 3 and 4 along a row.",
+  "endpoint": "/v1/path",
+  "request": {"width":6,"height":1,"cells":["123411"],"start":[0,0],"goal":[5,0],"budget":5000},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0]],"cost":1100,"expansions":6}}
+}

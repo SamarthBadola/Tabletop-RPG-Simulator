@@ -1,0 +1,8 @@
+{
+  "name": "C-18-wrong-method",
+  "description": "GET on a POST route.",
+  "endpoint": "/v1/path",
+  "method": "GET",
+  "request": "",
+  "expect": {"status":405,"body":{"code":"METHOD_NOT_ALLOWED"}}
+}

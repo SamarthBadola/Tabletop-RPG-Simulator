@@ -1,0 +1,7 @@
+{
+  "name": "C-15-budget-zero",
+  "description": "Reach with budget 0 shows only the start.",
+  "endpoint": "/v1/reach",
+  "request": {"width":5,"height":2,"cells":["12111","11111"],"start":[0,0],"budget":0},
+  "expect": {"status":200,"body":{"width":5,"height":2,"costs":[0,-1,-1,-1,-1,-1,-1,-1,-1,-1],"stop":["10000","00000"]}}
+}
