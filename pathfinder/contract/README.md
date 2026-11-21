@@ -22,6 +22,7 @@ through the server. The same files are intended for the Java reference.
 ```
 
 - `method`, `headers` and `config` are optional. The defaults are `POST`, a JSON content type and no token.
+- `config` can hold `token` and `deadline_ms`. The runner uses a 60 s deadline unless a case sets one, so results never depend on how fast the machine is.
 - `request` is sent as JSON text. If it is a string, that string is sent as it is, so a case can hold broken JSON.
 - `request_generator` (`{"repeat": " ", "times": 1048577}`) builds a very large body instead of storing it.
 - For status 200 the whole body must be equal (key order does not matter).
@@ -38,7 +39,7 @@ through the server. The same files are intended for the Java reference.
 | C-17 | Size limits: 1x1 and 200x200 grids |
 | C-18 | Every error in the spec's error table |
 
-C-19 (expansion cap), C-20 (busy server) and C-21 (deadline) need the server limits and are added with them.
+C-19 (expansion cap), C-20 (busy server) and C-21 (deadline) are not data files: they need a small cap, a full queue or a fake clock, so they are unit tests (`test_search.cpp`, `test_work_queue.cpp`, `test_server.cpp`).
 
 ## Where the expected answers come from
 

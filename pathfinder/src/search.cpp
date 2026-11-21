@@ -85,7 +85,7 @@ struct ExpandLater {
 
 }  // namespace
 
-PathResult find_path(const Query& q, int expansion_cap) {
+PathResult find_path(const Query& q, int expansion_cap, const StopCheck& out_of_time) {
     const Grid& g = q.grid;
     const Cell start = q.start;
     const Cell goal = q.goal;
@@ -141,6 +141,10 @@ PathResult find_path(const Query& q, int expansion_cap) {
         }
         if (result.expansions >= expansion_cap) {
             result.reason = Reason::ExpansionCap;
+            return result;
+        }
+        if (out_of_time && result.expansions % kDeadlineCheckEvery == 0 && out_of_time()) {
+            result.reason = Reason::Deadline;
             return result;
         }
 

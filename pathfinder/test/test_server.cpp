@@ -1,4 +1,6 @@
+#include <chrono>
 #include <cstdlib>
+#include <memory>
 #include <iostream>
 #include <string>
 
@@ -231,6 +233,86 @@ static void test_logs_and_errors_never_contain_the_request() {
     CHECK(line.find("s3cret") == std::string::npos);
 }
 
+// ---- the 200 ms deadline (spec section 7) -----------------------------------
+
+// A path request that needs far more than 1024 expansions: a 200x200 grid with a walled-in goal.
+static std::string big_unreachable_body() {
+    std::string row(200, '1');
+    std::string rows;
+    for (int y = 0; y < 200; ++y) {
+        std::string r = row;
+        if (y == 198) r[198] = r[199] = '0';
+        if (y == 199) r[198] = '0';
+        rows += (y ? ",\"" : "\"") + r + "\"";
+    }
+    return R"({"width":200,"height":200,"cells":[)" + rows + R"(],"start":[0,0],"goal":[199,199],"budget":10000000})";
+}
+
+// A clock that moves forward by `step_ms` every time it is read.
+struct FakeClock {
+    int step_ms;
+    mutable int reads = 0;
+};
+
+static ServerConfig config_with_fake_clock(const std::shared_ptr<FakeClock>& clock, int deadline_ms) {
+    ServerConfig config;
+    config.deadline_ms = deadline_ms;
+    config.now = [clock] {
+        ++clock->reads;
+        return std::chrono::steady_clock::time_point(std::chrono::milliseconds(clock->reads * clock->step_ms));
+    };
+    return config;
+}
+
+static void test_deadline() {
+    const std::string body = big_unreachable_body();
+
+    // Every clock read is 300 ms after the last one, so the first check (after 1024 expansions) is late.
+    auto slow = std::make_shared<FakeClock>(FakeClock{300});
+    HttpResponse response = handle(config_with_fake_clock(slow, 200), post("/v1/path", body));
+    CHECK(response.status == 200);  // a timed-out search is an answer, like the expansion cap
+    CHECK(response.body == R"({"found":false,"reason":"DEADLINE","expansions":1024})");
+    CHECK(response.reason == "DEADLINE" && response.path_search && !response.found);
+
+    // A clock that never moves: the search finishes normally.
+    auto frozen = std::make_shared<FakeClock>(FakeClock{0});
+    response = handle(config_with_fake_clock(frozen, 200), post("/v1/path", body));
+    CHECK(response.status == 200 && response.reason == "NO_PATH_WITHIN_BUDGET");
+
+    // The limit is the configured one: with 10 ms steps, the check at 1024 expansions sees a time
+    // below a 1000 ms limit and the search goes on.
+    auto steady = std::make_shared<FakeClock>(FakeClock{10});
+    response = handle(config_with_fake_clock(steady, 1000), post("/v1/path", body));
+    CHECK(response.reason == "NO_PATH_WITHIN_BUDGET" || response.reason == "DEADLINE");
+    CHECK(response.expansions > 1024);
+
+    // Reach has no deadline: it is bounded by the grid.
+    response = handle(config_with_fake_clock(slow, 200), post("/v1/reach", kReachBody));
+    CHECK(response.status == 200);
+
+    // The deadline shows up in the log line like any other reason.
+    auto slow2 = std::make_shared<FakeClock>(FakeClock{300});
+    response = handle(config_with_fake_clock(slow2, 200), post("/v1/path", body));
+    CHECK(log_line(response, 1.0, "T").find(R"("reason":"DEADLINE")") != std::string::npos);
+}
+
+// ---- the 503 answer (spec section 7) -----------------------------------------
+
+static void test_busy_response() {
+    HttpRequest request = post("/v1/path", kPathBody);
+    request.headers["x-request-id"] = "abc-123";
+    const HttpResponse response = busy_response(request);
+    CHECK(is_problem(response, 503, "BUSY"));
+    CHECK(header(response, "Retry-After") == "1");
+    CHECK(header(response, "X-Request-Id") == "abc-123");
+    CHECK(response.trace_id == "abc-123");
+    CHECK(response.route == "unmatched");
+    CHECK(response.body.find("cells") == std::string::npos);  // never echoes the request
+
+    // The shed answer is a 5xx, so the log line is at level error.
+    CHECK(log_line(response, 0.1, "T").find(R"("level":"error")") != std::string::npos);
+}
+
 int main() {
     test_health_and_info();
     test_path_and_reach();
@@ -243,6 +325,8 @@ int main() {
     test_log_lines();
     test_log_levels();
     test_logs_and_errors_never_contain_the_request();
+    test_deadline();
+    test_busy_response();
 
     if (failures == 0) {
         std::cout << "All server tests passed\n";

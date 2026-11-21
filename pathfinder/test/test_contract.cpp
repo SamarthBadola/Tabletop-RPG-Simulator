@@ -30,8 +30,12 @@ static std::string lower(std::string text) {
 // Returns an empty string when the case passes, or a description of the first difference.
 static std::string run_case(const json& test) {
     pf::ServerConfig config;
+    // The real 200 ms deadline would make results depend on how fast the machine is (a sanitizer
+    // build is many times slower), so a case gets a generous one unless it asks for another.
+    config.deadline_ms = 60000;
     if (test.contains("config")) {
         config.token = test["config"].value("token", "");
+        config.deadline_ms = test["config"].value("deadline_ms", config.deadline_ms);
     }
 
     pf::HttpRequest request;

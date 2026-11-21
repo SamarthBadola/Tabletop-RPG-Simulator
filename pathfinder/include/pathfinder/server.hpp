@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+#include <functional>
 #include <map>
 #include <string>
 
@@ -36,6 +38,9 @@ struct HttpResponse {
 struct ServerConfig {
     std::string token;         // empty means no token is required
     std::string build = "dev";
+    int deadline_ms = 200;     // spec section 7: the longest a path search may run
+    // The clock the deadline uses. Tests replace it with a fake one.
+    std::function<std::chrono::steady_clock::time_point()> now = [] { return std::chrono::steady_clock::now(); };
 };
 
 // All the routing, checking and answering, with no network in it (so it can be tested directly).
@@ -43,6 +48,9 @@ HttpResponse handle(const ServerConfig& config, const HttpRequest& request);
 
 // A problem+json answer for an error found outside handle(), such as by the HTTP library.
 HttpResponse error_response(const HttpRequest& request, const ApiError& error);
+
+// The answer for a request the service has no room for: 503 BUSY with Retry-After: 1 (spec section 7).
+HttpResponse busy_response(const HttpRequest& request);
 
 // One JSON line for the log (spec section 10). It never contains cells or noStop.
 std::string log_line(const HttpResponse& response, double duration_ms, const std::string& timestamp);

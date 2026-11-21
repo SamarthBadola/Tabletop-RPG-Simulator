@@ -4,12 +4,14 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdio>
+#include <csignal>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <atomic>
 #include <system_error>
 #include <thread>
 
@@ -17,6 +19,7 @@
 #include <nlohmann/json.hpp>
 
 #include "pathfinder/server.hpp"
+#include "pathfinder/work_queue.hpp"
 
 #ifndef PATHFINDER_BUILD
 #define PATHFINDER_BUILD "dev"
@@ -30,6 +33,7 @@ struct Settings {
     std::string bind = "0.0.0.0";
     int port = 9000;
     int workers = 1;
+    int max_queue = 32;
     std::string token;
     std::string log_level = "info";
 };
@@ -60,6 +64,9 @@ std::optional<std::string> load_settings(Settings& settings) {
     if (const auto value = env("BIND")) settings.bind = *value;
     if (const auto value = env("WORKERS")) {
         if (!parse_whole_number(*value, 1, 64, settings.workers)) return "WORKERS must be a number from 1 to 64";
+    }
+    if (const auto value = env("MAX_QUEUE")) {
+        if (!parse_whole_number(*value, 1, 10000, settings.max_queue)) return "MAX_QUEUE must be a number from 1 to 10000";
     }
     if (const auto value = env("PATHFINDER_TOKEN")) settings.token = *value;
     if (const auto value = env("LOG_LEVEL")) {
@@ -120,6 +127,43 @@ void send(const pf::HttpResponse& answer, httplib::Response& response) {
     for (const auto& header : answer.headers) response.set_header(header.first, header.second);
 }
 
+// ---- load shedding and shutdown (spec section 7) -----------------------------
+
+constexpr int kDrainSeconds = 5;
+
+// Set on a worker thread while it is only allowed to answer 503 BUSY.
+thread_local bool shedding = false;
+
+// httplib hands every accepted connection to a "task queue". This one is our bounded WorkQueue.
+class BoundedTaskQueue final : public httplib::TaskQueue {
+public:
+    BoundedTaskQueue(std::size_t workers, std::size_t max_waiting) : queue_(workers, max_waiting) {}
+
+    bool enqueue(std::function<void()> fn) override {
+        return queue_.submit([fn = std::move(fn)](bool shed) {
+            shedding = shed;
+            fn();
+            shedding = false;
+        });
+    }
+    void shutdown() override { queue_.shutdown(); }
+
+private:
+    pf::WorkQueue queue_;
+};
+
+std::atomic<bool> stop_requested{false};
+
+extern "C" void on_stop_signal(int) { stop_requested = true; }  // only sets a flag: nothing else is safe here
+
+std::string shutdown_line(const char* event, const char* level) {
+    nlohmann::ordered_json line;
+    line["ts"] = timestamp_now();
+    line["level"] = level;
+    line["event"] = event;
+    return line.dump();
+}
+
 int run_healthcheck(const Settings& settings) {
     httplib::Client client("127.0.0.1", settings.port);
     client.set_connection_timeout(2);
@@ -161,11 +205,13 @@ int main(int argc, char** argv) {
 #endif
     });
     const auto workers = static_cast<std::size_t>(settings.workers);
-    server.new_task_queue = [workers] { return new httplib::ThreadPool(workers); };
+    const auto max_queue = static_cast<std::size_t>(settings.max_queue);
+    server.new_task_queue = [workers, max_queue] { return new BoundedTaskQueue(workers, max_queue); };
 
     const auto serve = [&](const httplib::Request& request, httplib::Response& response) {
         const auto started = std::chrono::steady_clock::now();
-        const pf::HttpResponse answer = pf::handle(config, convert(request));
+        const pf::HttpResponse answer = shedding ? pf::busy_response(convert(request))
+                                                 : pf::handle(config, convert(request));
         send(answer, response);
         const std::chrono::duration<double, std::milli> took = std::chrono::steady_clock::now() - started;
         write_log(pf::log_line(answer, took.count(), timestamp_now()));  // one line per request at every LOG_LEVEL (spec section 10)
@@ -206,10 +252,37 @@ int main(int argc, char** argv) {
     started["bind"] = settings.bind;
     started["port"] = settings.port;
     started["workers"] = settings.workers;
+    started["max_queue"] = settings.max_queue;
     started["token_required"] = !settings.token.empty();  // whether, never the token itself
     started["log_level"] = settings.log_level;
     if (pf::log_level_allows(settings.log_level, "info")) write_log(started.dump());
 
-    server.listen_after_bind();
+    // SIGTERM (what "docker stop" sends) and Ctrl+C start a clean shutdown: stop listening, let the
+    // requests already accepted finish, and give up after kDrainSeconds.
+    std::signal(SIGTERM, on_stop_signal);
+    std::signal(SIGINT, on_stop_signal);
+    std::atomic<bool> finished{false};
+    std::thread watcher([&] {
+        while (!finished) {
+            if (stop_requested) {
+                write_log(shutdown_line("service.stopping", "info"));
+                server.stop();
+                for (int waited_ms = 0; !finished; waited_ms += 50) {
+                    if (waited_ms >= kDrainSeconds * 1000) {
+                        write_log(shutdown_line("service.drain_timeout", "error"));
+                        std::_Exit(1);
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                }
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+    });
+
+    server.listen_after_bind();  // returns after server.stop(), once the accepted requests are done
+    finished = true;
+    watcher.join();
+    write_log(shutdown_line("service.stopped", "info"));
     return 0;
 }

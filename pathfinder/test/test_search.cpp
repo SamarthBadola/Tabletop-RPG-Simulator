@@ -11,12 +11,12 @@ using namespace pf;
 
 // A tiny test helper: print the failing line and keep going.
 static int failures = 0;
-#define CHECK(...)                                                                   \
-    do {                                                                             \
-        if (!(__VA_ARGS__)) {                                                        \
+#define CHECK(...)                                                                \
+    do {                                                                          \
+        if (!(__VA_ARGS__)) {                                                     \
             std::cerr << __FILE__ << ":" << __LINE__ << "  CHECK failed: " #__VA_ARGS__ "\n"; \
-            ++failures;                                                              \
-        }                                                                            \
+            ++failures;                                                           \
+        }                                                                         \
     } while (0)
 
 using Path = std::vector<Cell>;
@@ -185,6 +185,42 @@ static void test_expansion_cap() {  // case C-19
     CHECK(!r.found && r.reason == Reason::ExpansionCap && r.expansions == 2);
 }
 
+static std::vector<std::string> enclosed_goal_rows() {  // a 200x200 grid whose goal (199,199) is walled in
+    std::vector<std::string> rows(200, std::string(200, '1'));
+    rows[198][198] = '0';
+    rows[198][199] = '0';
+    rows[199][198] = '0';
+    return rows;
+}
+
+static void test_deadline() {  // case C-21 at the search level
+    Query q = make_query(enclosed_goal_rows(), {0, 0}, {199, 199}, 10000000);
+
+    // The check is made once per 1024 expansions, so a "stop now" answer ends the search at exactly 1024.
+    int asked = 0;
+    PathResult r = find_path(q, kExpansionCap, [&] { ++asked; return true; });
+    CHECK(!r.found && r.reason == Reason::Deadline && r.expansions == kDeadlineCheckEvery && asked == 1);
+
+    // "Not yet" every time: the search runs to its natural end and asks once per 1024 expansions.
+    asked = 0;
+    r = find_path(q, kExpansionCap, [&] { ++asked; return false; });
+    CHECK(!r.found && r.reason == Reason::NoPathWithinBudget);
+    CHECK(asked == r.expansions / kDeadlineCheckEvery && asked > 1);
+
+    // No check supplied: same answer as before.
+    CHECK(find_path(q).expansions == r.expansions);
+
+    // A search shorter than 1024 expansions never asks, so a tiny request cannot time out.
+    Query small = make_query(kOpen6, {0, 0}, {5, 5}, 100000);
+    asked = 0;
+    r = find_path(small, kExpansionCap, [&] { ++asked; return true; });
+    CHECK(r.found && asked == 0);
+
+    // The expansion cap is tested first, so a search that hits both reports the cap.
+    r = find_path(q, kDeadlineCheckEvery, [] { return true; });
+    CHECK(r.reason == Reason::ExpansionCap);
+}
+
 static void test_big_unreachable_goal() {  // case C-17
     std::vector<std::string> rows(200, std::string(200, '1'));
     rows[198][198] = '0';
@@ -249,6 +285,7 @@ int main() {
     test_multipliers();
     test_tie_breaking();
     test_expansion_cap();
+    test_deadline();
     test_big_unreachable_goal();
     test_reach_example();
     test_reach_budget_zero_and_no_stop();

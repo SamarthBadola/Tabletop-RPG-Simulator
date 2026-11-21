@@ -171,7 +171,10 @@ void dispatch(const ServerConfig& config, const HttpRequest& request, HttpRespon
     response.height = query.grid.height;
     response.metric = metric_name(query.metric);
     if (is_path) {
-        const PathResult result = find_path(query);
+        const auto started = config.now();
+        const auto limit = std::chrono::milliseconds(config.deadline_ms);
+        const StopCheck out_of_time = [&] { return config.now() - started >= limit; };
+        const PathResult result = find_path(query, kExpansionCap, out_of_time);
         response.body = path_response_json(result);
         response.path_search = true;
         response.found = result.found;
@@ -203,6 +206,15 @@ HttpResponse handle(const ServerConfig& config, const HttpRequest& request) {
 HttpResponse error_response(const HttpRequest& request, const ApiError& error) {
     HttpResponse response;
     fail(response, error);
+    response.trace_id = trace_id_for(request);
+    response.headers["X-Request-Id"] = response.trace_id;
+    return response;
+}
+
+HttpResponse busy_response(const HttpRequest& request) {
+    HttpResponse response;
+    fail(response, ApiError{503, "BUSY", "the service is busy, try again shortly", ""});
+    response.headers["Retry-After"] = "1";
     response.trace_id = trace_id_for(request);
     response.headers["X-Request-Id"] = response.trace_id;
     return response;

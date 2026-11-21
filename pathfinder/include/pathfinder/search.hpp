@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <vector>
 
 #include "pathfinder/model.hpp"
@@ -7,6 +8,7 @@
 namespace pf {
 
 inline constexpr int kExpansionCap = 100000;  // spec section 6.1, step 3
+inline constexpr int kDeadlineCheckEvery = 1024;  // the clock is looked at once per this many expansions
 
 // Everything one request carries (spec section 5.2 and 5.3).
 struct Query {
@@ -20,7 +22,7 @@ struct Query {
     int budget = 0;
 };
 
-enum class Reason { None, NoPathWithinBudget, GoalBlocked, GoalNoStop, ExpansionCap };
+enum class Reason { None, NoPathWithinBudget, GoalBlocked, GoalNoStop, ExpansionCap, Deadline };
 
 struct PathResult {
     bool found = false;
@@ -35,8 +37,11 @@ struct ReachResult {
     std::vector<char> stop;  // row-major, 1 = the move may end on this cell
 };
 
+// Asked once per kDeadlineCheckEvery expansions; returning true stops the search (Reason::Deadline).
+using StopCheck = std::function<bool()>;
+
 // A*, exactly as spec section 6.1.
-PathResult find_path(const Query& query, int expansion_cap = kExpansionCap);
+PathResult find_path(const Query& query, int expansion_cap = kExpansionCap, const StopCheck& out_of_time = nullptr);
 
 // Dijkstra, exactly as spec section 6.2.
 ReachResult reach(const Query& query);
