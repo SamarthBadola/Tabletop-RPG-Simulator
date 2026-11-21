@@ -8,7 +8,7 @@ Last reconciled: 2026-11-22. This file indexes the approved project baseline; re
 2. [Architecture v5.16](architecture.md)
 3. [AI Build Brief v1.27](Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
 4. [Ruleset Specification v1.2](Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-5. [Decision Log and Progress Tracker v1.32](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+5. [Decision Log and Progress Tracker v1.33](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
 6. [Content Schema Specification v1.1](Tabletop%20RPG%20Simulator%20Content%20Schema%20Specification.md)
 7. [UX and API Specification v1.5](Tabletop%20RPG%20Simulator%20UX%20and%20API%20Specification%20%28v1.5%29.md)
 8. [Grid and Pathfinder Specification v0.4 (draft)](Tabletop%20RPG%20Simulator%20Grid%20and%20Pathfinder%20Specification%20%28v0.4%29.md)
