@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: AI Build Brief (v1.25)
+# Tabletop RPG Simulator: AI Build Brief (v1.27)
 
 Oct 15, 2026 · @Samarth
 
@@ -49,7 +49,7 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 | Observability | Micrometer, Actuator, JSON logs | logstash-logback-encoder. Trace ID in the MDC. |
 | Testing | JUnit 5, AssertJ, Testcontainers (PostgreSQL), ArchUnit, MockMvc |  |
 | Formatting | Spotless or Checkstyle | Enforced in CI. |
-| Pathfinder | C++17, CMake, cpp-httplib, nlohmann/json | Vendor the single headers in `third_party/`. GoogleTest or Catch2. |
+| Pathfinder | C++20, CMake, cpp-httplib, nlohmann/json | Vendor the single headers in `third_party/`. GoogleTest or Catch2. |
 | Containers | Docker, Compose v2, buildx | Multi-stage builds, non-root users, images for amd64 and arm64. |
 | CI/CD | GitHub Actions, GHCR |  |
 | Passwords | BCrypt or Argon2 | Through Spring Security. |
@@ -83,7 +83,7 @@ rpg/
   LICENSE, README.md
 ```
 
-The group id and root package are a placeholder (`com.yourteam.rpg`). Ask the human for the real one before creating the project.
+The group id and root package are a placeholder (`com.yourteam.rpg`). Use the real ones from the repository's pom.xml and architecture decision record; do not rename them.
 
 ## 5. Architecture the code must follow
 
@@ -667,7 +667,7 @@ Every bug fix starts with a failing regression test. Do not test getters or fram
 
 ## 12. Build order
 
-**Step 0, from the human before coding:** repository name, group id and root package; GitHub owner for GHCR; chosen Java and Spring Boot versions; the Creative Commons attribution statement of the Content Schema Specification (CS-SRD-012) for `NOTICE`; its first paragraph is the official text, checked word for word against the SRD 5.1 Creative Commons PDF (Ruleset Specification, section 1).
+**Step 0, nothing to ask the human before coding.** The values are settled. Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1 and PostgreSQL 16.15 are fixed by Decision Log DEC-084. The GitHub owner for GHCR is `samarthbadola`, with images at version 0.1.0. The repository name, group id and root package are already in the repository's `pom.xml` and its architecture decision record; use them as they are and do not rename them. The Creative Commons attribution statement of the Content Schema Specification (CS-SRD-012) is verified against the SRD 5.1 Creative Commons PDF (Ruleset Specification, section 1; Decision Log OQ-07); copy its first paragraph, which is the official text, word for word into `NOTICE`.
 
 Frontend in every step. Every step that has a screen is built as routes, fragment endpoints, view models and demo elements (section 5.7). The real screen is written separately by Claude from the Figma designs. So a done-when that names a screen is met by the demo element: the route works, authorization and validation hold, and the fragment carries the fields and ids that the UX and API Specification names.
 
@@ -747,7 +747,7 @@ java.util.Date#<init>() @ Use the injected clock
 
 **Step 6, character creation and the derived sheet (Fighter).** Ruleset Specification Part D, sections 9.1 to 9.3 (Fighter, levels 1 to 5), with Requirements Specification 3.4 and 3.5 (FR-CHR and the classes). The character model is multiclass-ready from the start. Derived values (armor class, hit points, proficiency, saves, skills, attack and damage lines) come from the kernel, never from stored copies. Routes for characters, level-up and the party, with the access rules of FR-CHR-010 to FR-CHR-016. Screens: SCR-PLY-002, SCR-PLY-003, SCR-PLY-004 (six steps), SCR-PLY-005 (four steps, with the lost-points warning) and SCR-DM-007. Tests: the Part D worked examples and the Part A tests that the sheet reuses. *Done when:* a player creates a Fighter, levels it from 1 to 5, and the derived sheet equals the Part D worked examples to the point; a player cannot read or edit another player's character (404), and the DM can edit any character in the campaign.
 
-**Step 7, combat core.** Ruleset Specification Part B (section 7, all of 7.1 to 7.11) and Architecture sections 4 and 5 for encounters, the event log with audience, idempotency keys and optimistic versioning. Initiative, turn order, the action economy, attacks, critical hits, damage with resistance, death saves, conditions, cover chosen by the DM, and the error contract. the requirements FR-ENC, FR-ACT and FR-AUD (Requirements Specification 3.7, 3.8, 3.13 and 12.2). Screens: SCR-DM-008, SCR-DM-009 (monsters come from a test pack until Step 12), SCR-DM-010 and SCR-DM-012. *Done when:* a scripted fight between two Fighters and a test creature runs from setup to a death, every Part B worked example passes, a repeated request with the same idempotency key changes nothing, a stale version is rejected with the documented error, and a DM-only event never appears in a player's response.
+**Step 7, combat core.** Ruleset Specification Part B (section 7, all of 7.1 to 7.11) and Architecture sections 4 and 5 for encounters, the event log with audience, idempotency keys and optimistic versioning. Initiative, turn order, the action economy, attacks, critical hits, damage with resistance, death saves, conditions, cover chosen by the DM, and the error contract. DM overrides follow UX-059 to UX-061 and API-ENC-015 of the UX and API Specification: the server sets who sees a correction, and a quiet correction is refused when a player can see the value. the requirements FR-ENC, FR-ACT and FR-AUD (Requirements Specification 3.7, 3.8, 3.13 and 12.2). Screens: SCR-DM-008, SCR-DM-009 (monsters come from a test pack until Step 12), SCR-DM-010 and SCR-DM-012. *Done when:* a scripted fight between two Fighters and a test creature runs from setup to a death, every Part B worked example passes, a repeated request with the same idempotency key changes nothing, a stale version is rejected with the documented error, and a DM-only event never appears in a player's response.
 
 **Step 8, class features and the reaction window.** Ruleset Specification Part D section 9.3 (Rogue, Paladin, Bard, and the level 3 subclass features) and section 9.4, with the reaction window of Ruleset Specification 7.2 and Architecture section 5.4: one window, the trigger points named there, nesting to depth 6, resume by replay, cancel keeps the dice. Features are data with trigger points; do not hard-code a class in the engine. Opportunity attacks use the window. Screen: SCR-DM-011 (the player side, SCR-PLY-007, waits for Step 16). Tests: T-22 to T-39 and the PIT mutation job on the reaction package (Architecture 12.1), each also run as a restart-in-the-middle test on a real database. *Done when:* an opportunity attack, a class-feature reaction and a Divine Smite timing case from Ruleset Specification 9.4 each run through the window, a restart in the middle of a window resumes to the same result, and T-22 to T-39 pass.
 
@@ -794,7 +794,6 @@ Commits use Conventional Commits, for example `feat(engine): parse keep-highest 
 ## 14. Open items to confirm with the human
 
 - Nothing about monsters is open: the roster is decided (Ruleset Specification 12.10), as is the tier-2 spell list (Ruleset Specification 10.9).
-- How DM overrides are shown to players is proposed in the UX and API Specification (UXD-11, UXQ-24 and UX-059 to UX-061) and waits for the owner. Build the correction itself, but not the audience choice or the standard sentences, until it is accepted (surprise handling is decided: Ruleset Specification E-14).
 - The SRD 5.1 lists and the attribution text are verified (Decision Log OQ-07, Ruleset Specification section 1); nothing to confirm.
 - Versions are decided (DEC-084): Java 25, Spring Boot 4.1.1 and PostgreSQL 16.15; nothing to confirm.
 - The journal captures the events of FR-JRN-002 as candidates that the DM keeps or dismisses (decided, DEC-108); nothing to confirm.
@@ -803,7 +802,7 @@ Commits use Conventional Commits, for example `feat(engine): parse keep-highest 
 
 ## 15. Version and revision history
 
-Current version: **1.25**. Companion document versions this brief was written against: Ruleset Specification 1.2, Content Schema Specification 1.1, Grid and Pathfinder Specification 0.4, UX and API Specification 1.3, Requirements Specification 1.18, Decision Log 1.30, Architecture 5.14.
+Current version: **1.27**. Companion document versions this brief was written against: Ruleset Specification 1.2, Content Schema Specification 1.1, Grid and Pathfinder Specification 0.4, UX and API Specification 1.5, Requirements Specification 1.20, Decision Log 1.32, Architecture 5.16.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -840,4 +839,6 @@ Current version: **1.25**. Companion document versions this brief was written ag
 | 1.22 | 2026-11-21 | Companion versions updated (UX and API Specification 1.1, Architecture 5.14) after the detection limits were raised: the numbers stay in the UX and API Specification (3.8), which this brief points to. No other change. |
 | 1.23 | 2026-11-22 | The frontend is split (Decision Log DEC-108): the coding AI builds the backend and only demo elements of the frontend, and Claude writes the real frontend from the Figma designs in the same repository. New section 5.7 sets the two areas and the seam, with rule 12 of section 1, the repository layout, a build order note and the definition of done following it. The open items lose the SRD verification (done, OQ-07) and the journal events (decided, DEC-108), and the override item now points to the proposal in the UX and API Specification. Step 0 notes that the attribution text is verified. Companion versions updated (Ruleset Specification 1.2, UX and API Specification 1.2, Grid and Pathfinder Specification 0.4, Decision Log 1.30). |
 | 1.24 | 2026-11-22 | Companion version updated (UX and API Specification 1.3, which draws the Figma frames for the proposed override correction and fixes one screen reference). No build rule changed. |
-|  |  |  |
+| 1.25 | 2026-11-22 | Steps 6 to 20 written (character creation and the derived sheet, combat core, class features and the reaction window, rests and sessions, spells, equipment, monsters, the version 1 environment, grid and Java pathfinder, the C++ pathfinder and Milestone A, then the version 1.5 steps: live player view, journal, checkpoints and export, maps, levels 6 to 12, release). Each names its specification sections, screens (built as demo elements), tests and a done-when. The old stop-here note is replaced by a stop-and-ask rule for version 2 and for anything not decided. No contract or earlier step changed. Companion versions unchanged. |
+| 1.26 | 2026-11-22 | Document review fixes. The stack table now names C++20, as the Architecture and the Grid and Pathfinder Specification do. Step 0 no longer asks the human for values that are settled (Java, Spring Boot and PostgreSQL versions, GHCR owner, attribution text, and the repository name, group id and root package that the repository already records), and the group id placeholder note points to the repository instead. The 1.25 history row, which had been left blank, is filled. Companion versions updated (UX and API Specification 1.4, Requirements Specification 1.19, Decision Log 1.31, Architecture 5.15). No build rule or contract changed. |
+| 1.27 | 2026-11-22 | The owner accepted how DM overrides are shown to players (UXD-11, UXQ-24, UX-059 to UX-061). The open item that told the coding AI to wait is removed, and Step 7 now says the server sets who sees a correction and refuses a quiet correction when a player can see the value. Companion versions updated (UX and API Specification 1.5, Requirements Specification 1.20, Decision Log 1.32, Architecture 5.16). No other build rule changed. |

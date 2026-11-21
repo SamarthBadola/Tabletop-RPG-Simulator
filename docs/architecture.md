@@ -1,8 +1,8 @@
-# Tabletop RPG Simulator: Architecture (v5.14)
+# Tabletop RPG Simulator: Architecture (v5.16)
 
 Oct 16, 2026 · @Samarth
 
-How the system is built and why. Current version **5.14**; the revision history is at the end. Companion documents: Requirements Specification (what it must do), Ruleset Specification (the D&D mechanics), Decision Log and Progress Tracker (decisions and status), AI Build Brief (setup, CI/CD, compose and Dockerfiles, full DDL and the build order), Grid and Pathfinder Specification (the pathfinder contract), Project Design Guide (plain-language overview). This document holds the design and its reasons; code that the Build Brief already contains (CI workflows, compose file, schema DDL) is not repeated here, so there is one source of truth. Diagrams are written as Mermaid source.
+How the system is built and why. Current version **5.16**; the revision history is at the end. Companion documents: Requirements Specification (what it must do), Ruleset Specification (the D&D mechanics), Decision Log and Progress Tracker (decisions and status), AI Build Brief (setup, CI/CD, compose and Dockerfiles, full DDL and the build order), Grid and Pathfinder Specification (the pathfinder contract), Project Design Guide (plain-language overview). This document holds the design and its reasons; code that the Build Brief already contains (CI workflows, compose file, schema DDL) is not repeated here, so there is one source of truth. Diagrams are written as Mermaid source.
 
 ## 0. What changed in v5
 
@@ -770,7 +770,7 @@ erDiagram
 
 - **Multiclass-ready, single-class today:** `pc_class` already has one row per class. Hit dice are tracked per die size (`pc_hit_dice`), ability score improvements are recorded by class and class level (`pc_asi`), the subclass lives on the class row, and spell slots remain derived (from the combined caster level) while only the used counts are stored.
 - **Maps:** a map stores its squares as compact arrays (width, height, per-square flags for blocks-movement, blocks-sight, difficult, cover), not one row per square. The record that holds them is described below.
-- **Audience:** every event, journal entry and message has an `audience` (`DM`, `ALL`, `PLAYERS`) plus a player set for the last case.
+- **Audience:** every event, journal entry and message has an `audience` (`DM`, `ALL`, `PLAYERS`) plus a player set for the last case. An override event takes its audience from the value it changes, computed by the server and never taken from the request. Its stream signal goes to that audience only, and a quiet override sends no signal to players (UX and API Specification, UXD-11, API-ENC-010 and API-ENC-015).
 - **Assets:** images live on the data volume under their content hash; the table stores metadata only.
 - **Encounter roster:** the DM's chosen set of monsters for an encounter, drawn from enabled packs and custom monsters.
 
@@ -1392,7 +1392,7 @@ Stays out of the 8 weeks unless time remains: the rest of v1.5 (journal, checkpo
 
 ## 19. Version and revision history
 
-Current version: **5.12**. Earlier versions were circulated as the file `architecture.md`; this Claude Doc replaces it, and 5.0 supersedes the file marked v4.
+Current version: **5.16**. Earlier versions were circulated as the file `architecture.md`; this Claude Doc replaces it, and 5.0 supersedes the file marked v4.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -1415,3 +1415,5 @@ Current version: **5.12**. Earlier versions were circulated as the file `archite
 | 5.12 | 2026-11-21 | Content Schema Specification, accepted by the owner on 2026-11-21, applied by reference. The effect type names of section 4.4 are now the registry names (modifier, condition and reaction\_option replace add\_modifier, apply\_condition and grant\_reaction), and the paragraph says that the specification is the authority for names and fields. The content decisions are extended with the pack folder and manifest, namespaced keys, explicit overrides, nine-stage validation, the JSON Schema library (networknt json-schema-validator 3.x on Jackson 3), the definition storage columns and the cached content set. The trigger table of section 4.4 lists START\_OF\_OWN\_TURN and ON\_DAWN in place of ON\_TURN\_START, ON\_SHORT\_REST and ON\_LONG\_REST, and the hazard listener names START\_OF\_OWN\_TURN. The seams rows for the importer and schema and for the trigger points and effect catalog are updated. No change to the engine boundary. |
 | 5.13 | 2026-11-21 | UX and API Specification, accepted by the owner on 2026-11-21, applied by reference. Section 9 gains UNAUTHENTICATED, FORBIDDEN, CSRF\_INVALID, RATE\_LIMITED, PACK\_REVIEW\_STALE, ENCOUNTER\_STARTED, MAP\_IN\_USE, PLACEMENT\_INVALID and LAST\_ADMINISTRATOR with their details. Session store (absolute timeout, form token, double-submit cookie); records for maps, placement, rolled sets, held characters and form tokens (6.1); saved maps and obstacle detection inside the request with no job queue (7.1); eligible squares in engine.grid (7.6); live update versions go to the DM only; random placement on the server, Material 3 under the content security policy and the status page (8); image limits for maps and the health route (10); saved state and export by username, restore saves a checkpoint first (5.5). |
 | 5.14 | 2026-11-21 | Saved maps (7.1): at most three obstacle detections run at once, matching the UX and API Specification. Two wording fixes from the 5.13 pass are recorded here: the action id is minted by the server, and a map belongs to the campaign. |
+| 5.15 | 2026-11-22 | Section 19 stated the current version as 5.12 although the table lists 5.13 and 5.14; the line now matches the title. No design content changed. |
+| 5.16 | 2026-11-22 | The audience rule for events now states that an override event takes its audience from the value it changes, computed by the server, and that its stream signal goes to that audience only, so a quiet override sends no signal to players. Applies UXD-11 and UXQ-24, accepted by the owner. No other design content changed. |

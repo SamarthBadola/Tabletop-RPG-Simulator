@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Requirements Specification (v1.18)
+# Tabletop RPG Simulator: Requirements Specification (v1.20)
 
 Enterprise Web Application (Java) course project. Draft 1, 11 October 2026. Ruleset: D&D System Reference Document 5.1 (2014 rules), CC-BY-4.0. Companion to `the Architecture document`.
 
@@ -161,7 +161,7 @@ Priority: **M** must, **S** should, **C** could. Milestone: **A** levels 1 to 5,
 | FR-ENC-007 | The system shall support temporary hit points and damage resistance, vulnerability and immunity. | M | A |
 | FR-ENC-008 | When an encounter ends, the system shall write surviving state back to the characters. | M | A |
 | FR-ENC-009 | The system shall let a DM add or remove combatants mid-encounter. | S | A |
-| FR-ENC-010 | The system shall let a DM override any numeric state, recording the override in the event log. | S | A |
+| FR-ENC-010 | The system shall let a DM override any numeric state, recording the override in the event log. The players who may see the changed value shall be shown the override as one standard sentence without the old value or the reason, and the DM may make an override quiet only when no player can see that value. | S | A |
 | FR-ENC-011 | The system shall support surprise at encounter start. | S | B |
 
 ### 3.8 Actions and reactions (FR-ACT)
@@ -179,11 +179,11 @@ Priority: **M** must, **S** should, **C** could. Milestone: **A** levels 1 to 5,
 
 ### 3.9 Rests and resources (FR-RST)
 
+The rest, clock and recharge requirements of Ruleset Specification Part C are FR-RST-001 to FR-RST-008, listed in section 12.2 with the other requirements added with the rules parts; FR-RST-009 is below.
+
 | ID | Requirement | Pri | Ms |
 | --- | --- | --- | --- |
-| FR-RST-001 | When a short rest is taken, the system shall allow spending hit dice to heal and shall refresh short-rest resources. | M | A |
-| FR-RST-002 | When a long rest is taken, the system shall restore HP, regain hit dice per the rules, and refresh long-rest resources and spell slots. | M | A |
-| FR-RST-003 | The system shall refresh dawn- and turn-based resources at their trigger. | S | B |
+| FR-RST-009 | The system shall refresh turn-based resources at the trigger that their recharge rule names (recharge on rests and at dawn is FR-RST-005). | S | B |
 
 ### 3.10 Grid and movement (FR-GRD)
 
@@ -495,9 +495,9 @@ The 8-week window is sized for v1 plus the first items of v1.5. Proposed order i
 | FR-AST-002 | The system shall extend image upload to characters, scenes and handouts. | S | v1.5 |
 | FR-AST-003 | The system shall ship generic placeholder silhouettes by creature type and no official artwork. | M | v1 |
 | FR-AST-004 | The system shall let the DM map an uploaded image to a monster of any enabled pack, so that one image serves every copy of that monster, and the map token shall show the creature's initials until an image is mapped. | S | v1 |
-| FR-MON-001 | The DM shall choose the monsters available in each encounter from the enabled packs. | M | v1 |
-| FR-MON-002 | The system shall let the DM create custom monsters from a stat-block form, validated like imported content. | S | v1.5 |
-| FR-SPL-009 | The system shall let the DM add homebrew spells that follow the same schema and caps as built-in spells, with caps derived from SRD spells of the same level. | S | v1.5 |
+| FR-MON-015 | The DM shall choose the monsters available in each encounter from the enabled packs. | M | v1 |
+| FR-MON-016 | The system shall let the DM create custom monsters from a stat-block form, validated like imported content. | S | v1.5 |
+| FR-SPL-015 | The system shall let the DM add homebrew spells that follow the same schema and caps as built-in spells, with caps derived from SRD spells of the same level. | S | v1.5 |
 | FR-CHR-010 | The schema shall support several classes per character (hit dice by die size, ability score improvements by class and class level, a subclass per class row); multiclass rules and UI are deferred. | M | v1 |
 | FR-NET-001 | The system shall be reachable by players on the DM's local network at a displayed address over HTTP. | M | v1 |
 | FR-NET-002 | The system shall show a join screen with the address (derived from the DM's browser URL, with a warning for localhost) and an invite code. | S | v1 |
@@ -568,7 +568,7 @@ The seams register is maintained in the Architecture document, section 15.
 
 ## 13. Version and revision history
 
-Current version: **1.18**.
+Current version: **1.20**.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -593,3 +593,5 @@ Current version: **1.18**.
 | 1.16 | 2026-11-19 | Environment and afflictions (Ruleset Specification Part H): new section 3.17 with FR-ENV-001 to FR-ENV-020 and FR-MAD-001 to FR-MAD-006, where the madness tracker is a version 1 requirement. FR-GRD-009 now points to RS-ENV-019 to RS-ENV-024 and keeps its priority and milestone. FR-GRD-001 corrected to the 200 by 200 grid cap, which the Grid and Pathfinder Specification and the Architecture already state. FR-VIS-001, FR-VIS-002, the vision seam row, the out-of-scope entry, the release scope (v1, v1.5 and v2 rows) and the traceability table updated. |
 | 1.17 | 2026-11-21 | Content Schema Specification, accepted by the owner on 2026-11-21, applied by reference. FR-CNT-004 now describes a pack as a folder with a manifest that is rejected whole when invalid or when it names something the engine does not define. FR-CNT-006 replaces the numeric caps with warnings against the SRD range that the DM confirms (CS-HBR-006 to CS-HBR-008). New FR-CNT-010 (namespaced keys), FR-CNT-011 (explicit overrides), FR-CNT-012 (database enforced immutability and one version of a pack per campaign) and FR-CNT-013 (verbatim SRD text and the Creative Commons notice). The next-document list is updated. |
 | 1.18 | 2026-11-21 | UX and API Specification, accepted by the owner on 2026-11-21, applied by reference. FR-ACC-004 names the health route. NFR-USA-002 raises the target to WCAG 2.2 AA. FR-CAM-003 becomes a Must in milestone A: a signed-in user joins with a campaign invite code. New FR-GRD-010 to FR-GRD-015 (map upload, obstacle detection inside the request, full-screen map, placing creatures, start area, unplaced characters), FR-AST-004 (monster image mapping), FR-CHR-017 (held characters) and NFR-PERF-003. FR-CHR-002 (rolled set kept until the character is created), FR-CHK-002 (a restore saves a checkpoint first), FR-EXP-001 (access data by username) and NFR-SEC-005 (maps) reworded. FR-LIV-004 moved to v2. Release scope updated. |
+| 1.19 | 2026-11-22 | Duplicate requirement identifiers removed after a review. The monster, spell and rest requirements that predate the rules parts kept the numbers that the new sections then reused. The older FR-MON-001 (the DM chooses the monsters of an encounter from the enabled packs) and FR-MON-002 (custom monsters from a stat-block form) in section 12.2 are now FR-MON-015 and FR-MON-016; the older FR-SPL-009 (homebrew spells) in section 12.2 is now FR-SPL-015. FR-MON-001 to FR-MON-014 in section 3.16 and FR-SPL-009 to FR-SPL-014 in section 3.6 are unchanged. In section 3.9 the original FR-RST-001 and FR-RST-002 are removed because the fuller FR-RST-001 to FR-RST-008 in section 12.2 replace them, and the original FR-RST-003 (refresh at dawn and by turn) is now FR-RST-009 and keeps only the turn-based part, since FR-RST-005 already covers dawn. Priorities and milestones are unchanged. Every identifier is now defined once. |
+| 1.20 | 2026-11-22 | FR-ENC-010 now says how an override is shown: the players who may see the changed value read it as one standard sentence without the old value or the reason, and the DM may make an override quiet only when no player can see that value. Applies UXD-11 and UXQ-24, accepted by the owner. No other requirement changed. |
