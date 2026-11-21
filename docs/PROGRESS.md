@@ -1,8 +1,8 @@
 # Progress Tracker
 
-> **Canonical tracker:** [Tabletop RPG Simulator Decision Log and Progress Tracker v1.11.1](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file is retained as a quick progress mirror for compatibility with existing repository checks. Record authoritative milestone/status changes in the consolidated tracker and keep this summary aligned.
+> **Canonical tracker:** [Tabletop RPG Simulator Decision Log and Progress Tracker v1.33](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file is retained as a quick progress mirror for compatibility with existing repository checks. Record authoritative milestone/status changes in the consolidated tracker and keep this summary aligned.
 
-Last reconciled: 2026-11-14.
+Last reconciled for implementation status: 2026-11-14. The approved specification baseline link was refreshed on 2026-11-22; implementation status below remains the earlier snapshot.
 
 ## Current milestone: Step 2 — dice engine (walking skeleton accepted)
 
@@ -72,7 +72,7 @@ The Step 2 contract is specified in Ruleset Specification v0.12.1, with D-1 to D
 - [ ] Add content-pack and definition tables, JSON schema validation, immutable in-memory loading, an attribution page, and an empty SRD pack manifest.
 - [ ] No SRD game data yet.
 
-**Stop after Step 5.** Parts A and B of the Ruleset Specification now exist; Parts C to H, the content-schema specification, grid/geometry specification, and UX/API specification with threat model are still needed before their corresponding later build steps. Do not invent D&D rules from memory.
+**Implementation checkpoint note.** This progress section records status as of 2026-11-14. Since then, the approved specifications for later steps were added; follow the current AI Build Brief for the implementation sequence and stop points. This documentation sync does not verify later implementation work. Do not invent D&D rules from memory.
 
 ## CI status
 
@@ -94,7 +94,7 @@ Treat this as a tracked quality improvement before the full stack grows substant
 
 ## Working agreement
 
-1. Read \`docs/AI-HANDOFF.md\`, this tracker, \`docs/DECISION-LOG.md\`, \`docs/REPOSITORY-GOVERNANCE.md\`, the current build brief and Architecture v5.1 before coding.
+1. Read \`docs/AI-HANDOFF.md\`, this tracker, \`docs/DECISION-LOG.md\`, \`docs/REPOSITORY-GOVERNANCE.md\`, the current build brief and Architecture v5.16 before coding.
 2. Work one focused PR at a time from a short-lived branch. Use Conventional Commits and do not push directly to \`main\`.
 3. Keep code efficient and simple. Prefer clear names over redundant comments; document public contracts and non-obvious constraints only.
 4. Define observable done-when criteria, run the relevant tests, report actual outcomes, and update docs in the same PR.
