@@ -1,0 +1,50 @@
+#pragma once
+
+#include <map>
+#include <string>
+
+#include "pathfinder/api.hpp"
+
+namespace pf {
+
+// What the HTTP library hands us, reduced to what the service needs.
+struct HttpRequest {
+    std::string method;                          // "GET", "POST", ...
+    std::string path;                            // "/v1/path"
+    std::string body;
+    std::map<std::string, std::string> headers;  // header names in lower case
+};
+
+// What we hand back, plus a few facts for the log line (spec section 10).
+struct HttpResponse {
+    int status = 200;
+    std::string content_type = "application/json";
+    std::string body;
+    std::map<std::string, std::string> headers;  // extra headers, such as Allow
+
+    std::string trace_id;
+    std::string route = "unmatched";  // the known route, never the raw path
+    bool path_search = false;         // true when /v1/path ran a search
+    bool found = false;
+    std::string reason;
+    int expansions = 0;
+    int width = 0;
+    int height = 0;
+    std::string metric;
+};
+
+struct ServerConfig {
+    std::string token;         // empty means no token is required
+    std::string build = "dev";
+};
+
+// All the routing, checking and answering, with no network in it (so it can be tested directly).
+HttpResponse handle(const ServerConfig& config, const HttpRequest& request);
+
+// A problem+json answer for an error found outside handle(), such as by the HTTP library.
+HttpResponse error_response(const HttpRequest& request, const ApiError& error);
+
+// One JSON line for the log (spec section 10). It never contains cells or noStop.
+std::string log_line(const HttpResponse& response, double duration_ms, const std::string& timestamp);
+
+}  // namespace pf
