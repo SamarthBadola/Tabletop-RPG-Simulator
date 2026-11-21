@@ -18,6 +18,13 @@ updates:
       - dependency-name: eclipse-temurin
         update-types:
           - version-update:semver-major
+  - package-ecosystem: docker
+    directory: /pathfinder
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - docker
   - package-ecosystem: docker-compose
     directory: /deploy
     schedule:
