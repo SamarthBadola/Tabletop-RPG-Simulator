@@ -29,5 +29,7 @@ std::optional<ApiError> parse_reach_request(const std::string& body, Query& quer
 std::string path_response_json(const PathResult& result);
 std::string reach_response_json(const Grid& grid, const ReachResult& result);
 std::string error_json(const ApiError& error);
+// The reason of a "found": false answer as the spec writes it, such as "GOAL_BLOCKED".
+const char* reason_name(Reason reason);
 
 }  // namespace pf

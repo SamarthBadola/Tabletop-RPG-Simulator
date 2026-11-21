@@ -256,6 +256,22 @@ std::optional<ApiError> parse_request(const std::string& body, bool with_goal, Q
     return std::nullopt;
 }
 
+
+const char* title_for(const std::string& code) {
+    if (code == "INVALID_JSON") return "Invalid JSON";
+    if (code == "UNAUTHORIZED") return "Unauthorized";
+    if (code == "NOT_FOUND") return "Not found";
+    if (code == "METHOD_NOT_ALLOWED") return "Method not allowed";
+    if (code == "BODY_TOO_LARGE") return "Body too large";
+    if (code == "UNSUPPORTED_MEDIA_TYPE") return "Unsupported media type";
+    if (code == "INVALID_REQUEST") return "Invalid request";
+    if (code == "BUSY") return "Busy";
+    if (code == "INTERNAL") return "Internal error";
+    return "Error";
+}
+
+}  // namespace
+
 const char* reason_name(Reason reason) {
     switch (reason) {
         case Reason::NoPathWithinBudget: return "NO_PATH_WITHIN_BUDGET";
@@ -267,14 +283,6 @@ const char* reason_name(Reason reason) {
     return "NO_PATH_WITHIN_BUDGET";
 }
 
-const char* title_for(const std::string& code) {
-    if (code == "INVALID_JSON") return "Invalid JSON";
-    if (code == "INVALID_REQUEST") return "Invalid request";
-    if (code == "BODY_TOO_LARGE") return "Body too large";
-    return "Error";
-}
-
-}  // namespace
 
 std::optional<ApiError> parse_path_request(const std::string& body, Query& query) {
     return parse_request(body, true, query);
