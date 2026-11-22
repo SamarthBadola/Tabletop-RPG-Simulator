@@ -2,6 +2,7 @@ package com.github.sbadolankaur.rpg.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.sbadolankaur.rpg.RpgApplication;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,8 +56,163 @@ class ApplicationFlowIT {
 
   @BeforeEach
   void resetRegistrationState() {
+    jdbcTemplate.update("DELETE FROM form_token");
+    jdbcTemplate.update("DELETE FROM campaign");
     jdbcTemplate.update("DELETE FROM app_user");
     jdbcTemplate.update("UPDATE instance_state SET initialized = FALSE WHERE id = 1");
+  }
+
+  @Test
+  void campaignCreationAddsDmAndClockAndReplaysOnlyForTheIssuingSession() throws Exception {
+    registerAndReadHash("owner");
+    var session = new MockHttpSession();
+    var form =
+        mockMvc
+            .perform(get("/campaigns").with(user("owner")).session(session))
+            .andExpect(status().isOk())
+            .andReturn();
+    UUID token = (UUID) form.getModelAndView().getModel().get("formToken");
+
+    var create =
+        mockMvc
+            .perform(
+                post("/campaigns")
+                    .with(csrf())
+                    .with(user("owner"))
+                    .session(session)
+                    .param("name", "Campaign A")
+                    .param("formToken", token.toString()))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    String location = create.getResponse().getRedirectedUrl();
+    UUID campaign = jdbcTemplate.queryForObject("SELECT id FROM campaign", UUID.class);
+    assertThat(campaign.version()).isEqualTo(7);
+    assertThat(location).isEqualTo("/campaigns/" + campaign + "/setup");
+    assertThat(jdbcTemplate.queryForObject("SELECT role FROM campaign_member", String.class))
+        .isEqualTo("DM");
+    assertThat(jdbcTemplate.queryForObject("SELECT game_seconds FROM game_clock", Long.class))
+        .isZero();
+
+    mockMvc
+        .perform(
+            post("/campaigns")
+                .with(csrf())
+                .with(user("owner"))
+                .session(session)
+                .param("name", "Campaign A")
+                .param("formToken", token.toString()))
+        .andExpect(status().isSeeOther())
+        .andExpect(redirectedUrl(location));
+    mockMvc
+        .perform(
+            post("/campaigns")
+                .with(csrf())
+                .with(user("owner"))
+                .session(session)
+                .param("name", "Different name")
+                .param("formToken", token.toString()))
+        .andExpect(status().isConflict());
+    mockMvc
+        .perform(
+            post("/campaigns")
+                .with(csrf())
+                .with(user("owner"))
+                .param("name", "Campaign A")
+                .param("formToken", token.toString()))
+        .andExpect(status().isBadRequest());
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM campaign", Integer.class))
+        .isEqualTo(1);
+
+    mockMvc.perform(get(location).with(user("owner"))).andExpect(status().isOk());
+    mockMvc.perform(get("/campaigns/" + campaign).with(user("owner"))).andExpect(status().isOk());
+  }
+
+  @Test
+  void anExpiredCampaignFormCannotCreateAndIsRemovedWhenANewFormIsIssued() throws Exception {
+    registerAndReadHash("owner");
+    var session = new MockHttpSession();
+    var form =
+        mockMvc
+            .perform(get("/campaigns").with(user("owner")).session(session))
+            .andExpect(status().isOk())
+            .andReturn();
+    UUID token = (UUID) form.getModelAndView().getModel().get("formToken");
+    jdbcTemplate.update(
+        "UPDATE form_token SET issued_at = CURRENT_TIMESTAMP - INTERVAL '25 hours' WHERE token = ?",
+        token);
+
+    mockMvc
+        .perform(
+            post("/campaigns")
+                .with(csrf())
+                .with(user("owner"))
+                .session(session)
+                .param("name", "Expired creation")
+                .param("formToken", token.toString()))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/campaigns").with(user("owner")).session(session))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM form_token WHERE token = ?", Integer.class, token))
+        .isZero();
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM campaign", Integer.class))
+        .isZero();
+  }
+
+  @Test
+  void aNonmemberGets404AndDoesNotSeeTheCampaignInTheirList() throws Exception {
+    registerAndReadHash("owner");
+    UUID owner = jdbcTemplate.queryForObject("SELECT id FROM app_user", UUID.class);
+    UUID outsider = UUID.randomUUID();
+    jdbcTemplate.update(
+        """
+        INSERT INTO app_user (id, username, password_hash, display_name, instance_admin, created_at)
+        VALUES (?, 'outsider', 'test-hash', 'Outsider', FALSE, CURRENT_TIMESTAMP)
+        """,
+        outsider);
+    UUID campaign = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO campaign (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+        campaign,
+        "Private campaign");
+    jdbcTemplate.update(
+        """
+        INSERT INTO campaign_member (campaign_id, user_id, role, joined_at)
+        VALUES (?, ?, 'DM', CURRENT_TIMESTAMP)
+        """,
+        campaign,
+        owner);
+
+    mockMvc
+        .perform(get("/campaigns/" + campaign).with(user("outsider")))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/campaigns/" + campaign + "/setup").with(user("outsider")))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/campaigns").with(user("outsider")))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Private campaign"))));
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO campaign_member (campaign_id, user_id, role, joined_at)
+        VALUES (?, ?, 'PLAYER', CURRENT_TIMESTAMP)
+        """,
+        campaign,
+        outsider);
+    mockMvc
+        .perform(get("/campaigns/" + campaign).with(user("outsider")))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(get("/campaigns/" + campaign + "/setup").with(user("outsider")))
+        .andExpect(status().isForbidden());
   }
 
   @Test

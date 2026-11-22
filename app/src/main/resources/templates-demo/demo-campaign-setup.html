@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Campaign setup</title></head>
+<body>
+<main>
+    <h1 th:text="${campaign.name}">Campaign</h1>
+    <p><a th:href="@{/campaigns/{id}(id=${campaign.id})}">Open campaign</a></p>
+</main>
+</body>
+</html>
