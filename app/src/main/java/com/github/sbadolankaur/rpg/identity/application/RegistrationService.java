@@ -4,7 +4,6 @@ import com.github.sbadolankaur.rpg.identity.domain.AppUser;
 import com.github.sbadolankaur.rpg.identity.domain.InstanceState;
 import com.github.sbadolankaur.rpg.identity.persistence.AppUserRepository;
 import com.github.sbadolankaur.rpg.identity.persistence.InstanceStateRepository;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RegistrationService {
   private static final Short INSTANCE_STATE_ID = (short) 1;
-  private static final int BCRYPT_MAX_BYTES = 72;
 
   private final AppUserRepository appUserRepository;
   private final InstanceStateRepository instanceStateRepository;
@@ -44,15 +42,13 @@ public class RegistrationService {
     if (appUserRepository.existsByUsername(username)) {
       throw new DuplicateUsernameException();
     }
-    if (password.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES) {
-      throw new PasswordTooLongException();
-    }
-
     appUserRepository.save(
         new AppUser(
             username,
             passwordEncoder.encode(password),
-            suppliedDisplayName.strip(),
+            suppliedDisplayName == null || suppliedDisplayName.isBlank()
+                ? username
+                : suppliedDisplayName.strip(),
             true,
             Instant.now()));
     state.initialize();

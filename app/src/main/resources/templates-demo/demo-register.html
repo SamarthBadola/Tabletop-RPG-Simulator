@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Register · Tabletop RPG Simulator</title>
+</head>
+<body>
+<main>
+    <h1>Register</h1>
+    <p th:if="${registrationOpen}">The first account becomes the instance administrator.</p>
+    <p th:unless="${registrationOpen}">Initial registration is complete.</p>
+    <p role="alert" th:if="${validationCode}" th:attr="data-error-code=${validationCode}">Check the marked fields.</p>
+    <form th:action="@{/register}" th:object="${form}" method="post" th:if="${registrationOpen}">
+        <label for="username">Username</label>
+        <input id="username" th:field="*{username}" autocomplete="username" minlength="3" maxlength="32" required>
+        <p th:errors="*{username}">Invalid username</p>
+        <label for="password">Password (10 to 128 characters)</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" required>
+        <p th:errors="*{password}">Invalid password</p>
+        <button type="submit">Create administrator account</button>
+    </form>
+    <p><a th:href="@{/login}">Already registered? Sign in</a></p>
+</main>
+</body>
+</html>

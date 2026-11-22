@@ -1,7 +1,6 @@
 package com.github.sbadolankaur.rpg.identity.web;
 
 import com.github.sbadolankaur.rpg.identity.application.DuplicateUsernameException;
-import com.github.sbadolankaur.rpg.identity.application.PasswordTooLongException;
 import com.github.sbadolankaur.rpg.identity.application.RegistrationClosedException;
 import com.github.sbadolankaur.rpg.identity.application.RegistrationService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
 public class RegistrationController {
+  private static final String REGISTRATION_VIEW = "demo-register";
   private final RegistrationService registrationService;
 
   public RegistrationController(RegistrationService registrationService) {
@@ -26,7 +26,7 @@ public class RegistrationController {
   public String registerForm(Model model) {
     model.addAttribute("form", new RegistrationForm());
     model.addAttribute("registrationOpen", registrationService.isRegistrationOpen());
-    return "register";
+    return REGISTRATION_VIEW;
   }
 
   @PostMapping("/register")
@@ -37,7 +37,9 @@ public class RegistrationController {
       HttpServletResponse response) {
     if (result.hasErrors()) {
       model.addAttribute("registrationOpen", registrationService.isRegistrationOpen());
-      return "register";
+      response.setStatus(HttpStatus.BAD_REQUEST.value());
+      model.addAttribute("validationCode", "VALIDATION_FAILED");
+      return REGISTRATION_VIEW;
     }
 
     try {
@@ -45,15 +47,13 @@ public class RegistrationController {
     } catch (RegistrationClosedException exception) {
       model.addAttribute("registrationOpen", false);
       response.setStatus(HttpStatus.CONFLICT.value());
-      return "register";
+      return REGISTRATION_VIEW;
     } catch (DuplicateUsernameException exception) {
       result.rejectValue("username", "username.duplicate", exception.getMessage());
       model.addAttribute("registrationOpen", registrationService.isRegistrationOpen());
-      return "register";
-    } catch (PasswordTooLongException exception) {
-      result.rejectValue("password", "password.tooLong", exception.getMessage());
-      model.addAttribute("registrationOpen", registrationService.isRegistrationOpen());
-      return "register";
+      response.setStatus(HttpStatus.BAD_REQUEST.value());
+      model.addAttribute("validationCode", "VALIDATION_FAILED");
+      return REGISTRATION_VIEW;
     }
 
     return "redirect:/login?registered";

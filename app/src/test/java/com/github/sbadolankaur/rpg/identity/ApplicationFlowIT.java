@@ -28,7 +28,7 @@ import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 @SpringBootTest(classes = RpgApplication.class)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(print = org.springframework.boot.webmvc.test.autoconfigure.MockMvcPrint.NONE)
 class ApplicationFlowIT {
   private static final String PASSWORD = "Walking-Skeleton-Pass-27!";
 
@@ -152,6 +152,78 @@ class ApplicationFlowIT {
   }
 
   @Test
+  void registrationAndSignInAccept128AsciiAndUnicodeCharacters() throws Exception {
+    for (String password : new String[] {"a".repeat(127) + "Z", "🔑".repeat(127) + "ß"}) {
+      resetRegistrationState();
+      mockMvc
+          .perform(
+              post("/register")
+                  .with(csrf())
+                  .param("username", "owner")
+                  .param("displayName", "Owner")
+                  .param("password", password))
+          .andExpect(status().is3xxRedirection());
+
+      mockMvc
+          .perform(
+              post("/login").with(csrf()).param("username", "owner").param("password", password))
+          .andExpect(redirectedUrl("/"));
+      mockMvc
+          .perform(
+              post("/login")
+                  .with(csrf())
+                  .param("username", "owner")
+                  .param("password", "wrong password"))
+          .andExpect(redirectedUrl("/login?error"));
+    }
+  }
+
+  @Test
+  void registrationRejects129CharactersAsAValidationErrorOnPassword() throws Exception {
+    mockMvc
+        .perform(
+            post("/register")
+                .with(csrf())
+                .param("username", "owner")
+                .param("displayName", "Owner")
+                .param("password", "a".repeat(129)))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            org.springframework.test.web.servlet.result.MockMvcResultMatchers.model()
+                .attributeHasFieldErrors("form", "password"))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("VALIDATION_FAILED")));
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM app_user", Integer.class))
+        .isZero();
+  }
+
+  @Test
+  void independentlyRegisteredAccountsWithTheSamePasswordHaveDistinctArgon2idHashes()
+      throws Exception {
+    String first = registerAndReadHash("first");
+    resetRegistrationState();
+    String second = registerAndReadHash("second");
+
+    assertThat(first.startsWith("$argon2id$v=19$m=19456,t=2,p=1$")).isTrue();
+    assertThat(second.startsWith("$argon2id$v=19$m=19456,t=2,p=1$")).isTrue();
+    assertThat(first.equals(second)).isFalse();
+    assertThat(passwordEncoder.matches(PASSWORD, first)).isTrue();
+    assertThat(passwordEncoder.matches(PASSWORD, second)).isTrue();
+  }
+
+  private String registerAndReadHash(String username) throws Exception {
+    mockMvc
+        .perform(
+            post("/register")
+                .with(csrf())
+                .param("username", username)
+                .param("displayName", username)
+                .param("password", PASSWORD))
+        .andExpect(status().is3xxRedirection());
+    return jdbcTemplate.queryForObject(
+        "SELECT password_hash FROM app_user WHERE username = ?", String.class, username);
+  }
+
+  @Test
   void invalidRegistrationInputIsRejected() throws Exception {
     mockMvc
         .perform(
@@ -160,7 +232,7 @@ class ApplicationFlowIT {
                 .param("username", "x")
                 .param("displayName", "Name")
                 .param("password", "short"))
-        .andExpect(status().isOk());
+        .andExpect(status().isBadRequest());
 
     assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM app_user", Integer.class))
         .isZero();
