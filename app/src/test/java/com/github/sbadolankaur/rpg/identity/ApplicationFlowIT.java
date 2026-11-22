@@ -626,10 +626,26 @@ class ApplicationFlowIT {
                 String.class,
                 goblin))
         .isEqualTo("DEAD");
+    mockMvc
+        .perform(
+            combatAction(url + "/overrides", encounter)
+                .param("kind", "add-condition")
+                .param("combatantId", rightEntry.toString())
+                .param("conditionKey", "srd-5.1:deafened")
+                .param("reason", "Condition remains after the fight"))
+        .andExpect(status().isSeeOther());
     mockMvc.perform(combatAction(url + "/end", encounter)).andExpect(status().isSeeOther());
     assertThat(jdbcTemplate.queryForObject("SELECT state FROM encounter", String.class))
         .isEqualTo("FINISHED");
     assertThat(faces).isEmpty();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT count(*) FROM pc_condition WHERE player_character_id = ? AND condition_key = 'srd-5.1:deafened'
+        """,
+                Integer.class,
+                right))
+        .isEqualTo(1);
     assertThat(encounters.visibleEvents(campaign, encounter, first))
         .allSatisfy(
             event ->

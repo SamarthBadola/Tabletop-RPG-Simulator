@@ -124,6 +124,21 @@ public final class EncounterState {
           conditions);
     }
 
+    public Tactics retainLastTurn(int previous) {
+      return new Tactics(
+          firstRound,
+          previous,
+          surprised,
+          dodging,
+          hidden,
+          reactionAvailable,
+          deathSaveDue,
+          helping,
+          helpedTarget,
+          readied,
+          conditions);
+    }
+
     public Tactics deathSave(boolean due) {
       return new Tactics(
           firstRound,

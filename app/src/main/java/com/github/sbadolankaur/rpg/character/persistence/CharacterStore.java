@@ -357,9 +357,10 @@ public class CharacterStore {
     return jdbc.sql(
             """
         SELECT EXISTS (SELECT 1 FROM combatant c JOIN encounter e ON e.id = c.encounter_id
-          WHERE c.character_id = ? AND e.state IN ('INITIATIVE', 'ACTIVE'))
+          WHERE c.character_id = ? AND e.state IN ('INITIATIVE', 'ACTIVE')
+            AND (c.tactics->>'firstRound')::bigint <> ?)
         """)
-        .param(id)
+        .params(id, Integer.MAX_VALUE)
         .query(Boolean.class)
         .single();
   }

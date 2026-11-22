@@ -597,6 +597,14 @@ public class CombatActions {
 
   static void addCondition(Context context, Creature creature, String key, UUID source) {
     if (creature.immunities().contains(key)) return;
+    if (source == null) {
+      var state = creature.vitals();
+      var conditions = new HashSet<>(state.conditions());
+      if (conditions.add(key)) {
+        context.vitals(creature, new Vitals(state.health(), state.recoveryAt(), conditions));
+      }
+      return;
+    }
     var entries = new ArrayList<>(creature.entry().tactics().conditions());
     var condition = new Condition(key, source);
     if (!entries.contains(condition)) {

@@ -189,7 +189,8 @@ public class Encounters {
           for (int i = 0; i < form.count(); i++) {
             var tactics = Tactics.initial(nextRound, form.surprised(), conditions);
             if (existing != null) {
-              context.update(existing.tactics(tactics));
+              context.update(
+                  existing.tactics(tactics.retainLastTurn(existing.tactics().lastTurn())));
               if (active && existing.initiative() != null)
                 scheduleArrival(context, existing.id(), form.nextRound());
               added.add(existing.id());
@@ -251,6 +252,10 @@ public class Encounters {
           var entry = context.creature(combatant).entry();
           if (context.table.phase() == Phase.FINISHED || !present(entry))
             throw EncounterCommands.invalid();
+          if (context.table.phase() == Phase.ACTIVE
+              && campaigns.requireDm(cp, actor).sessionState()
+                  != com.github.sbadolankaur.rpg.campaign.application.CampaignView.SessionState
+                      .ACTIVE) throw new CampaignException(Code.SESSION_NOT_ACTIVE);
           if (context.table.phase() == Phase.SETUP) context.remove(combatant);
           else context.update(entry.tactics(entry.tactics().assigned(REMOVED)));
           context.dm("CombatantRemoved", Map.of("combatantId", combatant));
