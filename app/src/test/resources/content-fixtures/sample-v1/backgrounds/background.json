@@ -1,0 +1,10 @@
+{
+  "kind": "background",
+  "key": "sample-pack:background",
+  "name": "Fixture background",
+  "text": "Fixture description.",
+  "skills": [
+    "stealth",
+    "acrobatics"
+  ]
+}

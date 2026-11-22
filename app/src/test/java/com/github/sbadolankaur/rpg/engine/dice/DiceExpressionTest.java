@@ -3,11 +3,13 @@ package com.github.sbadolankaur.rpg.engine.dice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.github.sbadolankaur.rpg.engine.content.ContentExpression;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -58,6 +60,10 @@ class DiceExpressionTest {
       DiceExpression parsed = DiceExpression.parse(vector.input());
       assertThat(parsed.toString()).isEqualTo(vector.canonical());
       assertThat(DiceExpression.parse(parsed.toString())).isEqualTo(parsed);
+      var formula = ContentExpression.parse(vector.input(), Map.of());
+      assertThat(formula.canonical()).isEqualTo(parsed.canonical());
+      assertThat(formula.evaluate(Map.of(), bound -> 0))
+          .isEqualTo((long) parsed.roll(bound -> 0).total());
     } else {
       assertThatThrownBy(() -> DiceExpression.parse(vector.input()))
           .isInstanceOf(DiceParseException.class)

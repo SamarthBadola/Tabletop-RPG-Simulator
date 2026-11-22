@@ -1,6 +1,8 @@
 package com.github.sbadolankaur.rpg.campaign.application;
 
 import com.github.sbadolankaur.rpg.campaign.persistence.CampaignStore;
+import com.github.sbadolankaur.rpg.content.ContentPacks;
+import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -12,9 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class Campaigns {
   private final CampaignStore store;
+  private final ContentPacks content;
 
-  public Campaigns(CampaignStore store) {
+  public Campaigns(CampaignStore store, ContentPacks content) {
     this.store = store;
+    this.content = content;
   }
 
   @Transactional
@@ -22,6 +26,7 @@ public class Campaigns {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     UUID id = ServerIds.at(now.toInstant());
     store.create(id, name, creator, now);
+    content.enableSeed(id, creator);
     return new CampaignView(id, name, CampaignView.Role.DM, CampaignView.SessionState.NONE);
   }
 
@@ -35,6 +40,11 @@ public class Campaigns {
     return store
         .findFor(campaign, actor)
         .orElseThrow(() -> new CampaignException(CampaignException.Code.NOT_FOUND));
+  }
+
+  public ContentSet contentFor(UUID campaign, UUID actor) {
+    requireMember(campaign, actor);
+    return content.open(campaign);
   }
 
   @Transactional(readOnly = true)

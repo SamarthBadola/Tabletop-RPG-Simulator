@@ -43,7 +43,9 @@ class PlayController {
 
   @GetMapping
   String home(@PathVariable UUID id, Principal principal, Model model) {
-    workspace(id, CampaignWeb.actor(accounts, principal), model);
+    UUID actor = CampaignWeb.actor(accounts, principal);
+    workspace(id, actor, model);
+    model.addAttribute("hasRulesContent", !campaigns.contentFor(id, actor).packHashes().isEmpty());
     return "demo-campaign";
   }
 

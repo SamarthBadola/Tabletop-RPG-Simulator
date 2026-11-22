@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/feat.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "prerequisite": {
+          "$ref": "common.schema.json#/$defs/predicate",
+          "x-visibility": "dm"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/choice"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "feature"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "feat",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "text"
+      ]
+    }
+  ],
+  "anyOf": [
+    {
+      "required": [
+        "features"
+      ]
+    },
+    {
+      "required": [
+        "effects"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

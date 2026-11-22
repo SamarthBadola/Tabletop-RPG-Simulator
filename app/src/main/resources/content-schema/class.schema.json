@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/class.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "hitDie": {
+          "enum": [
+            6,
+            8,
+            10,
+            12
+          ],
+          "x-visibility": "dm"
+        },
+        "savingThrows": {
+          "type": "array",
+          "items": {
+            "$ref": "vocabulary.json#/$defs/ability"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "proficiencies": {
+          "type": "object",
+          "properties": {
+            "armor": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "minItems": 0,
+              "x-visibility": "dm"
+            },
+            "weapons": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "minItems": 0,
+              "x-visibility": "dm"
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "minItems": 0,
+              "x-visibility": "dm"
+            },
+            "skillChoice": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "x-visibility": "dm"
+                },
+                "from": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabulary.json#/$defs/skill"
+                  },
+                  "minItems": 1,
+                  "x-visibility": "dm"
+                }
+              },
+              "required": [
+                "count",
+                "from"
+              ],
+              "additionalProperties": false,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "spellcasting": {
+          "$ref": "common.schema.json#/$defs/spellcasting",
+          "x-visibility": "dm"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "resource"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "advancement": {
+          "$ref": "common.schema.json#/$defs/key",
+          "x-reference": "ruleTable",
+          "x-visibility": "dm"
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/level"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "class",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "text",
+        "hitDie",
+        "savingThrows",
+        "levels"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

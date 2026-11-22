@@ -1,0 +1,9 @@
+{
+  "kind": "feat",
+  "key": "sample-pack:feat",
+  "name": "Fixture feat",
+  "text": "Fixture description.",
+  "features": [
+    "sample-pack:feature"
+  ]
+}

@@ -58,6 +58,8 @@
         <a th:href="@{/campaigns/{id}/settings(id=${campaign.id})}">House rules</a>
     </nav>
     <p><a th:href="@{/campaigns}">Back to campaigns</a></p>
+    <p th:if="${hasRulesContent == true}">Rules source <a th:href="@{/help}">SRD 5.1</a></p>
 </main>
+<footer th:replace="~{demo-footer :: help}"></footer>
 </body>
 </html>

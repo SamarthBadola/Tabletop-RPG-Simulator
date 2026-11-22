@@ -73,12 +73,15 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 - [x] Implement campaign-bound invites and invite-only registration, with one-time code display, keyed hashes, use and expiry limits, and throttling.
 - [x] Implement the setup wizard and House rules, plus versioned session, scene, and clock commands. Setup opens Players without issuing a code. Players can see shared events and their eligible events.
 - [x] Verify invite enforcement, cross-campaign isolation, and paused-session rejection. Add settings, replay, and browser session verification.
-- [ ] Owner review and merge in [PR #32](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/pull/32).
+- [x] Owner review and merge in [PR #32](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/pull/32).
 
 ### Step 5 — content-pack skeleton
 
-- [ ] Add content-pack and definition tables, JSON schema validation, immutable in-memory loading, an attribution page, and an empty SRD pack manifest.
-- [ ] No SRD game data yet.
+- [x] Add the four content storage tables and verify their guards on PostgreSQL.
+- [x] Implement the nine-stage validation pipeline, generated vocabulary, conformance tests for all 17 kinds, immutable campaign content sets and attribution page.
+- [x] Seed Prone at version 0.1.0 and verify its Creative Commons source span, the empty-pack refusal and the startup hash guard. The full SRD build comes later.
+- [x] Apply the owner’s optional poison text decision. The player view reveals the name and any text only once applied to a creature the player controls.
+- [ ] Owner review and merge.
 
 **Implementation checkpoint note.** This progress section records status as of 2026-11-14. Since then, the approved specifications for later steps were added; follow the current AI Build Brief for the implementation sequence and stop points. This documentation sync does not verify later implementation work. Do not invent D&D rules from memory.
 

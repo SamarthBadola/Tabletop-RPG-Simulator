@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/affliction.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "afflictionKind": {
+          "enum": [
+            "MADNESS_SHORT",
+            "MADNESS_LONG",
+            "MADNESS_INDEFINITE",
+            "DISEASE"
+          ],
+          "x-visibility": "dm"
+        },
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "revealed"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "duration": {
+          "$ref": "common.schema.json#/$defs/duration",
+          "x-visibility": "dm"
+        },
+        "save": {
+          "$ref": "common.schema.json#/$defs/save",
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "affliction",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "revealed"
+        }
+      },
+      "required": [
+        "afflictionKind",
+        "text",
+        "effects",
+        "duration"
+      ]
+    }
+  ],
+  "if": {
+    "properties": {
+      "afflictionKind": {
+        "const": "DISEASE"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "save"
+    ]
+  },
+  "unevaluatedProperties": false
+}
