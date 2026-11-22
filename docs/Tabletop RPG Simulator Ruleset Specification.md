@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Ruleset Specification (v1.2)
+# Tabletop RPG Simulator: Ruleset Specification (v1.3)
 
 Oct 15, 2026 · @Samarth
 
@@ -321,8 +321,10 @@ public record DieRoll(int rolled, Integer rerollFace, int value, boolean kept, b
 // rolled = the first draw; rerollFace = the replacement face if rerolled, else null; value = the effective value after reroll and floor; kept = counted in the subtotal; critical = added by critical doubling (D-15)
 
 public record RollTerm(String label, String source, int sign, String expression,
-                       List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit) {}
+                       List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit,
+                       boolean criticalNotApplied) {}
 // subtotal = sign x sum of kept values (dice term) or sign x fixed (fixed term)
+// criticalNotApplied = D-16: a flagged keep/drop term rejected at run time; Step 7 reads the flag
 
 public enum RollMode { NORMAL, ADVANTAGE, DISADVANTAGE }
 public record RollResult(List<RollTerm> terms, int total, Integer naturalD20, RollMode mode) {}
@@ -408,8 +410,9 @@ Statistical check (seeded): 200,000 rolls of a d20; each face appears between 9,
 | D-11 | Signed fixed terms | fixed(label, source, int) takes a signed integer; the term stores the sign and the magnitude separately; the subtotal is sign times magnitude |
 | D-12 | What naturalD20 is after a reroll and a floor | The effective value of the kept d20 test die, after any reroll and floor. A rule that says to treat a roll as a 10 makes it a 10 for later rules; the history keeps every face. Research: Reliable Talent says to treat a roll of 9 or lower as a 10, official guidance is that a 1 or 20 has no special effect on ability checks, and community consensus reads the treated roll as the roll. The Rogue chapter wording is verified (DEC-087) |
 | D-13 | Implementation checks | As listed under the table |
-| D-14 | Critical doubling for a dice group that has a keep or drop token | Decided: a campaign setting for the critical dice mode. ROLL\_AGAIN\_ADD (the default, the official reading 'roll the dice an additional time'): a flagged plain group has its count doubled, and a flagged group with a keep or drop token is rolled again as an independent copy placed right after it, so each copy keeps its own rule. EXTRA\_DIE\_ONLY (a homebrew style): a flagged group gains one extra die with the same keep or drop numbers. REJECT: a flagged group with a keep or drop token is refused when content is defined (CONTENT\_INVALID); if one is met at run time it is not doubled and the log records critical\_not\_applied. Reroll and floor modifiers carry over in every mode |
+| D-14 | Critical doubling for a dice group that has a keep or drop token | Decided: a campaign setting for the critical dice mode. ROLL\_AGAIN\_ADD (the default, the official reading 'roll the dice an additional time'): a flagged plain group has its count doubled, and a flagged group with a keep or drop token is rolled again as an independent copy placed right after it, so each copy keeps its own rule. EXTRA\_DIE\_ONLY (a homebrew style): a flagged group gains one extra die with the same keep or drop numbers. REJECT: a flagged group with a keep or drop token is refused when content is defined (CONTENT\_INVALID); if one is met at run time it is not doubled and that term is flagged (D-16). Reroll and floor modifiers carry over in every mode |
 | D-15 | Recording which dice came from critical doubling | Decided: DieRoll gains a boolean critical, true for dice added by critical doubling, so features that reroll or choose between the base roll and the critical dice (such as Savage Attacker, RS-DMG-018) work without changing the result model later. It is cheap to add during Step 2 and costly afterwards |
+| D-16 | Runtime marker when REJECT prevents critical doubling | Decided: RollTerm gains a final boolean criticalNotApplied. Under REJECT, it is true only for a flagged dice group that has a keep or drop token; the group is left undoubled, no critical dice are added and the critical still resolves. It is false for every other term and under every other mode. The pure engine does not throw, emit an error code, write an event or log. Step 7 reads the flag to record the critical\_not\_applied dice-event marker and write one warning line with the term's label and source. The definition-time invalid-content rule remains CONTENT\_INVALID |
 
 **Implementation checks (D-13)**
 
@@ -2628,7 +2631,7 @@ The owner accepted Part H on 2026-11-19. These changes are made in the other doc
 
 ## 14. Version and revision history
 
-Current version: **1.2**. The specification became 1.0 on 2026-11-19, when the owner accepted Part H.
+Current version: **1.3**. The specification became 1.0 on 2026-11-19, when the owner accepted Part H.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -2661,3 +2664,4 @@ Current version: **1.2**. The specification became 1.0 on 2026-11-19, when the o
 | 1.0 | 2026-11-19 | Part H (the environment) accepted by the owner as drafted, so the Ruleset becomes 1.0. Verification debt V-9 cleared with a note: the books were not read, and the corner rule, the flanking rule and the falling rate were checked against quotations on public pages. RS-ENV-022 now gives three-quarters cover for three blocked lines and total cover for four, RS-ENV-034 states the four points of the Dungeon Master's Guide, and RS-ENV-041 drops the first 500 feet at once and the rest at the end of each of the creature's turns. The amendments PB-H3 to PB-H8 are applied to Parts B, C, E and F, PB-H1, PB-H2, PB-H9 and PB-H10 are confirmed, decisions E-134 to E-153 and the four settings are accepted, and the roadmap row and the header are updated. Part H is then applied to the Requirements Specification, the Decision Log, the Architecture and the AI Build Brief, and the two map-size benchmarks in the test table are set to the 200 by 200 hard cap of the Grid and Pathfinder Specification. |
 | 1.1 | 2026-11-21 | The Content Schema Specification, accepted by the owner on 2026-11-21, is applied by reference. The three pointers that said it was to be written (sections 9.1, 10.2 and 10.7) now name it, and the provisional effect names of section 10.7 are final. The item primitives of section 11.6 and the four labels of the Part D catalog (attack\_bonus, ac\_bonus, damage\_bonus, crit\_threshold) are mapped to registry names, and the catalog gains the registry names proficiency\_fraction and roll\_floor. The feature trigger ON\_TURN\_START in RS-FTR-008 and in the hazard listener of section 13.7 is corrected to START\_OF\_OWN\_TURN, the trigger point name that the registry and Part G use. The header now shows the version (it still read 0.25). No rule changes. |
 | 1.2 | 2026-11-22 | SRD verification (Decision Log OQ-07) recorded in section 1: the attribution text is now given word for word and checked against the official SRD 5.1 Creative Commons PDF, and the spell, monster and condition lists are checked against the SRD. No rule changed. |
+| 1.3 | 2026-11-22 | D-16 adds the runtime criticalNotApplied term flag for D-14 REJECT; D-14 now points to the flag, and Step 7 owns event and warning logging. |

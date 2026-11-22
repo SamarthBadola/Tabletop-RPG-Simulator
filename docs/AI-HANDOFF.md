@@ -6,9 +6,9 @@ Last reconciled: 2026-11-22. This file indexes the approved project baseline; re
 
 1. [Requirements Specification v1.20](Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
 2. [Architecture v5.16](architecture.md)
-3. [AI Build Brief v1.27](Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
-4. [Ruleset Specification v1.2](Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-5. [Decision Log and Progress Tracker v1.33](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+3. [AI Build Brief v1.28](Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+4. [Ruleset Specification v1.3](Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+5. [Decision Log and Progress Tracker v1.34](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
 6. [Content Schema Specification v1.1](Tabletop%20RPG%20Simulator%20Content%20Schema%20Specification.md)
 7. [UX and API Specification v1.5](Tabletop%20RPG%20Simulator%20UX%20and%20API%20Specification%20%28v1.5%29.md)
 8. [Grid and Pathfinder Specification v0.4 (draft)](Tabletop%20RPG%20Simulator%20Grid%20and%20Pathfinder%20Specification%20%28v0.4%29.md)
@@ -27,4 +27,4 @@ The Ruleset is the source of truth for game mechanics. Each more-specific specif
 
 ## Implementation status
 
-The repository's implementation progress mirror was last reconciled on 2026-11-14 and records Step 2 (dice engine) as next. This documentation sync does not re-verify implementation progress. Check the current branch, code, PRs and CI before treating that checkpoint as current.
+Step 2 is complete and merged in PR #27 (merge commit `4110e2f`); its CI run 122 passed. The dice engine implements D-16's term-level `criticalNotApplied` marker without logging or writing events. Step 7 will consume that marker. Step 3 (kernel and architecture tests) is next.
