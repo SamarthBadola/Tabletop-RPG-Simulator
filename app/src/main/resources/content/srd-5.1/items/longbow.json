@@ -1,0 +1,27 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:longbow",
+  "name": "Longbow",
+  "text": {
+    "file": "text/items/longbow.md"
+  },
+  "cost": 5000,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "ranged",
+    "proficiencyGroup": "martial",
+    "damage": "1d8",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "heavy",
+      "two_handed"
+    ],
+    "range": {
+      "normal": 150,
+      "long": 600
+    }
+  }
+}

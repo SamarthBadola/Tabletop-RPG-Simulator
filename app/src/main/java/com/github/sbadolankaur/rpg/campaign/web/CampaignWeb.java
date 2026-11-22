@@ -10,12 +10,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.view.RedirectView;
 
-final class CampaignWeb {
+public final class CampaignWeb {
   private static final String FORM_SESSION = CampaignWeb.class.getName() + ".formSession";
 
   private CampaignWeb() {}
 
-  static UUID actor(AccountDirectory accounts, Principal principal) {
+  public static UUID actor(AccountDirectory accounts, Principal principal) {
     return accounts
         .idFor(principal.getName())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
@@ -40,18 +40,18 @@ final class CampaignWeb {
     return redirect;
   }
 
-  static boolean htmx(HttpServletRequest request) {
+  public static boolean htmx(HttpServletRequest request) {
     return "true".equalsIgnoreCase(request.getHeader("HX-Request"));
   }
 
-  static Object go(HttpServletRequest request, String location) {
+  public static Object go(HttpServletRequest request, String location) {
     if (htmx(request)) {
       return ResponseEntity.ok().header("HX-Redirect", request.getContextPath() + location).build();
     }
     return seeOther(location);
   }
 
-  static Object region(HttpServletRequest request, String fragment, String page) {
+  public static Object region(HttpServletRequest request, String fragment, String page) {
     return htmx(request) ? fragment : seeOther(page);
   }
 }

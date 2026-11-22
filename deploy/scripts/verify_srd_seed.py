@@ -1,4 +1,4 @@
-"""Verify the Step 5 seed's text against the pinned Creative Commons SRD PDF.
+"""Verify the bundled SRD text against the pinned Creative Commons SRD PDF.
 
 Requires pypdf. Pass a local copy of the official PDF; no network is used.
 """
@@ -17,6 +17,7 @@ CONTENT = ROOT / "app/src/main/resources/content"
 
 
 def normalize(text):
+    text = re.sub(r"[\u2010\u2011\u2212]+", "-", text.replace("\u00ad", ""))
     return " ".join(text.split()).translate(str.maketrans("\u2018\u2019\u201c\u201d\u2212", "''\"\"-"))
 
 
@@ -36,7 +37,11 @@ def verify(pdf_path):
         raise ValueError("The PDF does not match the pinned Creative Commons source")
     reader = PdfReader(pdf_path)
     for span in index["spans"]:
-        parts = extract(reader, span["pdfPage"], span["heading"], span["nextHeading"])
+        if "flatStart" in span:
+            page = " ".join(reader.pages[span["pdfPage"] - 1].extract_text().split())
+            parts = [page[span["flatStart"]:span["flatEnd"]]]
+        else:
+            parts = extract(reader, span["pdfPage"], span["heading"], span["nextHeading"])
         source = normalize(" ".join(parts))
         if hashlib.sha256(source.encode()).hexdigest() != span["sha256"]:
             raise ValueError(f"Source span changed for {span['key']}")

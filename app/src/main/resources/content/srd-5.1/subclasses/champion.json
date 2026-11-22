@@ -1,0 +1,17 @@
+{
+  "kind": "subclass",
+  "key": "srd-5.1:champion",
+  "name": "Champion",
+  "text": {
+    "file": "text/subclasses/champion.md"
+  },
+  "class": "srd-5.1:fighter",
+  "levels": [
+    {
+      "level": 3,
+      "features": [
+        "srd-5.1:improved-critical"
+      ]
+    }
+  ]
+}

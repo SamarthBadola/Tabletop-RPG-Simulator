@@ -7,12 +7,15 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.sbadolankaur.rpg.RpgApplication;
+import com.github.sbadolankaur.rpg.content.BundledPacksFixture;
 import com.github.sbadolankaur.rpg.content.ContentPack;
 import com.github.sbadolankaur.rpg.content.ContentPacks;
+import com.github.sbadolankaur.rpg.content.ContentPacks.UpgradeReview;
 import com.github.sbadolankaur.rpg.identity.web.RegistrationForm;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.security.SecureRandom;
@@ -68,6 +71,10 @@ class ApplicationFlowIT {
 
   @Autowired private ContentPacks contentPacks;
 
+  @Autowired private com.github.sbadolankaur.rpg.campaign.application.Campaigns campaigns;
+  @Autowired private com.github.sbadolankaur.rpg.campaign.application.CampaignCommands commands;
+  @Autowired private com.github.sbadolankaur.rpg.campaign.application.CampaignSettings settings;
+
   @BeforeEach
   void resetRegistrationState() {
     jdbcTemplate.update("DELETE FROM form_token");
@@ -77,21 +84,429 @@ class ApplicationFlowIT {
   }
 
   @Test
-  void applicationStartupSeedsOneRealDefinitionAndRejectsChangesUnderTheSameVersion()
-      throws Exception {
-    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM content_pack", Integer.class))
+  void fighterCreationLevelingAndAccessFollowTheStepSixContract() throws Exception {
+    UUID dm = characterAccount("dm-one", true);
+    UUID owner = characterAccount("player-one", false);
+    UUID peer = characterAccount("player-two", false);
+    UUID campaign = campaigns.create(dm, "Fighter table").id();
+    joinFixture(campaign, owner, peer);
+    String collection = "/campaigns/" + campaign + "/characters";
+    mockMvc
+        .perform(get(collection + "/new").with(user("player-one")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Human")));
+    for (String stage :
+        java.util.List.of("species", "class", "abilities", "background", "equipment")) {
+      mockMvc.perform(fighterForm(collection, "player-one", stage)).andExpect(status().isOk());
+    }
+    UUID createId = commands.newActionId();
+    long before = commands.readClock(campaign, owner).version();
+    var created =
+        mockMvc
+            .perform(
+                fighterForm(collection, "player-one", "review")
+                    .param("actionId", createId.toString())
+                    .param("expectedVersion", String.valueOf(before)))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    String sheet = created.getResponse().getRedirectedUrl();
+    UUID character = jdbcTemplate.queryForObject("SELECT id FROM player_character", UUID.class);
+    assertThat(sheet).isEqualTo(collection + "/" + character);
+    mockMvc
+        .perform(
+            fighterForm(collection, "player-one", "review")
+                .param("actionId", createId.toString())
+                .param("expectedVersion", String.valueOf(before)))
+        .andExpect(status().isSeeOther())
+        .andExpect(redirectedUrl(sheet));
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM player_character", Integer.class))
         .isEqualTo(1);
-    assertThat(jdbcTemplate.queryForObject("SELECT key FROM content_definition", String.class))
-        .isEqualTo("srd-5.1:prone");
-    assertThat(jdbcTemplate.queryForObject("SELECT version FROM content_pack", String.class))
-        .isEqualTo("0.1.0");
+    mockMvc
+        .perform(get(sheet).with(user("player-one")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("13 / 13")));
+    mockMvc.perform(get(sheet).with(user("player-two"))).andExpect(status().isForbidden());
+    mockMvc
+        .perform(post(sheet + "/edits").with(user("player-two")).with(csrf()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(get(collection).with(user("player-two")))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Mira"))));
+    UUID other = campaigns.create(dm, "Separate table").id();
+    joinFixture(other, peer);
+    mockMvc
+        .perform(get("/campaigns/" + other + "/characters/" + character).with(user("player-two")))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(
+            action(sheet + "/edits", "dm-one", campaign, dm)
+                .param("section", "details")
+                .param("name", "Mira the Fighter"))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(
+            action(sheet + "/edits", "dm-one", campaign, dm)
+                .param("section", "ability-scores")
+                .param("abilityScores", "18", "13", "15", "8", "12", "10"))
+        .andExpect(status().isSeeOther());
+
+    UUID armor = inventory(character, "srd-5.1:chain-mail");
+    UUID shield = inventory(character, "srd-5.1:shield");
+    UUID sword = inventory(character, "srd-5.1:longsword");
+    mockMvc
+        .perform(
+            action(sheet + "/edits", "player-one", campaign, owner)
+                .param("section", "inventory")
+                .param("equipment", armor + "=ARMOR", shield + "=OFF_HAND", sword + "=MAIN_HAND"))
+        .andExpect(status().isSeeOther());
+    for (int level = 2; level <= 5; level++) {
+      mockMvc
+          .perform(action(sheet + "/level-grants", "dm-one", campaign, dm))
+          .andExpect(status().isSeeOther());
+      mockMvc
+          .perform(get(sheet + "/level-ups").with(user("player-one")))
+          .andExpect(status().isOk());
+      if (level == 4) {
+        mockMvc
+            .perform(levelAction(sheet, campaign, owner, 4, "ability-scores", false))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("1 points lost")));
+        mockMvc
+            .perform(levelAction(sheet, campaign, owner, 4, "review", false))
+            .andExpect(status().isBadRequest());
+      }
+      mockMvc
+          .perform(levelAction(sheet, campaign, owner, level, "review", true))
+          .andExpect(status().isSeeOther());
+    }
+    mockMvc
+        .perform(get(sheet).with(user("player-one")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Champion")))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("49 / 49")))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("0 / 5 d10")))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.containsString(
+                        "8 to hit, 1d8+5 slashing, critical on 19+")))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Extra Attack")));
+    assertThat(jdbcTemplate.queryForObject("SELECT level FROM pc_class", Integer.class))
+        .isEqualTo(5);
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pc_resource", Integer.class))
+        .isEqualTo(2);
+  }
+
+  @Test
+  void installedCampaignStaysPinnedUntilTheDmConfirmsAReviewedUpgrade() throws Exception {
+    UUID dm = characterAccount("upgrade-dm", true);
+    UUID player = characterAccount("upgrade-player", false);
+    UUID campaign = campaigns.create(dm, "Existing table").id();
+    joinFixture(campaign, player);
+    var previous = BundledPacksFixture.stepFive();
+    contentPacks.seed(previous);
+    UUID pack =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM content_pack WHERE hash = ?", UUID.class, previous.hash());
+    jdbcTemplate.update(
+        "UPDATE campaign_pack SET pack_id = ? WHERE campaign_id = ?", pack, campaign);
+
+    String packs = "/campaigns/" + campaign + "/packs";
+    String review = packs + "/" + pack + "/reviews";
+    String apply = packs + "/" + pack + "/upgrades";
+    mockMvc.perform(get(packs).with(user("upgrade-player"))).andExpect(status().isForbidden());
+    mockMvc
+        .perform(get(packs).with(user("upgrade-dm")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Review upgrade")));
+    assertThat(contentPacks.open(campaign).find("class", "srd-5.1:fighter")).isEmpty();
+    mockMvc
+        .perform(fighterForm("/campaigns/" + campaign + "/characters", "upgrade-player", "species"))
+        .andExpect(status().isUnprocessableContent());
+
+    long version = commands.readClock(campaign, dm).version();
+    var result =
+        mockMvc
+            .perform(
+                post(review)
+                    .with(user("upgrade-dm"))
+                    .with(csrf())
+                    .header("HX-Request", "true")
+                    .param("action", "upgrade")
+                    .param("targetVersion", "0.2.0"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Confirm upgrade")))
+            .andReturn();
+    var preview = (UpgradeReview) result.getModelAndView().getModel().get("review");
+    assertThat(preview.groups()).isEmpty();
+    assertThat(commands.readClock(campaign, dm).version()).isEqualTo(version);
+    mockMvc
+        .perform(
+            action(apply, "upgrade-player", campaign, player)
+                .param("targetVersion", "0.2.0")
+                .param("reviewHash", preview.hash()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            action(apply, "upgrade-dm", campaign, dm)
+                .param("targetVersion", "0.2.0")
+                .param("reviewHash", "expired-review"))
+        .andExpect(status().isConflict());
+    assertThat(contentPacks.open(campaign).find("class", "srd-5.1:fighter")).isEmpty();
+    mockMvc
+        .perform(
+            action(apply, "upgrade-dm", campaign, dm)
+                .param("targetVersion", "0.2.0")
+                .param("reviewHash", preview.hash()))
+        .andExpect(status().isSeeOther())
+        .andExpect(redirectedUrl(packs));
+    assertThat(contentPacks.open(campaign).find("class", "srd-5.1:fighter")).isPresent();
+    assertThat(commands.readClock(campaign, dm).version()).isEqualTo(version + 1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM campaign_event WHERE type = 'ContentPackUpgraded'",
+                Integer.class))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void rolledAbilityScoresAreRetainedAcrossRequestsAndConsumedAtCreation() throws Exception {
+    UUID dm = characterAccount("rolling-dm", true);
+    UUID owner = characterAccount("player-one", false);
+    UUID campaign = campaigns.create(dm, "Rolled table").id();
+    joinFixture(campaign, owner);
+    settings.decide(
+        campaign,
+        dm,
+        new com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelope(
+            commands.newActionId(), commands.readClock(campaign, dm).version()),
+        "abilityScoreGenerationMethod",
+        "ROLL_3D6");
+    String collection = "/campaigns/" + campaign + "/characters";
+    for (int attempt = 0; attempt < 2; attempt++) {
+      mockMvc
+          .perform(
+              action(collection, "player-one", campaign, owner)
+                  .param("step", "abilities")
+                  .param("rollSet", "true")
+                  .param("speciesKey", "srd-5.1:human")
+                  .param("classKey", "srd-5.1:fighter")
+                  .param("fightingStyleKey", "srd-5.1:defense")
+                  .param("abilityMethod", "ROLL_3D6"))
+          .andExpect(status().isOk());
+    }
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM campaign_event WHERE type = 'AbilityScoresRolled'",
+                Integer.class))
+        .isEqualTo(1);
+    mockMvc
+        .perform(
+            action(collection, "player-one", campaign, owner)
+                .param("step", "abilities")
+                .param("rollSet", "true")
+                .param("speciesKey", "srd-5.1:human")
+                .param("classKey", "srd-5.1:fighter")
+                .param("fightingStyleKey", "srd-5.1:defense")
+                .param("abilityMethod", "ROLL_4D6_DROP_LOWEST")
+                .accept("application/problem+json"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.errors[0].field").value("abilityMethod"))
+        .andExpect(jsonPath("$.errors[0].code").value("INCORRECT"));
+
+    String scores =
+        jdbcTemplate.queryForObject("SELECT values_json::text FROM rolled_set", String.class);
+    String[] split = scores.substring(1, scores.length() - 1).split(", ");
+    mockMvc
+        .perform(
+            action(collection, "player-one", campaign, owner)
+                .param("step", "review")
+                .param("speciesKey", "srd-5.1:human")
+                .param("classKey", "srd-5.1:fighter")
+                .param("fightingStyleKey", "srd-5.1:two-weapon-fighting")
+                .param("abilityMethod", "ROLL_3D6")
+                .param("abilityScores", split)
+                .param("skillChoices", "athletics", "perception")
+                .param("languageChoices", "elvish")
+                .param("equipmentChoices", "srd-5.1:starting-gold")
+                .param("name", "Rolled Fighter"))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM rolled_set", Integer.class))
+        .isZero();
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM inventory_item", Integer.class))
+        .isZero();
+    assertThat(jdbcTemplate.queryForObject("SELECT copper FROM player_character", Integer.class))
+        .isBetween(5000, 20000);
+  }
+
+  @Test
+  void fighterCanTakeGrapplerAtLevelFourAndHoldTwoCopiesOfTheSameWeapon() throws Exception {
+    UUID dm = characterAccount("feat-dm", true);
+    UUID owner = characterAccount("feat-player", false);
+    UUID campaign = campaigns.create(dm, "Feat table").id();
+    joinFixture(campaign, owner);
+    String collection = "/campaigns/" + campaign + "/characters";
+    var created =
+        mockMvc
+            .perform(
+                action(collection, "feat-player", campaign, owner)
+                    .param("step", "review")
+                    .param("speciesKey", "srd-5.1:human")
+                    .param("classKey", "srd-5.1:fighter")
+                    .param("fightingStyleKey", "srd-5.1:two-weapon-fighting")
+                    .param("abilityMethod", "STANDARD_ARRAY")
+                    .param("abilityScores", "12", "14", "15", "8", "13", "10")
+                    .param("skillChoices", "athletics", "perception")
+                    .param("languageChoices", "elvish")
+                    .param(
+                        "equipmentChoices",
+                        "srd-5.1:fighter-kit-0-0",
+                        "srd-5.1:fighter-kit-1-0",
+                        "srd-5.1:fighter-kit-2-1",
+                        "srd-5.1:fighter-kit-3-0")
+                    .param("name", "Ari"))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    String sheet = created.getResponse().getRedirectedUrl();
+    var axes =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM inventory_item WHERE item_key = 'srd-5.1:handaxe' ORDER BY id",
+            UUID.class);
+    assertThat(axes).hasSize(2);
+    mockMvc
+        .perform(
+            action(sheet + "/edits", "feat-player", campaign, owner)
+                .param("section", "inventory")
+                .param("equipment", axes.get(0) + "=MAIN_HAND", axes.get(1) + "=OFF_HAND"))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(get(sheet).with(user("feat-player")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Two-Weapon Fighting")));
+    for (int tier = 2; tier <= 4; tier++) {
+      mockMvc
+          .perform(action(sheet + "/level-grants", "feat-dm", campaign, dm))
+          .andExpect(status().isSeeOther());
+      var level =
+          action(sheet + "/level-ups", "feat-player", campaign, owner)
+              .param("step", "review")
+              .param("hitPointMethod", "average");
+      if (tier == 3) level.param("subclassKey", "srd-5.1:champion");
+      if (tier == 4) level.param("featKey", "srd-5.1:grappler");
+      mockMvc.perform(level).andExpect(status().isSeeOther());
+    }
+    mockMvc
+        .perform(get(sheet).with(user("feat-player")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Grappler")));
+    assertThat(jdbcTemplate.queryForObject("SELECT feat_key FROM pc_asi", String.class))
+        .isEqualTo("srd-5.1:grappler");
+  }
+
+  private MockHttpServletRequestBuilder fighterForm(String url, String name, String step) {
+    return post(url)
+        .with(user(name))
+        .with(csrf())
+        .param("step", step)
+        .param("speciesKey", "srd-5.1:human")
+        .param("classKey", "srd-5.1:fighter")
+        .param("fightingStyleKey", "srd-5.1:defense")
+        .param("abilityMethod", "STANDARD_ARRAY")
+        .param("abilityScores", "14", "13", "15", "8", "12", "10")
+        .param("skillChoices", "athletics", "perception")
+        .param("languageChoices", "elvish")
+        .param(
+            "equipmentChoices",
+            "srd-5.1:fighter-kit-0-0",
+            "srd-5.1:fighter-kit-1-0",
+            "srd-5.1:fighter-kit-2-0",
+            "srd-5.1:fighter-kit-3-0")
+        .param("name", "Mira");
+  }
+
+  private MockHttpServletRequestBuilder levelAction(
+      String sheet, UUID campaign, UUID actor, int tier, String stage, boolean acknowledgeLoss) {
+    var request =
+        action(sheet + "/level-ups", "player-one", campaign, actor)
+            .param("step", stage)
+            .param("hitPointMethod", "average");
+    if (tier == 3) request.param("subclassKey", "srd-5.1:champion");
+    if (tier == 4)
+      request
+          .param("abilityImprovements[0].ability", "STR")
+          .param("abilityImprovements[0].amount", "2");
+    if (acknowledgeLoss) request.param("acknowledgeLoss", "true");
+    return request;
+  }
+
+  private MockHttpServletRequestBuilder action(
+      String url, String username, UUID campaign, UUID actor) {
+    return post(url)
+        .with(user(username))
+        .with(csrf())
+        .param("actionId", commands.newActionId().toString())
+        .param("expectedVersion", String.valueOf(commands.readClock(campaign, actor).version()));
+  }
+
+  private UUID characterAccount(String username, boolean admin) {
+    UUID id = ServerIds.at(Instant.now());
+    jdbcTemplate.update(
+        "INSERT INTO app_user VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+        id,
+        username,
+        "test-fixture-hash",
+        username,
+        admin);
+    return id;
+  }
+
+  private void joinFixture(UUID campaign, UUID... players) {
+    for (UUID player : players) {
+      jdbcTemplate.update(
+          "INSERT INTO campaign_member VALUES (?, ?, 'PLAYER', CURRENT_TIMESTAMP)",
+          campaign,
+          player);
+    }
+  }
+
+  private UUID inventory(UUID actor, String key) {
+    return jdbcTemplate.queryForObject(
+        "SELECT id FROM inventory_item WHERE player_character_id = ? AND item_key = ?",
+        UUID.class,
+        actor,
+        key);
+  }
+
+  @Test
+  void applicationStartupSeedsFighterContentAndRejectsChangesUnderTheSameVersion()
+      throws Exception {
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.2.0'",
+                Integer.class))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT key FROM content_definition WHERE kind = 'class'", String.class))
+        .isEqualTo("srd-5.1:fighter");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.2.0'",
+                String.class))
+        .isEqualTo("0.2.0");
     String manifest =
-        jdbcTemplate.queryForObject("SELECT manifest::text FROM content_pack", String.class);
+        jdbcTemplate.queryForObject(
+            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.2.0'",
+            String.class);
     String notice = contentPacks.notice();
     var changed =
         new ContentPack(
             "srd-5.1",
-            "0.1.0",
+            "0.2.0",
             "sha256:" + "1".repeat(64),
             "srd-5.1",
             "CC-BY-4.0",

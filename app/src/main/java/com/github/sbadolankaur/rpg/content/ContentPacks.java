@@ -136,6 +136,143 @@ public class ContentPacks {
     }
   }
 
+  public List<SrdVersion> bundledVersions(UUID campaign) {
+    return jdbc.sql(
+            """
+        SELECT p.id, p.version, p.hash, EXISTS (
+          SELECT 1 FROM campaign_pack cp WHERE cp.campaign_id = ? AND cp.pack_id = p.id
+        ) AS enabled
+        FROM content_pack p WHERE p.pack_key = ? ORDER BY p.loaded_at DESC, p.id DESC
+        """)
+        .params(campaign, BundledContent.PACK_KEY)
+        .query(
+            (row, index) ->
+                new SrdVersion(
+                    row.getObject(1, UUID.class),
+                    row.getString(2),
+                    row.getString(3),
+                    row.getBoolean(4)))
+        .list();
+  }
+
+  public String currentBundledVersion() {
+    return BundledContent.VERSION;
+  }
+
+  public java.util.Optional<UpgradeReview> reviewUpgrade(
+      UUID campaign, UUID source, String targetVersion) {
+    var versions = bundledVersions(campaign);
+    var before =
+        versions.stream()
+            .filter(version -> version.id().equals(source) && version.enabled())
+            .findFirst();
+    var target =
+        versions.stream()
+            .filter(
+                version ->
+                    version.version().equals(targetVersion)
+                        && version.version().equals(BundledContent.VERSION)
+                        && !version.enabled())
+            .findFirst();
+    if (before.isEmpty() || target.isEmpty()) return java.util.Optional.empty();
+    var from = readPack(before.get().hash());
+    var to = readPack(target.get().hash());
+    var indexes = new java.util.HashMap<ContentSet.Key, String>();
+    to.definitions()
+        .forEach(value -> indexes.put(new ContentSet.Key(value.kind(), value.key()), value.hash()));
+    var removals = new java.util.ArrayList<String>();
+    var changes = new java.util.ArrayList<String>();
+    for (var def : from.definitions()) {
+      String hash = indexes.get(new ContentSet.Key(def.kind(), def.key()));
+      if (hash == null) removals.add(def.key());
+      else if (!hash.equals(def.hash())) changes.add(def.key());
+    }
+    var groups = new java.util.TreeMap<String, List<String>>();
+    if (!removals.isEmpty()) groups.put("removals", List.copyOf(removals));
+    if (!changes.isEmpty()) groups.put("changed", List.copyOf(changes));
+    var blockers = new java.util.ArrayList<String>();
+    if (hasDependents(campaign, source)) blockers.add("An enabled pack depends on this version");
+    if (!removals.isEmpty() && references(campaign).stream().anyMatch(removals::contains)) {
+      blockers.add("Campaign characters still refer to removed definitions");
+    }
+    String reviewHash =
+        PackJson.hash(
+            PackJson.MAPPER.writeValueAsString(
+                List.of(
+                    campaign,
+                    before.get().id(),
+                    from.hash(),
+                    target.get().id(),
+                    to.hash(),
+                    groups,
+                    blockers)));
+    return java.util.Optional.of(
+        new UpgradeReview(
+            source,
+            target.get().id(),
+            targetVersion,
+            reviewHash,
+            Map.copyOf(groups),
+            List.copyOf(blockers),
+            from.hash(),
+            to.hash()));
+  }
+
+  public boolean applyReviewedUpgrade(UUID campaign, UUID actor, UpgradeReview review) {
+    return jdbc.sql(
+                """
+        UPDATE campaign_pack SET pack_id = ?, enabled_by = ?, enabled_at = CURRENT_TIMESTAMP
+        WHERE campaign_id = ? AND pack_id = ?
+        """)
+            .params(review.target(), actor, campaign, review.source())
+            .update()
+        == 1;
+  }
+
+  private boolean hasDependents(UUID campaign, UUID source) {
+    return jdbc.sql(
+            """
+        SELECT EXISTS (SELECT 1 FROM campaign_pack cp
+          JOIN content_pack_dependency d ON d.pack_id = cp.pack_id
+          WHERE cp.campaign_id = ? AND d.dependency_id = ?)
+        """)
+        .params(campaign, source)
+        .query(Boolean.class)
+        .single();
+  }
+
+  private List<String> references(UUID campaign) {
+    return jdbc.sql(
+            """
+        WITH characters AS (SELECT * FROM player_character WHERE campaign_id = ?)
+        SELECT species_key FROM characters
+        UNION SELECT background_key FROM characters WHERE background_key IS NOT NULL
+        UNION SELECT fighting_style_key FROM characters
+        UNION SELECT c.class_key FROM pc_class c JOIN characters p ON p.id = c.player_character_id
+        UNION SELECT c.subclass_key FROM pc_class c JOIN characters p ON p.id = c.player_character_id WHERE c.subclass_key IS NOT NULL
+        UNION SELECT i.item_key FROM inventory_item i JOIN characters p ON p.id = i.player_character_id
+        UNION SELECT r.resource_key FROM pc_resource r JOIN characters p ON p.id = r.player_character_id
+        UNION SELECT c.condition_key FROM pc_condition c JOIN characters p ON p.id = c.player_character_id
+        UNION SELECT a.feat_key FROM pc_asi a JOIN characters p ON p.id = a.player_character_id WHERE a.feat_key IS NOT NULL
+        UNION SELECT s.spell_key FROM pc_spell s JOIN characters p ON p.id = s.player_character_id
+        """)
+        .param(campaign)
+        .query(String.class)
+        .list();
+  }
+
+  public record SrdVersion(UUID id, String version, String hash, boolean enabled) {}
+
+  public record UpgradeReview(
+      UUID source,
+      UUID target,
+      String targetVersion,
+      String hash,
+      Map<String, List<String>> groups,
+      List<String> blockers,
+      String previousHash,
+      String nextHash) {}
+
   private ContentPack readPack(String hash) {
     var pack =
         jdbc.sql(

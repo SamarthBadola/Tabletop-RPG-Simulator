@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Level up</title></head>
+<body><main id="level-wizard" th:fragment="wizard">
+    <a th:href="@{/campaigns/{id}/characters/{pc}(id=${campaignId},pc=${characterId})}">Character sheet</a>
+    <h1 th:text="|Level ${plan.level}|">Level up</h1>
+    <p th:unless="${plan.granted}">Ask the DM to grant a level first.</p>
+    <form th:if="${plan.granted}" th:action="@{/campaigns/{id}/characters/{pc}/level-ups(id=${campaignId},pc=${characterId})}" method="post">
+        <input type="hidden" name="step" th:value="${levelStep}">
+        <input type="hidden" name="classKey" th:value="${plan.classKey}">
+        <input type="hidden" name="actionId" th:value="${actionId}">
+        <input type="hidden" name="expectedVersion" th:value="${expectedVersion}">
+        <input th:if="${levelStep != 'class'}" type="hidden" name="subclassKey" th:value="${form.subclassKey}">
+        <input th:if="${levelStep == 'ability-scores' or levelStep == 'review'}" type="hidden" name="hitPointMethod" th:value="${form.hitPointMethod}">
+        <fieldset th:if="${levelStep == 'class'}">
+            <legend>Class and features</legend>
+            <ul><li th:each="feature : ${plan.features}" th:text="${feature.label}"></li></ul>
+            <label th:if="${plan.subclassRequired}">Subclass
+                <select name="subclassKey" required><option th:each="choice : ${plan.subclasses}" th:value="${choice.key}" th:text="${choice.label}"></option></select>
+            </label>
+        </fieldset>
+        <fieldset th:if="${levelStep == 'hit-points'}">
+            <legend>Hit points</legend>
+            <label th:each="method : ${plan.hpMethods}"><input required type="radio" name="hitPointMethod" th:value="${method}"><span th:text="${method == 'average' ? 'Use fixed average' : 'Roll hit points'}"></span></label>
+        </fieldset>
+        <fieldset th:if="${levelStep == 'ability-scores'}">
+            <legend>Ability scores</legend>
+            <p th:unless="${plan.improvementRequired}">This level grants no ability score improvement.</p>
+            <th:block th:if="${plan.improvementRequired}">
+                <p>Choose one ability to gain 2 points, or two abilities to gain 1 point each.</p>
+                <div th:each="index : ${#numbers.sequence(0,1)}">
+                    <label>Ability <select th:name="|abilityImprovements[${index}].ability|">
+                        <option value="">None</option><option th:each="ability : ${abilityNames}" th:value="${ability}" th:text="${ability}"></option>
+                    </select></label>
+                    <label>Points <select th:name="|abilityImprovements[${index}].amount|"><option value="">None</option><option value="1">1</option><option value="2">2</option></select></label>
+                </div>
+                <label th:unless="${plan.feats.isEmpty()}">Or choose a feat
+                    <select name="featKey"><option value="">None</option><option th:each="feat : ${plan.feats}" th:value="${feat.key}" th:text="${feat.label}"></option></select>
+                </label>
+            </th:block>
+        </fieldset>
+        <fieldset th:if="${levelStep == 'review'}">
+            <legend>Review level</legend>
+            <p th:text="|Hit point method: ${form.hitPointMethod}|"></p>
+            <input type="hidden" name="featKey" th:value="${form.featKey}">
+            <div th:each="choice, index : ${form.improvements}">
+                <input type="hidden" th:name="|abilityImprovements[${index.index}].ability|" th:value="${choice.key}">
+                <input type="hidden" th:name="|abilityImprovements[${index.index}].amount|" th:value="${choice.value}">
+            </div>
+            <ul><li th:each="loss : ${plan.losses}" th:text="|${loss.key}: +${loss.value.applied}; ${loss.value.lost} points lost|"></li></ul>
+            <label th:if="${!plan.losses.isEmpty()}"><input type="checkbox" name="acknowledgeLoss" value="true">I acknowledge any points that will be lost</label>
+        </fieldset>
+        <button type="submit" th:text="${levelStep == 'review' ? 'Apply level' : 'Continue'}">Continue</button>
+    </form>
+</main><footer th:replace="~{demo-footer :: help}"></footer></body></html>

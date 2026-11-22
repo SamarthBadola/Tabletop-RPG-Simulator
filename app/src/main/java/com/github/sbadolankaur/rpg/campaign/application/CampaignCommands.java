@@ -49,6 +49,28 @@ public class CampaignCommands {
       Object body,
       Function<Clock, Change> mutation) {
     campaigns.requireDm(campaign, actor);
+    return execute(campaign, actor, envelope, kind, body, mutation);
+  }
+
+  @Transactional
+  public Reply runForMember(
+      UUID campaign,
+      UUID actor,
+      Envelope envelope,
+      Kind kind,
+      Object body,
+      Function<Clock, Change> mutation) {
+    campaigns.requireMember(campaign, actor);
+    return execute(campaign, actor, envelope, kind, body, mutation);
+  }
+
+  private Reply execute(
+      UUID campaign,
+      UUID actor,
+      Envelope envelope,
+      Kind kind,
+      Object body,
+      Function<Clock, Change> mutation) {
     Objects.requireNonNull(envelope.actionId());
     Clock clock = store.clock(campaign, true);
     byte[] hash = mac.sign("campaign-action:" + kind.name(), json.writeValueAsString(body));
@@ -109,7 +131,13 @@ public class CampaignCommands {
     SCENE_ACTIVATE,
     SETTING_DECIDE,
     SETTING_RESET,
-    SETTING_MODE
+    SETTING_MODE,
+    CHARACTER_ROLL,
+    CHARACTER_CREATE,
+    CHARACTER_EDIT,
+    CHARACTER_LEVEL_GRANT,
+    CHARACTER_LEVEL_UP,
+    PACK_UPGRADE
   }
 
   public enum Audience {

@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:arrows",
+  "name": "Arrow",
+  "text": {
+    "file": "text/items/arrows.md"
+  },
+  "cost": 5,
+  "weight": 5,
+  "tier": 0,
+  "category": "ammunition"
+}

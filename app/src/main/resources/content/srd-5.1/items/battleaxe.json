@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:battleaxe",
+  "name": "Battleaxe",
+  "text": {
+    "file": "text/items/battleaxe.md"
+  },
+  "cost": 1000,
+  "weight": 400,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d8",
+    "damageType": "slashing",
+    "properties": [
+      "versatile"
+    ],
+    "versatileDamage": "1d10"
+  }
+}

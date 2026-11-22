@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:vestments",
+  "name": "Vestments",
+  "text": {
+    "file": "text/items/vestments.md"
+  },
+  "cost": 0,
+  "weight": 0,
+  "tier": 0,
+  "category": "gear"
+}

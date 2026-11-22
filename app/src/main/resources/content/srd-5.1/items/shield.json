@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:shield",
+  "name": "Shield",
+  "text": {
+    "file": "text/items/shield.md"
+  },
+  "cost": 1000,
+  "weight": 600,
+  "tier": 0,
+  "category": "shield"
+}
