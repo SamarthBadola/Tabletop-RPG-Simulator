@@ -10,12 +10,12 @@ using namespace pf;
 
 // A tiny test helper: print the failing line and keep going.
 static int failures = 0;
-#define CHECK(...) \
-    do { \
-        if (!(__VA_ARGS__)) { \
+#define CHECK(...)                                                                   \
+    do {                                                                             \
+        if (!(__VA_ARGS__)) {                                                        \
             std::cerr << __FILE__ << ":" << __LINE__ << "  CHECK failed: " #__VA_ARGS__ "\n"; \
-            ++failures; \
-        } \
+            ++failures;                                                              \
+        }                                                                            \
     } while (0)
 
 // A small valid request that most error tests change one detail of.
@@ -150,6 +150,24 @@ static void test_rule_violations() {
     expect_error(with(R"("budget":100)", R"("budget":100,"noStop":[[5,5]])"), 422, "INVALID_REQUEST", "/noStop/0");
 }
 
+static void test_blocked_no_stop_cell_is_rejected() {  // spec section 3
+    // Cells "101": (1,0) is blocked, so it may not be listed in noStop. The pointer names the entry.
+    const std::string base = R"({"width":3,"height":1,"cells":["101"],"start":[0,0],"goal":[2,0],"budget":100,"noStop":)";
+    expect_error(base + "[[1,0]]}", 422, "INVALID_REQUEST", "/noStop/0");
+    expect_error(base + "[[0,0],[2,0],[1,0]]}", 422, "INVALID_REQUEST", "/noStop/2");  // the third entry is the bad one
+    expect_error(base + "[[1,0],[9,9]]}", 422, "INVALID_REQUEST", "/noStop/0");        // the first problem found is reported
+
+    // The same rule applies to a reach request.
+    Query q;
+    const ApiError error = *parse_reach_request(
+        R"({"width":3,"height":1,"cells":["101"],"start":[0,0],"budget":100,"noStop":[[1,0]]})", q);
+    CHECK(error.status == 422 && error.code == "INVALID_REQUEST" && error.pointer == "/noStop/0");
+
+    // Open cells are still accepted, and so is an empty list.
+    CHECK(!parse_path_request(base + "[[0,0],[2,0]]}", q).has_value());
+    CHECK(!parse_path_request(base + "[]}", q).has_value());
+}
+
 static void test_missing_fields_and_limits() {
     expect_error(with(R"(,"goal":[1,0])", ""), 422, "INVALID_REQUEST", "/goal");
     expect_error(with(R"(,"budget":100)", ""), 422, "INVALID_REQUEST", "/budget");
@@ -225,6 +243,7 @@ int main() {
     test_invalid_json();
     test_unknown_field_and_wrong_types();
     test_rule_violations();
+    test_blocked_no_stop_cell_is_rejected();
     test_missing_fields_and_limits();
     test_error_body_from_the_spec();
     test_errors_never_echo_the_request();
