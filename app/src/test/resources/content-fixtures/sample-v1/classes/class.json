@@ -1,0 +1,18 @@
+{
+  "kind": "class",
+  "key": "sample-pack:class",
+  "name": "Fixture class",
+  "text": "Fixture description.",
+  "hitDie": 8,
+  "savingThrows": [
+    "wis"
+  ],
+  "levels": [
+    {
+      "level": 1,
+      "features": [
+        "sample-pack:feature"
+      ]
+    }
+  ]
+}

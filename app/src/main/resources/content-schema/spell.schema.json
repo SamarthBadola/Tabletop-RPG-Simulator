@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/spell.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "higherLevel": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "dm"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9,
+          "x-visibility": "public"
+        },
+        "school": {
+          "$ref": "vocabulary.json#/$defs/school",
+          "x-visibility": "public"
+        },
+        "castingTime": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "action",
+                "bonus_action",
+                "reaction",
+                "minutes",
+                "hours"
+              ],
+              "x-visibility": "public"
+            },
+            "amount": {
+              "type": "integer",
+              "minimum": 1,
+              "x-visibility": "public"
+            },
+            "reactionTrigger": {
+              "$ref": "common.schema.json#/$defs/text",
+              "x-visibility": "public"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "public"
+        },
+        "ritual": {
+          "type": "boolean",
+          "x-visibility": "dm"
+        },
+        "range": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "self",
+                "touch",
+                "ranged",
+                "sight",
+                "unlimited"
+              ],
+              "x-visibility": "public"
+            },
+            "feet": {
+              "type": "integer",
+              "minimum": 1,
+              "x-visibility": "public"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "public"
+        },
+        "area": {
+          "$ref": "common.schema.json#/$defs/area",
+          "x-visibility": "dm"
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "verbal": {
+              "type": "boolean",
+              "x-visibility": "public"
+            },
+            "somatic": {
+              "type": "boolean",
+              "x-visibility": "public"
+            },
+            "material": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "$ref": "common.schema.json#/$defs/text",
+                  "x-visibility": "public"
+                },
+                "cost": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "x-visibility": "public"
+                },
+                "consumed": {
+                  "type": "boolean",
+                  "x-visibility": "public"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false,
+              "x-visibility": "public"
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "x-visibility": "public"
+        },
+        "duration": {
+          "$ref": "common.schema.json#/$defs/duration",
+          "x-visibility": "public"
+        },
+        "classes": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "class"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "x-visibility": "dm"
+        },
+        "rolls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "x-visibility": "dm"
+              },
+              "roll": {
+                "$ref": "common.schema.json#/$defs/roll",
+                "x-visibility": "dm"
+              }
+            },
+            "required": [
+              "label",
+              "roll"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "reaction": {
+          "type": "object",
+          "properties": {
+            "point": {
+              "$ref": "vocabulary.json#/$defs/trigger",
+              "x-visibility": "dm"
+            },
+            "cost": {
+              "$ref": "common.schema.json#/$defs/cost",
+              "x-visibility": "dm"
+            },
+            "filter": {
+              "$ref": "common.schema.json#/$defs/predicate",
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "point",
+            "cost"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "spell",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "text",
+        "level",
+        "school",
+        "castingTime",
+        "range",
+        "components",
+        "duration",
+        "classes",
+        "tier"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

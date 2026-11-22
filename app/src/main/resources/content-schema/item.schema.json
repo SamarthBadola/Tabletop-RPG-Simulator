@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/item.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "revealed"
+        },
+        "category": {
+          "$ref": "vocabulary.json#/$defs/itemCategory",
+          "x-visibility": "revealed"
+        },
+        "cost": {
+          "type": "integer",
+          "minimum": 0,
+          "x-visibility": "dm"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "x-visibility": "dm"
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "x-visibility": "dm"
+        },
+        "rarity": {
+          "$ref": "vocabulary.json#/$defs/rarity",
+          "x-visibility": "dm"
+        },
+        "requiresAttunement": {
+          "type": "boolean",
+          "x-visibility": "dm"
+        },
+        "weaponData": {
+          "type": "object",
+          "properties": {
+            "damage": {
+              "$ref": "common.schema.json#/$defs/roll",
+              "x-visibility": "dm"
+            },
+            "damageType": {
+              "$ref": "vocabulary.json#/$defs/damageType",
+              "x-visibility": "dm"
+            },
+            "properties": {
+              "type": "array",
+              "items": {
+                "$ref": "vocabulary.json#/$defs/weaponProperty"
+              },
+              "minItems": 0,
+              "x-visibility": "public"
+            },
+            "range": {
+              "$ref": "common.schema.json#/$defs/distance",
+              "x-visibility": "dm"
+            },
+            "versatileDamage": {
+              "$ref": "common.schema.json#/$defs/roll",
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "damage",
+            "damageType"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "revealed"
+        },
+        "armorData": {
+          "type": "object",
+          "properties": {
+            "baseAc": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "dexterity": {
+              "enum": [
+                "full",
+                "capped",
+                "none"
+              ],
+              "x-visibility": "dm"
+            },
+            "stealthDisadvantage": {
+              "type": "boolean",
+              "x-visibility": "dm"
+            },
+            "strengthRequired": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "baseAc",
+            "dexterity"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "charges": {
+          "type": "object",
+          "properties": {
+            "max": {
+              "$ref": "common.schema.json#/$defs/expression",
+              "x-visibility": "dm"
+            },
+            "recharge": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/recharge"
+              },
+              "minItems": 0,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "max"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "container": {
+          "type": "object",
+          "properties": {
+            "capacity": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "capacity"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "unidentified": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "x-visibility": "public"
+            },
+            "text": {
+              "$ref": "common.schema.json#/$defs/text",
+              "x-visibility": "public"
+            }
+          },
+          "required": [
+            "name",
+            "text"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "public"
+        },
+        "kind": {
+          "const": "item",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "revealed"
+        }
+      },
+      "required": [
+        "text",
+        "category",
+        "cost",
+        "weight",
+        "tier"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

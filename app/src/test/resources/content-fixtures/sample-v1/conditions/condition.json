@@ -1,0 +1,18 @@
+{
+  "kind": "condition",
+  "key": "sample-pack:condition",
+  "name": "Fixture condition",
+  "text": "Fixture description.",
+  "parts": [
+    {
+      "type": "restriction",
+      "movement": "crawl_or_stand"
+    },
+    {
+      "type": "advantage_source",
+      "roll": "attack",
+      "mode": "advantage",
+      "direction": "holder"
+    }
+  ]
+}

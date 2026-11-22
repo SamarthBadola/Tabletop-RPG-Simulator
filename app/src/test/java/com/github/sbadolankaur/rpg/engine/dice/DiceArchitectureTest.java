@@ -41,6 +41,9 @@ class DiceArchitectureTest {
         .resideInAnyPackage(
             "org.springframework..",
             "jakarta.persistence..",
+            "tools.jackson..",
+            "com.fasterxml.jackson..",
+            "com.networknt..",
             "java.net..",
             "java.io..",
             "java.nio.file..");

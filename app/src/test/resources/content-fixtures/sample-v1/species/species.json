@@ -1,0 +1,11 @@
+{
+  "kind": "species",
+  "key": "sample-pack:species",
+  "name": "Fixture species",
+  "text": "Fixture description.",
+  "size": "medium",
+  "speed": 30,
+  "features": [
+    "sample-pack:feature"
+  ]
+}

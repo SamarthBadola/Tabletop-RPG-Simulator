@@ -63,6 +63,12 @@ class ContentSchemaIT {
       assertThatThrownBy(() -> sql.execute("UPDATE content_pack SET version = '9.0.0'"))
           .isInstanceOf(SQLException.class)
           .hasMessageContaining("immutable");
+      assertThatThrownBy(() -> sql.execute("DELETE FROM content_definition"))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("only be deleted with its pack");
+      assertThatThrownBy(() -> sql.execute("DELETE FROM content_pack_dependency"))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("only be deleted with its pack");
       sql.execute("UPDATE content_pack SET state = 'archived' WHERE version = '1.0.1'");
       assertThatThrownBy(
               () ->
@@ -81,6 +87,9 @@ class ContentSchemaIT {
                   sql.execute("DELETE FROM content_pack WHERE hash = 'sha256:' || repeat('1',64)"))
           .isInstanceOf(SQLException.class)
           .hasMessageContaining("campaign_pack_pack");
+      sql.execute("DELETE FROM campaign_pack");
+      sql.execute("DELETE FROM content_pack WHERE pack_key = 'child-pack'");
+      sql.execute("DELETE FROM content_pack WHERE pack_key = 'base-pack'");
     }
   }
 }

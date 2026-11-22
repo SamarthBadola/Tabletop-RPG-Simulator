@@ -107,3 +107,24 @@ $$;
 CREATE TRIGGER content_pack_immutable
     BEFORE UPDATE ON content_pack
     FOR EACH ROW EXECUTE FUNCTION reject_content_pack_update();
+
+CREATE FUNCTION reject_independent_content_delete() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM content_pack WHERE id = OLD.pack_id) THEN
+        RAISE EXCEPTION 'loaded content can only be deleted with its pack' USING ERRCODE = '23514';
+    END IF;
+    RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER content_definition_delete_guard
+    BEFORE DELETE ON content_definition
+    FOR EACH ROW EXECUTE FUNCTION reject_independent_content_delete();
+
+CREATE TRIGGER content_dependency_immutable
+    BEFORE UPDATE ON content_pack_dependency
+    FOR EACH ROW EXECUTE FUNCTION reject_content_definition_update();
+
+CREATE TRIGGER content_dependency_delete_guard
+    BEFORE DELETE ON content_pack_dependency
+    FOR EACH ROW EXECUTE FUNCTION reject_independent_content_delete();

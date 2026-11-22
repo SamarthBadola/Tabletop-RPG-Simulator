@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/feature.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "trigger": {
+          "$ref": "common.schema.json#/$defs/trigger",
+          "x-visibility": "dm"
+        },
+        "activeWhen": {
+          "$ref": "common.schema.json#/$defs/predicate",
+          "x-visibility": "dm"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "cost": {
+          "$ref": "common.schema.json#/$defs/cost",
+          "x-visibility": "dm"
+        },
+        "limit": {
+          "$ref": "common.schema.json#/$defs/limit",
+          "x-visibility": "dm"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/choice"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "feature",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "text",
+        "effects"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}
