@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Scenes</title></head>
+<body><main>
+    <h1>Scenes</h1>
+    <section id="scene-list" th:fragment="scene-list">
+        <article th:each="scene : ${scenes}">
+            <h2 th:text="${scene.name}"></h2>
+            <p th:if="${scene.active}">Active scene</p>
+            <form th:action="@{/campaigns/{id}/scenes/{sid}/edits(id=${campaign.id},sid=${scene.id})}" method="post">
+                <div th:replace="~{demo-command :: envelope}"></div>
+                <label>Name <input name="name" th:value="${scene.name}" maxlength="80" required></label>
+                <label>Private notes <textarea name="notes" maxlength="2000" th:text="${scene.notes}"></textarea></label>
+                <label>Light <select name="light">
+                    <option th:each="light : ${ {'BRIGHT', 'DIM', 'DARK'} }" th:value="${light}"
+                            th:text="${light}" th:selected="${light == scene.light.name()}"></option>
+                </select></label>
+                <button type="submit">Save scene</button>
+            </form>
+            <form th:unless="${scene.active}" th:action="@{/campaigns/{id}/scenes/{sid}/activations(id=${campaign.id},sid=${scene.id})}" method="post">
+                <div th:replace="~{demo-command :: envelope}"></div>
+                <button type="submit">Activate scene</button>
+            </form>
+        </article>
+        <form th:action="@{/campaigns/{id}/scenes(id=${campaign.id})}" method="post">
+            <div th:replace="~{demo-command :: envelope}"></div>
+            <label>Name <input name="name" maxlength="80" required></label>
+            <label>Private notes <textarea name="notes" maxlength="2000"></textarea></label>
+            <label>Light <select name="light"><option>BRIGHT</option><option>DIM</option><option>DARK</option></select></label>
+            <button type="submit">Create scene</button>
+        </form>
+    </section>
+    <a th:href="@{/campaigns/{id}(id=${campaign.id})}">Open campaign</a>
+</main></body>
+</html>

@@ -38,7 +38,7 @@ The attribution is also recorded in [NOTICE](NOTICE). Do not add non-SRD officia
 
 The initial full image build took approximately **197.8 seconds**. This is a cold-build baseline, not a diagnosis; build-time optimization is tracked in the combined Decision Log and Progress Tracker.
 
-**Current milestone: Step 3 — kernel and architecture tests.** Step 2 is complete and merged in PR #27. The dice engine implements Ruleset Specification 1.3, including D-16's `criticalNotApplied` term marker; Step 2 stops at `RollResult`, and Step 7 will consume the marker for event and warning output.
+**Current milestone: Step 4 — campaign, session and access.** The Step 3 engine foundation merged in PR #31.
 
 ## Project specification set
 
@@ -66,7 +66,7 @@ Use Bash (Git Bash or WSL on Windows). From the repository root:
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --env-file deploy/.env up --build -d
 \`\`\`
 
-Then open http://localhost:8080 and create the first account. It becomes the instance administrator. Registration closes once that account is created; additional accounts will be enabled after the invitation flow is implemented.
+Then open http://localhost:8080 and create the first account. It becomes the instance administrator. After that, registration requires a campaign invite. Finish campaign setup, then use Create invite on Players.
 
 To inspect logs:
 

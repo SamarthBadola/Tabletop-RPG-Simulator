@@ -32,6 +32,13 @@ class ProjectArchitectureTest {
     featurePackagesHaveNoCycles().check(application);
     abilityStorageIsEncapsulated().check(application);
     onlyContentBuildsDefinitions().check(application);
+    noClasses()
+        .that()
+        .resideOutsideOfPackage("..identity..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage("org.bouncycastle..", "org.springframework.security.crypto.argon2..")
+        .check(application);
   }
 
   @Test

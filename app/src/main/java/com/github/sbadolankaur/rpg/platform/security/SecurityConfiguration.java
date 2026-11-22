@@ -1,26 +1,31 @@
 package com.github.sbadolankaur.rpg.platform.security;
 
 import jakarta.servlet.DispatcherType;
+import java.net.URI;
+import java.util.Locale;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 
 @Configuration
 public class SecurityConfiguration {
   @Bean
-  PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder(12);
+  AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
+      throws Exception {
+    return configuration.getAuthenticationManager();
   }
 
   @Bean
   SecurityFilterChain securityFilterChain(
       HttpSecurity http, LoginAttemptLimiter loginAttemptLimiter) throws Exception {
     LoginRateLimitFilter loginRateLimitFilter = new LoginRateLimitFilter(loginAttemptLimiter);
+    var requestCache = new HttpSessionRequestCache();
 
     http.authorizeHttpRequests(
             authorize ->
@@ -50,7 +55,15 @@ public class SecurityConfiguration {
                         (request, response, authentication) -> {
                           loginAttemptLimiter.recordSuccess(
                               request.getParameter("username"), request.getRemoteAddr());
-                          response.sendRedirect("/");
+                          var saved = requestCache.getRequest(request, response);
+                          requestCache.removeRequest(request, response);
+                          String fallback = request.getContextPath() + "/campaigns";
+                          String path =
+                              saved == null
+                                  ? fallback
+                                  : safeReturn(saved.getRedirectUrl(), fallback);
+                          response.setStatus(303);
+                          response.setHeader("Location", response.encodeRedirectURL(path));
                         })
                     .permitAll())
         .logout(logout -> logout.logoutSuccessUrl("/login?logout").permitAll())
@@ -66,5 +79,24 @@ public class SecurityConfiguration {
         .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
+  }
+
+  private static String safeReturn(String address, String fallback) {
+    try {
+      URI uri = URI.create(address);
+      String path = uri.getRawPath();
+      String folded = path == null ? "" : path.toLowerCase(Locale.ROOT);
+      if (!folded.startsWith("/")
+          || folded.startsWith("//")
+          || folded.contains("\\")
+          || folded.contains("%2f")
+          || folded.contains("%5c")
+          || "/".equals(folded)) {
+        return fallback;
+      }
+      return uri.getRawQuery() == null ? path : path + "?" + uri.getRawQuery();
+    } catch (IllegalArgumentException e) {
+      return fallback;
+    }
   }
 }

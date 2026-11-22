@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>House rules</title></head>
+<body><main>
+    <h1>House rules</h1>
+    <section id="settings-mode" th:fragment="settings-mode">
+        <form th:action="@{/campaigns/{id}/settings/mode(id=${campaign.id})}" method="post">
+            <div th:replace="~{demo-command :: envelope}"></div>
+            <label>Settings mode <select name="mode">
+                <option value="DEFAULTS_ONLY" th:selected="${panel.mode == 'DEFAULTS_ONLY'}">Defaults only</option>
+                <option value="CONFIGURE_NOW" th:selected="${panel.mode == 'CONFIGURE_NOW'}">Configure now</option>
+            </select></label>
+            <button type="submit">Save mode</button>
+        </form>
+    </section>
+    <article th:each="row : ${panel.rows}">
+        <div th:replace="~{demo-setting-row :: row}"></div>
+    </article>
+    <a th:href="@{/campaigns/{id}(id=${campaign.id})}">Open campaign</a>
+</main>
+
+</body>
+</html>
