@@ -15,6 +15,64 @@
     "duration" : {
       "enum" : [ "INSTANT", "ROUNDS", "CLOCK", "CONCENTRATION", "UNTIL_TURN_START", "UNTIL_TURN_END", "UNTIL_DISPELLED", "UNTIL_SHORT_OR_LONG_REST", "UNTIL_LONG_REST", "UNTIL_USED", "PERMANENT", "WHILE_EQUIPPED", "WHILE_ATTUNED" ]
     },
+    "effect-damage_die_reroll" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "atOrBelow" ],
+      "properties" : {
+        "type" : {
+          "const" : "damage_die_reroll"
+        },
+        "atOrBelow" : {
+          "type" : "integer",
+          "minimum" : 1,
+          "maximum" : 100
+        }
+      }
+    },
+    "effect-grant_action" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "amount" ],
+      "properties" : {
+        "type" : {
+          "const" : "grant_action"
+        },
+        "amount" : {
+          "type" : "integer",
+          "minimum" : 1
+        }
+      }
+    },
+    "effect-grant_advantage" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "roll", "activeWhen" ],
+      "properties" : {
+        "type" : {
+          "const" : "grant_advantage"
+        },
+        "roll" : {
+          "$ref" : "#/$defs/rollKind"
+        },
+        "activeWhen" : {
+          "$ref" : "common.schema.json#/$defs/predicate"
+        }
+      }
+    },
+    "effect-heal" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "amount" ],
+      "properties" : {
+        "type" : {
+          "const" : "heal"
+        },
+        "amount" : {
+          "$ref" : "common.schema.json#/$defs/roll"
+        }
+      }
+    },
     "effect-modifier" : {
       "type" : "object",
       "additionalProperties" : false,
@@ -49,6 +107,32 @@
           "$ref" : "common.schema.json#/$defs/duration"
         }
       }
+    },
+    "effect-reaction_option" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "point" ],
+      "properties" : {
+        "type" : {
+          "const" : "reaction_option"
+        },
+        "point" : {
+          "$ref" : "#/$defs/trigger"
+        }
+      }
+    },
+    "effect-two_weapon_fighting" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "two_weapon_fighting"
+        }
+      }
+    },
+    "equipmentPick" : {
+      "enum" : [ "martial_weapon", "simple_weapon", "armor", "gear" ]
     },
     "hazardTrigger" : {
       "enum" : [ "STEP_ON", "ENTER_AREA", "START_TURN_IN_AREA", "ACTION", "DM" ]
@@ -129,5 +213,5 @@
   },
   "$id" : "https://schemas.tabletop-rpg.invalid/content/v1/vocabulary.json",
   "$schema" : "https://json-schema.org/draft/2020-12/schema",
-  "x-vocabularyVersion" : 1
+  "x-vocabularyVersion" : 2
 }

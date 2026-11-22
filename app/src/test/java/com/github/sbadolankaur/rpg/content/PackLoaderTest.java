@@ -14,9 +14,55 @@ class PackLoaderTest {
   private final PackLoader loader = new PackLoader();
 
   @Test
+  void stepSixBundleLoadsValidFighterContentAndChecksStartingEquipmentReferences()
+      throws Exception {
+    var files = new HashMap<>(PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1")));
+    var pack = loader.load(files, true, List.of());
+    assertThat(pack.version()).isEqualTo("0.2.0");
+    assertThat(pack.definitions())
+        .anySatisfy(
+            def -> {
+              assertThat(def.key()).isEqualTo("srd-5.1:fighter");
+              assertThat(def.fields()).containsKeys("startingEquipment", "startingGold");
+            });
+    var fighter = new String(files.get("classes/fighter.json"), StandardCharsets.UTF_8);
+    files.put(
+        "classes/fighter.json",
+        fighter.replace("srd-5.1:chain-mail", "srd-5.1:missing").getBytes(StandardCharsets.UTF_8));
+    assertThatThrownBy(() -> loader.load(files, true, List.of()))
+        .isInstanceOfSatisfying(
+            ContentInvalid.class,
+            error ->
+                assertThat(error.findings())
+                    .extracting(ContentFinding::rule)
+                    .contains("CS-KEY-004"));
+  }
+
+  @Test
+  void equipmentPickUsesOnlyRegisteredCategories() throws Exception {
+    var files = new HashMap<>(PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1")));
+    var fighter =
+        (tools.jackson.databind.node.ObjectNode)
+            PackJson.parse(new String(files.get("classes/fighter.json"), StandardCharsets.UTF_8));
+    var pick = fighter.putArray("startingEquipment").addObject().putObject("pick");
+    pick.put("category", "martial_weapon").put("count", 1);
+    files.put("classes/fighter.json", PackJson.MAPPER.writeValueAsBytes(fighter));
+    assertThat(loader.load(files, true, List.of()).definitions()).isNotEmpty();
+
+    pick.put("category", "unknown");
+    files.put("classes/fighter.json", PackJson.MAPPER.writeValueAsBytes(fighter));
+    assertThatThrownBy(() -> loader.load(files, true, List.of()))
+        .isInstanceOfSatisfying(
+            ContentInvalid.class,
+            error ->
+                assertThat(error.findings())
+                    .anyMatch(finding -> finding.pointer().endsWith("/pick/category")));
+  }
+
+  @Test
   void ordinaryLoaderRejectsAnEmptyPackAndLoadsExactlyOneSourceVerifiedDefinition()
       throws Exception {
-    var files = PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1"));
+    var files = PackInput.readFolder(Path.of("src/test/resources/content-fixtures/srd-step5"));
     assertThatThrownBy(
             () ->
                 loader.load(
@@ -41,7 +87,8 @@ class PackLoaderTest {
               String text = (String) def.fields().get("text");
               var source =
                   PackJson.MAPPER.readTree(
-                      Path.of("src/main/resources/content/srd-5.1-source-index.json").toFile());
+                      Path.of("src/test/resources/content-fixtures/srd-step5-source-index.json")
+                          .toFile());
               String line =
                   text.replaceAll("(?m)^- ", "")
                       .replace('\u2019', '\'')
@@ -61,7 +108,9 @@ class PackLoaderTest {
 
   @Test
   void reportsEveryUnknownConditionPartAndRejectsAuthorSuppliedPackMetadata() throws Exception {
-    var files = new HashMap<>(PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1")));
+    var files =
+        new HashMap<>(
+            PackInput.readFolder(Path.of("src/test/resources/content-fixtures/srd-step5")));
     String path = "conditions/prone.json";
     var original = new String(files.get(path), StandardCharsets.UTF_8);
     files.put(
@@ -89,7 +138,9 @@ class PackLoaderTest {
 
   @Test
   void normalizesPackFormattingButRejectsChangedContentUnderTheSameVersion() throws Exception {
-    var files = new HashMap<>(PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1")));
+    var files =
+        new HashMap<>(
+            PackInput.readFolder(Path.of("src/test/resources/content-fixtures/srd-step5")));
     var pack = loader.load(files, true, List.of());
     String path = "text/conditions/prone.md";
     String original = new String(files.get(path), StandardCharsets.UTF_8);

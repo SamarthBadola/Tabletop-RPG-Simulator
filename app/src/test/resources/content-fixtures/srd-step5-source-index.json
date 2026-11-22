@@ -1,0 +1,14 @@
+{
+  "pdf": "https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf",
+  "pdfSha256": "2504d2a0abb0a4d491a939be4f17910a2dde0312570ab8d208080225ccf0a1f0",
+  "spans": [
+    {
+      "key": "srd-5.1:prone",
+      "textFile": "text/conditions/prone.md",
+      "pdfPage": 359,
+      "heading": "Prone",
+      "nextHeading": "Restrained",
+      "sha256": "983c7d564f10f5ca36ee898afee52ab520b9d1cc65582520c4650956b396a5ac"
+    }
+  ]
+}

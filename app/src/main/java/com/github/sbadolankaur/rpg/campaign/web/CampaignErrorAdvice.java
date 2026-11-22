@@ -10,7 +10,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
-@ControllerAdvice(basePackageClasses = CampaignController.class)
+@ControllerAdvice(
+    basePackages = {
+      "com.github.sbadolankaur.rpg.campaign.web",
+      "com.github.sbadolankaur.rpg.character.web"
+    })
 class CampaignErrorAdvice {
   @ExceptionHandler(exception = CampaignException.class, produces = "text/html")
   ModelAndView browserError(CampaignException failure, HttpServletResponse response) {
@@ -42,10 +46,14 @@ class CampaignErrorAdvice {
           case NOT_FOUND -> HttpStatus.NOT_FOUND;
           case FORBIDDEN, INVITE_INVALID, CSRF_INVALID -> HttpStatus.FORBIDDEN;
           case VALIDATION_FAILED -> HttpStatus.BAD_REQUEST;
-          case IDEMPOTENCY_KEY_CONFLICT, CAMPAIGN_VERSION_CONFLICT, SESSION_NOT_ACTIVE ->
+          case IDEMPOTENCY_KEY_CONFLICT,
+              CAMPAIGN_VERSION_CONFLICT,
+              SESSION_NOT_ACTIVE,
+              PACK_REVIEW_STALE ->
               HttpStatus.CONFLICT;
           case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
-          case SETTING_INVALID -> HttpStatus.UNPROCESSABLE_CONTENT;
+          case SETTING_INVALID, PACK_NOT_ENABLED, CONTENT_INVALID ->
+              HttpStatus.UNPROCESSABLE_CONTENT;
         };
     String detail =
         switch (failure.code()) {
@@ -59,10 +67,14 @@ class CampaignErrorAdvice {
           case CAMPAIGN_VERSION_CONFLICT -> "This changed while you were looking at it.";
           case SESSION_NOT_ACTIVE -> "Start or resume the session before taking that action.";
           case SETTING_INVALID -> "Choose an allowed value for the setting.";
+          case PACK_NOT_ENABLED -> "Ask the DM to enable the content pack for this campaign.";
+          case PACK_REVIEW_STALE -> "Review the current pack changes again.";
+          case CONTENT_INVALID -> "Resolve the issues shown in the content pack review.";
         };
     var problem = ProblemDetail.forStatusAndDetail(status, detail);
     problem.setType(URI.create("urn:trpg:error:" + failure.code().name()));
     problem.setProperty("code", failure.code().name());
+    if (!failure.fields().isEmpty()) problem.setProperty("errors", failure.fields());
     return problem;
   }
 }

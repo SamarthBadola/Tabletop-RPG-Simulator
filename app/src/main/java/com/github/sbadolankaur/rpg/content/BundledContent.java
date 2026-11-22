@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 class BundledContent implements ApplicationRunner {
   static final String PACK_KEY = "srd-5.1";
-  static final String VERSION = "0.1.0";
+  static final String VERSION = "0.2.0";
   private static final String FOLDER = "content/" + PACK_KEY + "/";
   private final PackLoader loader;
   private final ContentPacks packs;
@@ -27,9 +27,10 @@ class BundledContent implements ApplicationRunner {
     ContentPack pack = loader.load(resources(), true, List.of());
     if (!pack.key().equals(PACK_KEY)
         || !pack.version().equals(VERSION)
-        || pack.definitions().size() != 1) {
+        || pack.definitions().stream()
+            .noneMatch(def -> def.kind().equals("class") && def.key().equals("srd-5.1:fighter"))) {
       throw new IllegalStateException(
-          "The Step 5 bundle must contain SRD 5.1 version 0.1.0 and one definition");
+          "The Step 6 bundle must contain SRD 5.1 version 0.2.0 and the Fighter class");
     }
     packs.seed(pack);
   }

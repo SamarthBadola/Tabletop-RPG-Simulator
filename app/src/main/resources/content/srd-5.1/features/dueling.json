@@ -1,0 +1,17 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:dueling",
+  "name": "Dueling",
+  "text": {
+    "file": "text/features/dueling.md"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "damage:melee_weapon",
+      "operation": "ADD",
+      "value": 2,
+      "activeWhen": "attack_is_melee and weapon_hands == 1 and not other_weapon_held"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:handaxe",
+  "name": "Handaxe",
+  "text": {
+    "file": "text/items/handaxe.md"
+  },
+  "cost": 500,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d6",
+    "damageType": "slashing",
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    }
+  }
+}

@@ -167,6 +167,12 @@ public class CampaignSettings {
         .withSettingsRead(Map.of(definition.key(), prior));
   }
 
+  @Transactional(readOnly = true)
+  public SettingsView effective(UUID campaign, UUID actor) {
+    campaigns.requireMember(campaign, actor);
+    return snapshot(campaign);
+  }
+
   private SettingsView snapshot(UUID campaign) {
     var decisions = store.decisions(campaign);
     Map<String, Object> values = new LinkedHashMap<>();

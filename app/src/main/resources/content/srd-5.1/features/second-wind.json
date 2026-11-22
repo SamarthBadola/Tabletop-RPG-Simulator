@@ -1,0 +1,18 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:second-wind",
+  "name": "Second Wind",
+  "text": {
+    "file": "text/features/second-wind.md"
+  },
+  "effects": [
+    {
+      "type": "heal",
+      "amount": "1d10 + class_level"
+    }
+  ],
+  "cost": {
+    "action": "bonus_action",
+    "resource": "srd-5.1:second-wind-uses"
+  }
+}

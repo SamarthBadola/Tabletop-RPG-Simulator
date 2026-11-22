@@ -66,6 +66,20 @@
             "versatileDamage": {
               "$ref": "common.schema.json#/$defs/roll",
               "x-visibility": "dm"
+            },
+            "kind": {
+              "enum": [
+                "melee",
+                "ranged"
+              ],
+              "x-visibility": "dm"
+            },
+            "proficiencyGroup": {
+              "enum": [
+                "simple",
+                "martial"
+              ],
+              "x-visibility": "dm"
             }
           },
           "required": [

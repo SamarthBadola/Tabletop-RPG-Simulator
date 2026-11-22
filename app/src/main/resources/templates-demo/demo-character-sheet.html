@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Character sheet</title></head>
+<body><main id="sheet" th:fragment="sheet" th:with="base=|/campaigns/${campaignId}/characters/${sheet.id}|">
+    <a th:href="@{/campaigns/{id}/characters(id=${campaignId})}">Characters</a>
+    <h1 th:text="${sheet.name}">Character sheet</h1>
+    <p><span th:text="${sheet.species}"></span>
+        <span th:each="classLine : ${sheet.classes}" th:text="|${classLine.name} ${classLine.level} ${classLine.subclass}|"></span>
+        <span th:unless="${sheet.background.isEmpty()}" th:text="${sheet.background}"></span></p>
+    <dl>
+        <dt>Hit points</dt><dd th:text="|${sheet.currentHp} / ${sheet.maximumHp}|"></dd>
+        <dt>Temporary hit points</dt><dd th:text="${sheet.temporaryHp}"></dd>
+        <dt>Armor class</dt><dd th:text="${sheet.armorClass}"></dd>
+        <dt>Proficiency bonus</dt><dd th:text="|+${sheet.proficiency}|"></dd>
+        <dt>Initiative</dt><dd th:text="${sheet.initiative}"></dd>
+        <dt>Speed</dt><dd th:text="|${sheet.speed} ft.|"></dd>
+        <dt>Attacks per Attack action</dt><dd th:text="${sheet.attacksPerAction}"></dd>
+        <dt>Currency (copper pieces)</dt><dd th:text="${sheet.copper}"></dd>
+        <dt>Hit Dice spent</dt><dd th:each="die : ${sheet.hitDice}" th:text="|${die.spent} / ${die.maximum} d${die.size}|"></dd>
+        <dt>Experience points</dt><dd th:text="${sheet.xp}"></dd>
+    </dl>
+    <h2>Abilities and saves</h2>
+    <table><thead><tr><th>Ability</th><th>Score</th><th>Modifier</th><th>Save</th></tr></thead>
+    <tbody><tr th:each="entry : ${sheet.abilities}">
+        <th scope="row" th:text="${entry.key}"></th><td th:text="${entry.value.value}"></td>
+        <td th:text="${entry.value.modifier}"></td><td th:text="${entry.value.save}"></td>
+    </tr></tbody></table>
+    <h2>Skills</h2>
+    <dl><th:block th:each="entry : ${sheet.skills}"><dt th:text="${entry.key}"></dt><dd th:text="${entry.value}"></dd></th:block></dl>
+    <h2>Attacks</h2>
+    <ul><li th:each="attack : ${sheet.attacks}"
+        th:text="|${attack.name}: ${attack.attackBonus} to hit, ${attack.damage} ${attack.damageType}, critical on ${attack.criticalOn}+|"></li></ul>
+    <h2>Features</h2>
+    <dl><th:block th:each="feature : ${sheet.features}"><dt th:text="${feature.name}"></dt><dd th:text="${feature.text}"></dd></th:block></dl>
+    <h2>Resources</h2>
+    <p th:if="${sheet.resources.isEmpty()}">No limited-use resources.</p>
+    <form th:each="resource : ${sheet.resources}" th:action="@{${base + '/edits'}}" method="post">
+        <th:block th:replace="~{demo-character-sheet :: commandFields}"></th:block>
+        <input type="hidden" name="section" value="resources">
+        <input type="hidden" name="resourceKey" th:value="${resource.key}">
+        <label><span th:text="|${resource.name} uses spent|"></span>
+            <input type="number" name="used" min="0" th:max="${resource.maximum}" th:value="${resource.used}" required></label>
+        <button type="submit">Save uses</button>
+    </form>
+    <h2>Inventory</h2>
+    <p th:if="${sheet.inventory.isEmpty()}">No items.</p>
+    <form th:unless="${sheet.inventory.isEmpty()}" th:action="@{${base + '/edits'}}" method="post">
+        <th:block th:replace="~{demo-character-sheet :: commandFields}"></th:block>
+        <input type="hidden" name="section" value="inventory">
+        <label th:each="item : ${sheet.inventory}">
+            <span th:text="|${item.name} × ${item.quantity}|"></span>
+            <select name="equipment">
+                <option th:value="|${item.id}=|" th:selected="${item.slot == null}">Carried</option>
+                <option th:if="${item.category == 'armor'}" th:value="|${item.id}=ARMOR|" th:selected="${item.slot == 'ARMOR'}">Worn</option>
+                <option th:if="${item.category == 'weapon'}" th:value="|${item.id}=MAIN_HAND|" th:selected="${item.slot == 'MAIN_HAND'}">Main hand</option>
+                <option th:if="${item.category == 'weapon' or item.category == 'shield'}" th:value="|${item.id}=OFF_HAND|" th:selected="${item.slot == 'OFF_HAND'}">Off hand</option>
+                <option th:if="${item.category == 'weapon'}" th:value="|${item.id}=BOTH_HANDS|" th:selected="${item.slot == 'BOTH_HANDS'}">Both hands</option>
+            </select>
+        </label>
+        <button type="submit">Equip items</button>
+    </form>
+    <h2>Conditions</h2>
+    <ul><li th:each="condition : ${sheet.conditions}" th:text="${condition.label}"></li></ul>
+    <form th:action="@{${base + '/edits'}}" method="post">
+        <th:block th:replace="~{demo-character-sheet :: commandFields}"></th:block>
+        <input type="hidden" name="section" value="details">
+        <label>Character name <input name="name" maxlength="80" th:value="${sheet.name}" required></label>
+        <button type="submit">Save name</button>
+    </form>
+    <form th:if="${sheet.dm}" th:action="@{${base + '/edits'}}" method="post">
+        <th:block th:replace="~{demo-character-sheet :: commandFields}"></th:block>
+        <input type="hidden" name="section" value="hit-points">
+        <label>Current hit points <input type="number" name="currentHp" min="0" th:max="${sheet.maximumHp}" th:value="${sheet.currentHp}" required></label>
+        <label>Temporary hit points <input type="number" name="temporaryHp" min="0" th:value="${sheet.temporaryHp}" required></label>
+        <button type="submit">Save hit points</button>
+    </form>
+    <form th:if="${sheet.dm and sheet.level < 5 and sheet.grantedClass == null}" th:action="@{${base + '/level-grants'}}" method="post">
+        <th:block th:replace="~{demo-character-sheet :: commandFields}"></th:block>
+        <button type="submit">Grant level</button>
+    </form>
+    <a th:if="${sheet.grantedClass != null}" th:href="@{${base + '/level-ups'}}">Level up</a>
+    <p>Rules source <a th:href="@{/help}">SRD 5.1</a></p>
+</main>
+<th:block th:fragment="commandFields">
+    <input type="hidden" name="actionId" th:value="${actionId}">
+    <input type="hidden" name="expectedVersion" th:value="${expectedVersion}">
+</th:block>
+<footer th:replace="~{demo-footer :: help}"></footer></body></html>

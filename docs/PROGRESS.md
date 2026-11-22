@@ -81,6 +81,13 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 - [x] Implement the nine-stage validation pipeline, generated vocabulary, conformance tests for all 17 kinds, immutable campaign content sets and attribution page.
 - [x] Seed Prone at version 0.1.0 and verify its Creative Commons source span, the empty-pack refusal and the startup hash guard. The full SRD build comes later.
 - [x] Apply the owner’s optional poison text decision. The player view reveals the name and any text only once applied to a creature the player controls.
+- [x] Owner reviewed and merged [PR #33](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/pull/33).
+
+### Step 6 — Fighter creation and leveling
+
+- Build the six-step creation and four-step level-up flows with Fighter levels 1 through 5, Fighting Style and Champion choices, and a sheet derived from character inputs and pinned content.
+- Keep the SRD 5.1 seed at 0.2.0 for new campaigns. Existing campaigns retain their installed version until the DM confirms a reviewed upgrade.
+- Keep combat and Two-Weapon Fighting damage resolution in Step 7.
 - [ ] Owner review and merge.
 
 **Implementation checkpoint note.** This progress section records status as of 2026-11-14. Since then, the approved specifications for later steps were added; follow the current AI Build Brief for the implementation sequence and stop points. This documentation sync does not verify later implementation work. Do not invent D&D rules from memory.

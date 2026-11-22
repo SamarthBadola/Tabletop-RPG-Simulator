@@ -1,0 +1,18 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:action-surge",
+  "name": "Action Surge",
+  "text": {
+    "file": "text/features/action-surge.md"
+  },
+  "effects": [
+    {
+      "type": "grant_action",
+      "amount": 1
+    }
+  ],
+  "cost": {
+    "action": "none",
+    "resource": "srd-5.1:action-surge-uses"
+  }
+}

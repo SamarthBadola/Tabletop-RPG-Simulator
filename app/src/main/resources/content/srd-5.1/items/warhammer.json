@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:warhammer",
+  "name": "Warhammer",
+  "text": {
+    "file": "text/items/warhammer.md"
+  },
+  "cost": 1500,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d8",
+    "damageType": "bludgeoning",
+    "properties": [
+      "versatile"
+    ],
+    "versatileDamage": "1d10"
+  }
+}

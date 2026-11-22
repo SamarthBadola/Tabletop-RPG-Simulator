@@ -13,7 +13,7 @@ import java.util.function.Function;
 import tools.jackson.databind.JsonNode;
 
 final class ContentVocabulary {
-  static final int VERSION = 1;
+  static final int VERSION = 2;
   private static final List<String> SKILLS =
       names(
           "acrobatics animal_handling arcana athletics deception history insight intimidation "
@@ -57,6 +57,7 @@ final class ContentVocabulary {
               "weaponProperty",
               names(
                   "ammunition finesse heavy light loading range reach special thrown two_handed versatile")),
+          Map.entry("equipmentPick", names("martial_weapon simple_weapon armor gear")),
           Map.entry("rollKind", names("attack save check damage initiative death_save")));
 
   private static final Map<String, Entry> EFFECTS =
@@ -72,7 +73,52 @@ final class ContentVocabulary {
         "activeWhen":{"$ref":"common.schema.json#/$defs/predicate"},
         "duration":{"$ref":"common.schema.json#/$defs/duration"}}}
         """,
-              ContentVocabulary::modifier));
+              ContentVocabulary::modifier),
+          "heal",
+          new Entry(
+              """
+              {"type":"object","additionalProperties":false,"required":["type","amount"],
+               "properties":{"type":{"const":"heal"},"amount":{"$ref":"common.schema.json#/$defs/roll"}}}
+              """,
+              node -> new FeatureAmount(node.path("amount").asString())),
+          "grant_action",
+          new Entry(
+              """
+              {"type":"object","additionalProperties":false,"required":["type","amount"],
+               "properties":{"type":{"const":"grant_action"},"amount":{"type":"integer","minimum":1}}}
+              """,
+              node -> new FeatureAmount(node.path("amount").asString())),
+          "damage_die_reroll",
+          new Entry(
+              """
+              {"type":"object","additionalProperties":false,"required":["type","atOrBelow"],
+               "properties":{"type":{"const":"damage_die_reroll"},"atOrBelow":{"type":"integer","minimum":1,"maximum":100}}}
+              """,
+              node -> new FeatureAmount(node.path("atOrBelow").asString())),
+          "reaction_option",
+          new Entry(
+              """
+              {"type":"object","additionalProperties":false,"required":["type","point"],
+               "properties":{"type":{"const":"reaction_option"},"point":{"$ref":"#/$defs/trigger"}}}
+              """,
+              node -> new FeatureAmount(node.path("point").asString())),
+          "grant_advantage",
+          new Entry(
+              """
+              {"type":"object","additionalProperties":false,"required":["type","roll","activeWhen"],
+               "properties":{"type":{"const":"grant_advantage"},"roll":{"$ref":"#/$defs/rollKind"},
+               "activeWhen":{"$ref":"common.schema.json#/$defs/predicate"}}}
+              """,
+              node ->
+                  new FeatureAdvantage(
+                      node.path("roll").asString(), node.path("activeWhen").asString())),
+          "two_weapon_fighting",
+          new Entry(
+              """
+              {"type":"object","additionalProperties":false,"required":["type"],
+               "properties":{"type":{"const":"two_weapon_fighting"}}}
+              """,
+              node -> Boolean.TRUE));
   private static final Map<String, Entry> PARTS =
       Map.of(
           "restriction",
@@ -112,6 +158,8 @@ final class ContentVocabulary {
                         maximum,
                         node.path("lineOfSight").asBoolean(false));
                   }));
+
+  private record FeatureAdvantage(String roll, String activeWhen) {}
 
   private ContentVocabulary() {}
 
@@ -223,6 +271,8 @@ final class ContentVocabulary {
   private static List<String> names(String values) {
     return List.of(values.split(" "));
   }
+
+  private record FeatureAmount(String value) {}
 
   private record Entry(String schema, Function<JsonNode, Object> read) {}
 

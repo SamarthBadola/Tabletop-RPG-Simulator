@@ -38,7 +38,7 @@ The attribution is also recorded in [NOTICE](NOTICE). Do not add non-SRD officia
 
 The initial full image build took approximately **197.8 seconds**. This is a cold-build baseline, not a diagnosis; build-time optimization is tracked in the combined Decision Log and Progress Tracker.
 
-**Current milestone: Step 5 — content-pack skeleton.** Campaign, session and access merged in PR #32.
+**Current milestone: Step 6 — Fighter creation and leveling.** The content-pack skeleton merged in PR #33.
 
 ## Project specification set
 

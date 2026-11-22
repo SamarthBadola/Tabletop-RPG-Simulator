@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:shortsword",
+  "name": "Shortsword",
+  "text": {
+    "file": "text/items/shortsword.md"
+  },
+  "cost": 1000,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "finesse",
+      "light"
+    ]
+  }
+}

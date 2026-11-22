@@ -210,6 +210,7 @@ final class PackExpressions {
         available.put(
             qualified.group(), qualified.group(1).equals("resource") ? Type.INT : Type.BOOL);
     }
+    if (pointer.endsWith("/activeWhen")) available.put("target_grappled_by_attacker", Type.BOOL);
     if (kind == ContentKind.MONSTER || pointer.contains("/effects/")) {
       for (String key : List.of("size", "creature_type", "damage_type"))
         available.put(key, Type.NAME);

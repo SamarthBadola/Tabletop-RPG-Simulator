@@ -1,0 +1,491 @@
+{
+  "kind": "class",
+  "key": "srd-5.1:fighter",
+  "name": "Fighter",
+  "text": {
+    "file": "text/classes/fighter.md"
+  },
+  "hitDie": 10,
+  "savingThrows": [
+    "str",
+    "con"
+  ],
+  "proficiencies": {
+    "armor": [
+      "light",
+      "medium",
+      "heavy",
+      "shield"
+    ],
+    "weapons": [
+      "simple",
+      "martial"
+    ],
+    "tools": [],
+    "skillChoice": {
+      "count": 2,
+      "from": [
+        "acrobatics",
+        "animal_handling",
+        "athletics",
+        "history",
+        "insight",
+        "intimidation",
+        "perception",
+        "survival"
+      ]
+    }
+  },
+  "startingEquipment": [
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:chain-mail",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:leather-armor",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:arrows",
+            "count": 20
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:crossbow-light",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:crossbow-bolts",
+            "count": 20
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:handaxe",
+            "count": 2
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:dungeoneers-pack",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:explorers-pack",
+            "count": 1
+          }
+        ]
+      ]
+    }
+  ],
+  "startingGold": {
+    "dice": "5d4",
+    "multiplier": 10
+  },
+  "levels": [
+    {
+      "level": 1,
+      "features": [
+        "srd-5.1:second-wind"
+      ]
+    },
+    {
+      "level": 2,
+      "features": [
+        "srd-5.1:action-surge"
+      ]
+    },
+    {
+      "level": 3,
+      "grants": [
+        "subclass"
+      ]
+    },
+    {
+      "level": 4,
+      "grants": [
+        "asi"
+      ]
+    },
+    {
+      "level": 5,
+      "features": [
+        "srd-5.1:extra-attack"
+      ]
+    }
+  ]
+}

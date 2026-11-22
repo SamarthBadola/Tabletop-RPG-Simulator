@@ -52,7 +52,9 @@
         <p th:if="${isDm && scene != null}" th:text="${scene.notes}"></p>
         <ul><li th:each="event : ${events}" th:text="|${event.type} at ${event.gameSeconds} s|"></li></ul>
     </section>
+    <nav><a th:href="@{/campaigns/{id}/characters(id=${campaign.id})}">Characters</a></nav>
     <nav th:if="${isDm}">
+        <a th:href="@{/campaigns/{id}/packs(id=${campaign.id})}">Content packs</a>
         <a th:href="@{/campaigns/{id}/players(id=${campaign.id})}">Players and invites</a>
         <a th:href="@{/campaigns/{id}/scenes(id=${campaign.id})}">Scenes</a>
         <a th:href="@{/campaigns/{id}/settings(id=${campaign.id})}">House rules</a>

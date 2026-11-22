@@ -4,8 +4,8 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelop
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
 import java.util.UUID;
 
-record CommandForm(UUID actionId, Long expectedVersion) {
-  Envelope envelope() {
+public record CommandForm(UUID actionId, Long expectedVersion) {
+  public Envelope envelope() {
     if (actionId == null
         || actionId.version() != 7
         || expectedVersion == null
