@@ -1,6 +1,7 @@
 package com.github.sbadolankaur.rpg.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.sbadolankaur.rpg.RpgApplication;
+import com.github.sbadolankaur.rpg.content.ContentPack;
+import com.github.sbadolankaur.rpg.content.ContentPacks;
 import com.github.sbadolankaur.rpg.identity.web.RegistrationForm;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.security.SecureRandom;
@@ -63,12 +66,50 @@ class ApplicationFlowIT {
 
   @Autowired private PasswordEncoder passwordEncoder;
 
+  @Autowired private ContentPacks contentPacks;
+
   @BeforeEach
   void resetRegistrationState() {
     jdbcTemplate.update("DELETE FROM form_token");
     jdbcTemplate.update("DELETE FROM campaign");
     jdbcTemplate.update("DELETE FROM app_user");
     jdbcTemplate.update("UPDATE instance_state SET initialized = FALSE WHERE id = 1");
+  }
+
+  @Test
+  void applicationStartupSeedsOneRealDefinitionAndRejectsChangesUnderTheSameVersion()
+      throws Exception {
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM content_pack", Integer.class))
+        .isEqualTo(1);
+    assertThat(jdbcTemplate.queryForObject("SELECT key FROM content_definition", String.class))
+        .isEqualTo("srd-5.1:prone");
+    assertThat(jdbcTemplate.queryForObject("SELECT version FROM content_pack", String.class))
+        .isEqualTo("0.1.0");
+    String manifest =
+        jdbcTemplate.queryForObject("SELECT manifest::text FROM content_pack", String.class);
+    String notice = contentPacks.notice();
+    var changed =
+        new ContentPack(
+            "srd-5.1",
+            "0.1.0",
+            "sha256:" + "1".repeat(64),
+            "srd-5.1",
+            "CC-BY-4.0",
+            manifest,
+            notice,
+            java.util.List.of(),
+            java.util.List.of(),
+            java.util.List.of());
+    assertThatThrownBy(() -> contentPacks.seed(changed))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("differs from the installed hash");
+    mockMvc.perform(get("/help")).andExpect(status().is3xxRedirection());
+    mockMvc
+        .perform(get("/help").with(user("owner")))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.containsString("Creative Commons Attribution 4.0")));
   }
 
   @Test
@@ -101,6 +142,14 @@ class ApplicationFlowIT {
         .isEqualTo("DM");
     assertThat(jdbcTemplate.queryForObject("SELECT game_seconds FROM game_clock", Long.class))
         .isZero();
+    long started = System.nanoTime();
+    var loaded = contentPacks.open(campaign);
+    System.out.printf(
+        "Step 5 cold SRD seed load: %.1f ms%n", (System.nanoTime() - started) / 1_000_000.0);
+    assertThat(loaded.find("condition", "srd-5.1:prone")).isPresent();
+    assertThat(contentPacks.open(campaign)).isSameAs(contentPacks.open(campaign));
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM campaign_pack", Integer.class))
+        .isEqualTo(1);
 
     mockMvc
         .perform(
