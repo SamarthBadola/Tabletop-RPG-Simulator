@@ -77,8 +77,9 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 
 ### Step 5 — content-pack skeleton
 
-- [ ] Add content-pack and definition tables, JSON schema validation, immutable in-memory loading, an attribution page, and an empty SRD pack manifest.
-- [ ] No SRD game data yet.
+- [x] Add the four content storage tables and verify their guards on PostgreSQL.
+- [ ] Implement the nine-stage validation pipeline, generated vocabulary, conformance tests, immutable campaign content sets and attribution page.
+- [ ] Ship and verify one real SRD seed definition at version 0.1.0. The full SRD build comes later.
 
 **Implementation checkpoint note.** This progress section records status as of 2026-11-14. Since then, the approved specifications for later steps were added; follow the current AI Build Brief for the implementation sequence and stop points. This documentation sync does not verify later implementation work. Do not invent D&D rules from memory.
 
