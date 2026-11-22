@@ -229,6 +229,9 @@ std::optional<ApiError> parse_request(const std::string& body, bool with_goal, Q
             if (!grid->inside(cell.x, cell.y)) {
                 return invalid_request("a noStop cell is outside the grid", "/noStop/" + std::to_string(i));
             }
+            if (grid->blocked(cell.x, cell.y)) {  // spec section 3: a blocked cell is never listed in noStop
+                return invalid_request("a noStop cell is blocked", "/noStop/" + std::to_string(i));
+            }
             no_stop.push_back(cell);
         }
     }
