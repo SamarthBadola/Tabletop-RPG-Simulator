@@ -1,0 +1,59 @@
+name: Dice engine nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extended-dice-checks:
+    name: extended-dice-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: app/pom.xml
+
+      - name: Run extended parser fuzzing and timing guard
+        working-directory: app
+        run: ./mvnw -B -ntp test -Ddice.fuzz.long=true -Ddice.timing=true
+
+      - name: Check dice engine mutation coverage
+        working-directory: app
+        run: ./mvnw -B -ntp org.pitest:pitest-maven:1.30.2:mutationCoverage
+
+  newest-jdk:
+    name: newest-jdk (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up newest early-access JDK
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6
+        with:
+          distribution: temurin
+          java-version: "27-ea"
+          cache: maven
+          cache-dependency-path: app/pom.xml
+
+      - name: Compile and run unit tests
+        working-directory: app
+        run: ./mvnw -B -ntp test

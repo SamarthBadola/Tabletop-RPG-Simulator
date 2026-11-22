@@ -1,0 +1,10 @@
+java.lang.Math#random() @ Use RandomSource
+java.util.Random#<init>() @ Use RandomSource
+java.util.Random#<init>(long) @ Use RandomSource
+java.util.concurrent.ThreadLocalRandom @ Use RandomSource
+java.util.UUID#randomUUID() @ Use an injected id source
+java.lang.System#currentTimeMillis() @ Use the injected clock
+java.time.Instant#now() @ Use the injected clock
+java.time.LocalDateTime#now() @ Use the injected clock
+java.time.LocalDate#now() @ Use the injected clock
+java.util.Date#<init>() @ Use the injected clock
