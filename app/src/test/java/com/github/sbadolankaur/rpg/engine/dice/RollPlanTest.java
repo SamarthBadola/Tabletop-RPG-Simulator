@@ -94,6 +94,7 @@ class RollPlanTest {
     source.assertExhausted();
     assertThat(result.terms()).hasSize(2);
     assertThat(result.terms()).extracting(RollTerm::subtotal).containsExactly(4, 6);
+    assertThat(result.terms()).noneMatch(RollTerm::criticalNotApplied);
     assertThat(result.terms().get(1).dice()).allMatch(DieRoll::critical);
 
     RollPlan extra = base.doubleDiceForCritical(CriticalDiceMode.EXTRA_DIE_ONLY);
@@ -104,6 +105,7 @@ class RollPlanTest {
     assertThat(extraResult.terms().getFirst().dice())
         .extracting(DieRoll::critical)
         .containsExactly(false, false, true);
+    assertThat(extraResult.terms()).noneMatch(RollTerm::criticalNotApplied);
 
     RollPlan rejected = base.doubleDiceForCritical(CriticalDiceMode.REJECT);
     ForcedDice rejectedSource = new ForcedDice(4, 2);
@@ -112,6 +114,71 @@ class RollPlanTest {
     assertThat(rejectedResult.total()).isEqualTo(4);
     assertThat(rejectedResult.terms()).hasSize(1);
     assertThat(rejectedResult.terms().getFirst().dice()).hasSize(2).noneMatch(DieRoll::critical);
+    assertThat(rejectedResult.terms().getFirst().criticalNotApplied()).isTrue();
+  }
+
+  @Test
+  void rejectedFlagAppliesToKeepAndDropTermsButNotOtherTerms() {
+    DiceExpression selected = DiceExpression.parse("2d6dh1");
+    RollPlan plan =
+        RollPlan.builder()
+            .dice("weapon", "weapon:axe", selected, true)
+            .dice("bonus", "feature:bonus", DiceExpression.parse("1d4"), false)
+            .fixed("Strength", "ability:STR", 3)
+            .build()
+            .doubleDiceForCritical(CriticalDiceMode.REJECT);
+
+    RollResult result = plan.roll(new ForcedDice(4, 2, 3));
+
+    assertThat(result.terms())
+        .extracting(RollTerm::label)
+        .containsExactly("weapon", "bonus", "Strength");
+    assertThat(result.terms())
+        .extracting(RollTerm::criticalNotApplied)
+        .containsExactly(true, false, false);
+    assertThat(result.terms().getFirst().dice()).hasSize(2).noneMatch(DieRoll::critical);
+    assertThat(result.terms().get(1).dice()).hasSize(1).noneMatch(DieRoll::critical);
+  }
+
+  @Test
+  void rejectDoublesFlaggedPlainGroupsWithoutMarkingThem() {
+    RollPlan plan =
+        RollPlan.builder()
+            .dice("weapon", "weapon:axe", DiceExpression.parse("1d6"), true)
+            .build()
+            .doubleDiceForCritical(CriticalDiceMode.REJECT);
+
+    RollResult result = plan.roll(new ForcedDice(4, 2));
+
+    assertThat(result.terms()).hasSize(1);
+    assertThat(result.terms().getFirst().dice()).hasSize(2);
+    assertThat(result.terms().getFirst().dice())
+        .extracting(DieRoll::critical)
+        .containsExactly(false, true);
+    assertThat(result.terms().getFirst().criticalNotApplied()).isFalse();
+  }
+
+  @Test
+  void criticalDiceLimitsAllowAtMostFourHundredDiceInEveryMode() {
+    RollPlan base =
+        RollPlan.builder()
+            .dice("first", null, DiceExpression.parse("100d6kh1"), true)
+            .dice("second", null, DiceExpression.parse("100d6dl1"), true)
+            .build();
+
+    assertCriticalDiceCount(base, CriticalDiceMode.ROLL_AGAIN_ADD, 400);
+    assertCriticalDiceCount(base, CriticalDiceMode.EXTRA_DIE_ONLY, 202);
+    assertCriticalDiceCount(base, CriticalDiceMode.REJECT, 200);
+  }
+
+  private static void assertCriticalDiceCount(
+      RollPlan base, CriticalDiceMode mode, int expectedDiceCount) {
+    RollPlan critical = base.doubleDiceForCritical(mode);
+    int[] faces = new int[expectedDiceCount];
+    java.util.Arrays.fill(faces, 1);
+    RollResult result = critical.roll(new ForcedDice(faces));
+    assertThat(result.terms()).flatExtracting(RollTerm::dice).hasSize(expectedDiceCount);
+    assertThat(result.terms()).allMatch(term -> term.dice().size() <= 400);
   }
 
   @Test

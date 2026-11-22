@@ -10,7 +10,8 @@ public record RollTerm(
     List<DieRoll> dice,
     int fixed,
     int subtotal,
-    boolean doublesOnCrit) {
+    boolean doublesOnCrit,
+    boolean criticalNotApplied) {
   public RollTerm {
     dice = List.copyOf(dice);
   }

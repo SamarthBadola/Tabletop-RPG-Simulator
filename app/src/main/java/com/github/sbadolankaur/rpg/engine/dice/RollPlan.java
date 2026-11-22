@@ -17,6 +17,7 @@ public final class RollPlan {
       Integer fixed,
       boolean doublesOnCrit,
       boolean d20Test,
+      boolean criticalNotApplied,
       int criticalFrom) {}
 
   private final List<Entry> entries;
@@ -40,17 +41,17 @@ public final class RollPlan {
     List<Entry> expanded = new ArrayList<>();
     for (Entry entry : entries) {
       if (entry.group() == null || !entry.doublesOnCrit()) {
-        expanded.add(entry);
+        expanded.add(withCriticalNotApplied(entry, false));
         continue;
       }
       DiceExpression.DiceGroup group = entry.group();
       boolean selection = group.selection() != DiceExpression.Selection.NONE;
       if (selectedMode == CriticalDiceMode.REJECT && selection) {
-        expanded.add(entry);
+        expanded.add(withCriticalNotApplied(entry, true));
       } else if (selectedMode == CriticalDiceMode.EXTRA_DIE_ONLY) {
         expanded.add(withCount(entry, group.count() + 1, group.count()));
       } else if (selectedMode == CriticalDiceMode.ROLL_AGAIN_ADD && selection) {
-        expanded.add(entry);
+        expanded.add(withCriticalNotApplied(entry, false));
         expanded.add(
             new Entry(
                 entry.label(),
@@ -59,6 +60,7 @@ public final class RollPlan {
                 group,
                 null,
                 entry.doublesOnCrit(),
+                false,
                 false,
                 0));
       } else {
@@ -87,7 +89,8 @@ public final class RollPlan {
                 List.of(),
                 entry.fixed(),
                 subtotal,
-                false);
+                false,
+                entry.criticalNotApplied());
       } else {
         result = rollGroup(entry, source);
         if (entry.d20Test()) {
@@ -156,7 +159,9 @@ public final class RollPlan {
         dice,
         0,
         subtotal,
-        entry.doublesOnCrit());
+        entry.doublesOnCrit(),
+        // Step 7 reads this marker for the deferred dice event and warning.
+        entry.criticalNotApplied());
   }
 
   private static boolean[] select(DiceExpression.DiceGroup group, int[] values) {
@@ -202,7 +207,21 @@ public final class RollPlan {
         null,
         entry.doublesOnCrit(),
         entry.d20Test(),
+        false,
         criticalFrom);
+  }
+
+  private static Entry withCriticalNotApplied(Entry entry, boolean criticalNotApplied) {
+    return new Entry(
+        entry.label(),
+        entry.source(),
+        entry.sign(),
+        entry.group(),
+        entry.fixed(),
+        entry.doublesOnCrit(),
+        entry.d20Test(),
+        criticalNotApplied,
+        entry.criticalFrom());
   }
 
   private static void validatePlan(List<Entry> entries, boolean afterDoubling) {
@@ -261,7 +280,8 @@ public final class RollPlan {
               selection == DiceExpression.Selection.NONE ? 0 : 1,
               null,
               floor);
-      entries.add(new Entry(D20_TEST_LABEL, null, 1, group, null, false, true, Integer.MAX_VALUE));
+      entries.add(
+          new Entry(D20_TEST_LABEL, null, 1, group, null, false, true, false, Integer.MAX_VALUE));
       mode = rollMode;
       hasD20 = true;
       return this;
@@ -282,6 +302,7 @@ public final class RollPlan {
               value < 0 ? -1 : 1,
               null,
               Math.abs(value),
+              false,
               false,
               false,
               Integer.MAX_VALUE));
@@ -340,7 +361,15 @@ public final class RollPlan {
               group.floorAtLeast());
       entries.add(
           new Entry(
-              label, source, sign, normalized, null, doublesOnCrit, false, Integer.MAX_VALUE));
+              label,
+              source,
+              sign,
+              normalized,
+              null,
+              doublesOnCrit,
+              false,
+              false,
+              Integer.MAX_VALUE));
       return this;
     }
 

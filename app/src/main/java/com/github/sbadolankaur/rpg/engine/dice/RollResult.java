@@ -64,7 +64,8 @@ public record RollResult(List<RollTerm> terms, int total, Integer naturalD20, Ro
             dice,
             term.fixed(),
             subtotal,
-            term.doublesOnCrit()));
+            term.doublesOnCrit(),
+            term.criticalNotApplied()));
     int newTotal = Math.addExact(total - term.subtotal(), subtotal);
     Integer natural =
         dice.stream().filter(DieRoll::kept).map(DieRoll::value).findFirst().orElse(null);
