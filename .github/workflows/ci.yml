@@ -158,7 +158,10 @@ jobs:
 
       - name: Check formatting and run unit tests
         working-directory: app
-        run: ./mvnw -B -ntp spotless:check test
+        run: |
+          bash scripts/check-engine-strict.sh
+          ./mvnw -B -ntp spotless:check test forbiddenapis:check forbiddenapis:testCheck
+          ./mvnw -B -ntp test forbiddenapis:testCheck -DargLine="-Duser.language=tr -Duser.country=TR -Duser.timezone=Pacific/Kiritimati -Ddice.localeJob=true"
 
   integration:
     name: integration
