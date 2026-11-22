@@ -345,6 +345,7 @@ public class Characters {
         Kind.CHARACTER_LEVEL_UP,
         new LevelAction(id, form),
         clock -> {
+          if (store.inActiveEncounter(id)) throw new CampaignException(Code.ENCOUNTER_ACTIVE);
           var state = state(campaign, actor, id);
           var catalog = catalog(campaign, actor);
           var effective = settings.effective(campaign, actor);
@@ -501,6 +502,9 @@ public class Characters {
           var state = store.read(rights.character());
           var catalog = catalog(campaign, actor);
           if (form.section() == null) throw invalid();
+          if (store.inActiveEncounter(id) && !form.section().equals("details")) {
+            throw new CampaignException(Code.ENCOUNTER_ACTIVE);
+          }
           switch (form.section()) {
             case "details" -> store.rename(id, name(form.name()));
             case "inventory" -> {

@@ -84,7 +84,7 @@ public class CampaignSettings {
         Kind.SETTING_MODE,
         mode,
         clock -> {
-          if (!"CONFIGURE_NOW".equals(mode) && !"DEFAULTS_ONLY".equals(mode)) {
+          if (!java.util.Set.of("CONFIGURE_NOW", "DEFAULTS_ONLY", "ASK_AS_NEEDED").contains(mode)) {
             throw new CampaignException(CampaignException.Code.SETTING_INVALID);
           }
           String oldMode = store.setup(campaign).mode();
@@ -171,6 +171,24 @@ public class CampaignSettings {
   public SettingsView effective(UUID campaign, UUID actor) {
     campaigns.requireMember(campaign, actor);
     return snapshot(campaign);
+  }
+
+  public void requireDecisions(UUID campaign, UUID actor, List<String> used) {
+    campaigns.requireDm(campaign, actor);
+    if (used.isEmpty() || !"ASK_AS_NEEDED".equals(store.setup(campaign).mode())) return;
+    var decisions = store.decisions(campaign);
+    var missing =
+        used.stream()
+            .distinct()
+            .filter(
+                key ->
+                    SettingsRegistry.require(key).tier() == SettingsRegistry.Tier.ASK_ON_FIRST_USE)
+            .filter(key -> !decisions.containsKey(key))
+            .toList();
+    if (!missing.isEmpty()) {
+      throw new CampaignException(
+          CampaignException.Code.SETTING_DECISION_REQUIRED, Map.of("settingKeys", missing));
+    }
   }
 
   private SettingsView snapshot(UUID campaign) {

@@ -301,6 +301,71 @@ public class CharacterStore {
         .update();
   }
 
+  public CombatMetadata combatMetadata(UUID id) {
+    return jdbc.sql(
+            """
+        SELECT owner_id, death_successes, death_failures, stable_recovery_at
+        FROM player_character WHERE id = ?
+        """)
+        .param(id)
+        .query(
+            (row, index) ->
+                new CombatMetadata(
+                    row.getObject(1, UUID.class),
+                    row.getInt(2),
+                    row.getInt(3),
+                    row.getObject(4, Long.class)))
+        .single();
+  }
+
+  public void combatVitals(
+      UUID id, int hp, int temporary, int successes, int failures, Long recoveryAt) {
+    jdbc.sql(
+            """
+        UPDATE player_character SET hp_current=?, hp_temp=?, death_successes=?, death_failures=?,
+          stable_recovery_at=? WHERE id=?
+        """)
+        .params(hp, temporary, successes, failures, recoveryAt, id)
+        .update();
+  }
+
+  public Map<UUID, String> equippedSlots(UUID id) {
+    var slots = new java.util.HashMap<UUID, String>();
+    jdbc.sql(
+            """
+        SELECT id, equipment_slot FROM inventory_item
+        WHERE player_character_id = ? AND equipment_slot IS NOT NULL
+        """)
+        .param(id)
+        .query((row, index) -> Map.entry(row.getObject(1, UUID.class), row.getString(2)))
+        .list()
+        .forEach(entry -> slots.put(entry.getKey(), entry.getValue()));
+    return Map.copyOf(slots);
+  }
+
+  public void dropHeld(UUID id) {
+    jdbc.sql(
+            """
+        UPDATE inventory_item SET equipment_slot = NULL
+        WHERE player_character_id = ? AND equipment_slot IN ('MAIN_HAND', 'OFF_HAND', 'BOTH_HANDS')
+        """)
+        .param(id)
+        .update();
+  }
+
+  public boolean inActiveEncounter(UUID id) {
+    return jdbc.sql(
+            """
+        SELECT EXISTS (SELECT 1 FROM combatant c JOIN encounter e ON e.id = c.encounter_id
+          WHERE c.character_id = ? AND e.state IN ('INITIATIVE', 'ACTIVE'))
+        """)
+        .param(id)
+        .query(Boolean.class)
+        .single();
+  }
+
+  public record CombatMetadata(UUID owner, int successes, int failures, Long recoveryAt) {}
+
   public void equip(UUID id, Map<UUID, String> slots) {
     jdbc.sql("UPDATE inventory_item SET equipment_slot = NULL WHERE player_character_id = ?")
         .param(id)

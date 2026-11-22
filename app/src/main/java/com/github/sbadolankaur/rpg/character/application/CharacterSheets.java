@@ -236,7 +236,20 @@ public final class CharacterSheets {
                 })
             .toList();
     var conditions =
-        state.conditions().stream().map(key -> catalog.choice("condition", key)).toList();
+        state.conditions().stream()
+            .map(
+                key ->
+                    catalog
+                        .optional("condition", key)
+                        .map(data -> new Choice(key, data.text("name")))
+                        .orElseGet(
+                            () ->
+                                new Choice(
+                                    key,
+                                    com.github.sbadolankaur.rpg.engine.combat.CombatConditions
+                                        .names()
+                                        .getOrDefault(key, key))))
+            .toList();
     return new View(
         header.id(),
         header.name(),
