@@ -25,7 +25,7 @@ public record Ratio(int numerator, int denominator) implements Comparable<Ratio>
   public Ratio multiply(Ratio other) {
     long productNumerator = Math.multiplyExact((long) numerator, other.numerator);
     long productDenominator = Math.multiplyExact((long) denominator, other.denominator);
-    return new Ratio(Math.toIntExact(productNumerator), Math.toIntExact(productDenominator));
+    return reduced(productNumerator, productDenominator);
   }
 
   public Ratio add(Ratio other) {
@@ -33,7 +33,7 @@ public record Ratio(int numerator, int denominator) implements Comparable<Ratio>
     long second = Math.multiplyExact((long) other.numerator, denominator);
     long sum = Math.addExact(first, second);
     long commonDenominator = Math.multiplyExact((long) denominator, other.denominator);
-    return new Ratio(Math.toIntExact(sum), Math.toIntExact(commonDenominator));
+    return reduced(sum, commonDenominator);
   }
 
   @Override
@@ -47,6 +47,11 @@ public record Ratio(int numerator, int denominator) implements Comparable<Ratio>
   public int floorProduct(int value) {
     long product = Math.multiplyExact((long) value, numerator);
     return Math.toIntExact(Math.floorDiv(product, denominator));
+  }
+
+  private static Ratio reduced(long numerator, long denominator) {
+    long divisor = gcd(Math.abs(numerator), denominator);
+    return new Ratio(Math.toIntExact(numerator / divisor), Math.toIntExact(denominator / divisor));
   }
 
   private static long gcd(long first, long second) {

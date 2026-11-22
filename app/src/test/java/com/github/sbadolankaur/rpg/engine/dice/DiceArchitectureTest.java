@@ -1,7 +1,7 @@
 package com.github.sbadolankaur.rpg.engine.dice;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.github.sbadolankaur.rpg.engine.architecture.fixture.ForbiddenFrameworkDependency;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -27,7 +27,9 @@ class DiceArchitectureTest {
     JavaClasses violatingClasses =
         new ClassFileImporter().importClasses(ForbiddenFrameworkDependency.class);
 
-    assertThat(pureEngineRule().evaluate(violatingClasses).hasViolation()).isTrue();
+    assertThatThrownBy(() -> pureEngineRule().check(violatingClasses))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("ForbiddenFrameworkDependency");
   }
 
   private static ArchRule pureEngineRule() {
@@ -39,8 +41,8 @@ class DiceArchitectureTest {
         .resideInAnyPackage(
             "org.springframework..",
             "jakarta.persistence..",
-            "java.net.http..",
-            "java.io.File*",
+            "java.net..",
+            "java.io..",
             "java.nio.file..");
   }
 }

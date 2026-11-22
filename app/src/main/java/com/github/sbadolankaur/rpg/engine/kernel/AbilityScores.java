@@ -90,12 +90,10 @@ public final class AbilityScores {
     Objects.requireNonNull(ability, "ability");
     if (amount == 0) return this;
     ImprovementPreview preview = previewImprovement(ability, amount);
-    if (preview.lost() != 0) {
-      throw new IllegalArgumentException("The requested improvement exceeds the ability maximum");
-    }
+    if (preview.applied() == 0) return this;
     Map<Ability, Integer> updated = new java.util.EnumMap<>(Ability.class);
     updated.putAll(improvements);
-    updated.merge(ability, amount, Math::addExact);
+    updated.merge(ability, preview.applied(), Math::addExact);
     return new AbilityScores(baseScores, updated, modifiers, maximumScores, ceiling);
   }
 

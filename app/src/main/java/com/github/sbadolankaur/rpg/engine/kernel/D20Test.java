@@ -54,6 +54,20 @@ public final class D20Test {
     FAILURE
   }
 
+  /** A forced save carries its cause and resolves without creating or drawing a d20. */
+  public record SaveOverride(AutomaticOutcome outcome, String source) {
+    public SaveOverride {
+      Objects.requireNonNull(outcome, "outcome");
+      if (outcome == AutomaticOutcome.NONE || source == null || source.isBlank()) {
+        throw new IllegalArgumentException("A forced save requires an outcome and source");
+      }
+    }
+
+    public boolean success() {
+      return outcome == AutomaticOutcome.SUCCESS;
+    }
+  }
+
   public record Result(
       int total, int target, int naturalD20, boolean success, AutomaticOutcome automaticOutcome) {
     public Result {

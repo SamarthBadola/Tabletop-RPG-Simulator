@@ -111,17 +111,17 @@ public final class DurationSpec {
   }
 
   /** Converts the remaining rounds to the fixed six-second rules clock when combat ends. */
-  public DurationSpec asClockWhenEncounterEnds(long currentClockSeconds, long remainingRounds) {
+  public DurationSpec asClockWhenEncounterEnds(long currentClockSeconds, long currentRound) {
     if (kind != DurationKind.ROUNDS) {
       throw new IllegalStateException("Only round durations convert when an encounter ends");
     }
-    if (remainingRounds < 0) {
-      throw new IllegalArgumentException("Remaining rounds cannot be negative");
+    if (currentRound < 0) {
+      throw new IllegalArgumentException("Current round cannot be negative");
     }
     if (currentClockSeconds < 0) {
       throw new IllegalArgumentException("Current clock cannot be negative");
     }
-    long remainingSeconds = Math.multiplyExact(remainingRounds, (long) GameClock.SECONDS_PER_ROUND);
+    long remainingSeconds = GameClock.secondsForRounds(Math.max(0, endRound - currentRound));
     return new DurationSpec(
         DurationKind.CLOCK, null, Math.addExact(currentClockSeconds, remainingSeconds), null);
   }
@@ -129,6 +129,17 @@ public final class DurationSpec {
   /** INSTANT effects are resolved immediately and are never persisted as active durations. */
   public boolean isStoredActive() {
     return kind != DurationKind.INSTANT;
+  }
+
+  /** Whether a completed rest ends this duration. A long rest satisfies either rest kind. */
+  public boolean endsOnRest(boolean longRest) {
+    return kind == DurationKind.UNTIL_SHORT_OR_LONG_REST
+        || (longRest && kind == DurationKind.UNTIL_LONG_REST);
+  }
+
+  /** Whether consuming the associated roll bonus ends this duration. */
+  public boolean endsOnUse() {
+    return kind == DurationKind.UNTIL_USED;
   }
 
   private static DurationSpec turn(DurationKind kind, long endRound, String creatureKey) {

@@ -9,6 +9,16 @@ import org.junit.jupiter.api.Test;
 
 class D20TestResolutionTest {
   @Test
+  void RS_SAV_005_forcedSaveHasASourceAndNeedsNoRoll() {
+    var failure = new D20Test.SaveOverride(D20Test.AutomaticOutcome.FAILURE, "effect");
+    var success = new D20Test.SaveOverride(D20Test.AutomaticOutcome.SUCCESS, "feature");
+
+    assertThat(failure.success()).isFalse();
+    assertThat(failure.source()).isEqualTo("effect");
+    assertThat(success.success()).isTrue();
+  }
+
+  @Test
   void RS_CHK_002_checkTotalIncludesProficiencyAndMeetsDcOnEqualityOrHigher() {
     ForcedDice dice = new ForcedDice(11);
     var roll =

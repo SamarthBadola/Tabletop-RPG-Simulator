@@ -6,9 +6,31 @@ import com.github.sbadolankaur.rpg.engine.dice.ForcedDice;
 import com.github.sbadolankaur.rpg.engine.dice.RollMode;
 import com.github.sbadolankaur.rpg.engine.dice.RollPlan;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class AdvantageSourcesTest {
+  @Test
+  void RS_ADV_006_onlySourcesMatchingKindAbilityAndConditionsCount() {
+    var check = AdvantageSources.RollKind.ABILITY_CHECK;
+    var poison =
+        new AdvantageSources.Source(
+            "poison", RollMode.DISADVANTAGE, check, null, Set.of("poisoned"));
+    var help =
+        new AdvantageSources.Source("help", RollMode.ADVANTAGE, check, Ability.STR, Set.of());
+    var attackOnly =
+        new AdvantageSources.Source(
+            "attack only", RollMode.DISADVANTAGE, AdvantageSources.RollKind.ATTACK, null, Set.of());
+    var sources = List.of(poison, help, attackOnly);
+
+    var healthy = AdvantageSources.resolve(sources, check, Ability.STR, Set.of());
+    assertThat(healthy.advantages()).containsExactly("help");
+    assertThat(healthy.mode()).isEqualTo(RollMode.ADVANTAGE);
+    var poisoned = AdvantageSources.resolve(sources, check, Ability.DEX, Set.of("poisoned"));
+    assertThat(poisoned.disadvantages()).containsExactly("poison");
+    assertThat(poisoned.mode()).isEqualTo(RollMode.DISADVANTAGE);
+  }
+
   @Test
   void RS_ADV_001_advantageKeepsTheHigherOfTwoForcedDice() {
     AdvantageSources sources = new AdvantageSources(List.of("help"), List.of());

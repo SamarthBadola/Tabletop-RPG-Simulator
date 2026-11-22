@@ -46,10 +46,11 @@ class DurationSpecTest {
   void roundsConvertToClockAtSixSecondsPerRemainingRoundWhenEncounterEnds() {
     DurationSpec rounds = DurationSpec.rounds(4, 12, "creature-7");
 
-    DurationSpec clock = rounds.asClockWhenEncounterEnds(100, 2);
+    DurationSpec clock = rounds.asClockWhenEncounterEnds(100, 14);
 
     assertThat(clock.kind()).isEqualTo(DurationKind.CLOCK);
     assertThat(clock.endClockSeconds()).hasValue(112);
+    assertThat(rounds.asClockWhenEncounterEnds(100, 17).endClockSeconds()).hasValue(100);
     assertThatThrownBy(() -> rounds.asClockWhenEncounterEnds(100, -1))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -58,6 +59,17 @@ class DurationSpecTest {
   void instantIsNeverStoredAsAnActiveDuration() {
     assertThat(DurationSpec.instant().isStoredActive()).isFalse();
     assertThat(DurationSpec.untilUsed().isStoredActive()).isTrue();
+  }
+
+  @Test
+  void onlyMatchingRestAndUseEventsEndTheirDurations() {
+    assertThat(DurationSpec.untilShortOrLongRest().endsOnRest(false)).isTrue();
+    assertThat(DurationSpec.untilShortOrLongRest().endsOnRest(true)).isTrue();
+    assertThat(DurationSpec.untilLongRest().endsOnRest(false)).isFalse();
+    assertThat(DurationSpec.untilLongRest().endsOnRest(true)).isTrue();
+    assertThat(DurationSpec.untilUsed().endsOnRest(true)).isFalse();
+    assertThat(DurationSpec.untilUsed().endsOnUse()).isTrue();
+    assertThat(DurationSpec.clock(1, 60, 0).endsOnUse()).isFalse();
   }
 
   @Test

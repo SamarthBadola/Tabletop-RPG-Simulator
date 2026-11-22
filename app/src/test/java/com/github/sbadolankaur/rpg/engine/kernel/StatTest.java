@@ -67,12 +67,95 @@ class StatTest {
   }
 
   @Test
+  void newestSetWinsAcrossStackKeysAndOlderSetResumesWhenWinnerEnds() {
+    Modifier first = modifier("strength", "SET", Ratio.of(10), "first", 1, 1);
+    Modifier second = modifier("strength", "SET", Ratio.of(14), "second", 1, 2);
+
+    assertThat(new Stat("strength", 8, List.of(first, second)).value()).isEqualTo(14);
+    assertThat(new Stat("strength", 8, List.of(first)).value()).isEqualTo(10);
+    assertThat(
+            new Stat(
+                    "strength",
+                    8,
+                    List.of(first, second, modifier("strength", "ADD", Ratio.of(2), "bonus", 1, 3)))
+                .value())
+        .isEqualTo(16);
+    assertThat(
+            new Stat(
+                    "strength",
+                    8,
+                    List.of(first, modifier("strength", "ADD", Ratio.of(2), "bonus", 1, 3)))
+                .value())
+        .isEqualTo(12);
+  }
+
+  @Test
+  void mostRecentSetWinsEvenWhenItLowersTheStatAndBreakdownNamesSuppressedSets() {
+    Modifier earlier = modifier("strength", "SET", Ratio.of(14), "belt", 1, 1);
+    Modifier later = modifier("strength", "SET", Ratio.of(1), "curse", 1, 2);
+
+    var breakdown = new Stat("strength", 8, List.of(earlier, later)).breakdown();
+
+    assertThat(breakdown.value()).isEqualTo(1);
+    assertThat(breakdown.winningSet()).contains(later);
+    assertThat(breakdown.overriddenSets()).containsExactly(earlier);
+  }
+
+  @Test
+  void setThenMaxAppliesMaxAfterTheWinningSet() {
+    assertThat(
+            new Stat(
+                    "strength",
+                    8,
+                    List.of(
+                        modifier("strength", "SET", Ratio.of(12), "set", 1, 1),
+                        modifier("strength", "MAX", Ratio.of(19), "belt", 1, 2)))
+                .value())
+        .isEqualTo(19);
+  }
+
+  @Test
+  void sameStackKeySelectsMostPotentSetBeforeConsideringOtherStackKeys() {
+    Modifier weakerRecent = modifier("strength", "SET", Ratio.of(20), "same", 1, 3);
+    Modifier potentOlder = modifier("strength", "SET", Ratio.of(10), "same", 2, 1);
+    Modifier otherKey = modifier("strength", "SET", Ratio.of(14), "other", 1, 2);
+
+    var breakdown =
+        new Stat("strength", 8, List.of(weakerRecent, potentOlder, otherKey)).breakdown();
+
+    assertThat(breakdown.value()).isEqualTo(14);
+    assertThat(breakdown.winningSet()).contains(otherKey);
+    assertThat(breakdown.overriddenSets()).containsExactlyInAnyOrder(weakerRecent, potentOlder);
+  }
+
+  @Test
+  void zeroBaseOrMultiplierRemainsZero() {
+    Modifier triple = modifier("speed", "MULTIPLY", Ratio.of(3), "triple", 1, 1);
+    Modifier zero = modifier("speed", "MULTIPLY", Ratio.ZERO, "zero", 1, 2);
+    assertThat(new Stat("speed", 0, List.of(triple)).value()).isZero();
+    assertThat(new Stat("speed", 25, List.of(triple, zero)).value()).isZero();
+  }
+
+  @Test
   void integerStatOperationsRejectFractionalOperandsExceptMultiply() {
     assertThatThrownBy(
             () ->
                 new Modifier(
                     "hp_max",
                     ModOp.SET,
+                    new Ratio(1, 2),
+                    null,
+                    DurationSpec.permanent(),
+                    "spell",
+                    "spell",
+                    1,
+                    1))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () ->
+                new Modifier(
+                    "hp_max",
+                    ModOp.ADD,
                     new Ratio(1, 2),
                     null,
                     DurationSpec.permanent(),
@@ -96,7 +179,12 @@ class StatTest {
   }
 
   private static Modifier modifier(
-      String target, String op, Ratio value, String stackKey, int potency, long appliedOrder) {
+      String target,
+      String op,
+      Ratio value,
+      String stackKey,
+      int potency,
+      long applicationSequence) {
     return new Modifier(
         target,
         ModOp.valueOf(op),
@@ -106,6 +194,6 @@ class StatTest {
         stackKey,
         stackKey,
         potency,
-        appliedOrder);
+        applicationSequence);
   }
 }

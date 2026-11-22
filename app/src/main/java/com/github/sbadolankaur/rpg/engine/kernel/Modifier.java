@@ -12,7 +12,7 @@ public record Modifier(
     String stackKey,
     String source,
     int potency,
-    long appliedOrder) {
+    long applicationSequence) {
   public Modifier {
     requireText(targetStat, "targetStat");
     Objects.requireNonNull(op, "op");
@@ -26,8 +26,8 @@ public record Modifier(
     if (activeWhen != null && activeWhen.isBlank()) {
       throw new IllegalArgumentException("activeWhen must be absent or non-blank");
     }
-    if (potency < 0 || appliedOrder < 0) {
-      throw new IllegalArgumentException("Potency and applied order cannot be negative");
+    if (potency < 0 || applicationSequence < 0) {
+      throw new IllegalArgumentException("Potency and application sequence must be nonnegative");
     }
     if (isIntegerStat(targetStat)
         && (op == ModOp.SET || op == ModOp.ADD || op == ModOp.MIN || op == ModOp.MAX)

@@ -1,16 +1,21 @@
 package com.github.sbadolankaur.rpg.architecture;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.github.sbadolankaur.rpg.architecture.fixture.ability.DirectAbilityStorage;
 import com.github.sbadolankaur.rpg.architecture.fixture.other.OutsideDefinitionBuilder;
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.dependencies.Slice;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -37,7 +42,10 @@ class ProjectArchitectureTest {
                 "com.github.sbadolankaur.rpg.architecture.fixture.features.player.web",
                 "com.github.sbadolankaur.rpg.architecture.fixture.features.dm.persistence");
 
-    assertThat(noWebToPersistence().evaluate(fixture).hasViolation()).isTrue();
+    assertThatThrownBy(() -> noWebToPersistence().check(fixture))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("PlayerPage")
+        .hasMessageContaining("DmRepository");
   }
 
   @Test
@@ -47,14 +55,18 @@ class ProjectArchitectureTest {
             .importPackages(
                 "com.github.sbadolankaur.rpg.cyclealpha", "com.github.sbadolankaur.rpg.cyclebeta");
 
-    assertThat(featurePackagesHaveNoCycles().evaluate(fixture).hasViolation()).isTrue();
+    assertThatThrownBy(() -> featurePackagesHaveNoCycles().check(fixture))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("Cycle detected");
   }
 
   @Test
   void directAbilityStorageOutsideTheAccessorViolatesItsRule() {
     JavaClasses fixture = new ClassFileImporter().importClasses(DirectAbilityStorage.class);
 
-    assertThat(abilityStorageIsEncapsulated().evaluate(fixture).hasViolation()).isTrue();
+    assertThatThrownBy(() -> abilityStorageIsEncapsulated().check(fixture))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("DirectAbilityStorage");
   }
 
   @Test
@@ -65,16 +77,31 @@ class ProjectArchitectureTest {
                 OutsideDefinitionBuilder.class,
                 com.github.sbadolankaur.rpg.architecture.fixture.content.DefinitionBuilder.class);
 
-    assertThat(onlyContentBuildsDefinitions().evaluate(fixture).hasViolation()).isTrue();
+    assertThatThrownBy(() -> onlyContentBuildsDefinitions().check(fixture))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("OutsideDefinitionBuilder");
   }
 
   private static ArchRule noWebToPersistence() {
-    return noClasses()
+    return classes()
         .that()
         .resideInAPackage("..web..")
-        .should()
-        .dependOnClassesThat()
-        .resideInAPackage("..persistence..");
+        .should(
+            new ArchCondition<>("avoid another feature's persistence classes") {
+              @Override
+              public void check(JavaClass webClass, ConditionEvents events) {
+                String feature = webClass.getPackageName().split("\\.web(?:\\.|$)", 2)[0];
+                for (var dependency : webClass.getDirectDependenciesFromSelf()) {
+                  String target = dependency.getTargetClass().getPackageName();
+                  String[] persistence = target.split("\\.persistence(?:\\.|$)", 2);
+                  if (persistence.length == 2 && !persistence[0].equals(feature)) {
+                    events.add(
+                        SimpleConditionEvent.violated(dependency, dependency.getDescription()));
+                  }
+                }
+              }
+            })
+        .allowEmptyShould(true);
   }
 
   private static ArchRule featurePackagesHaveNoCycles() {

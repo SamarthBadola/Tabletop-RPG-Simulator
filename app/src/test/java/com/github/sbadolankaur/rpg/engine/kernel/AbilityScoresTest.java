@@ -85,7 +85,7 @@ class AbilityScoresTest {
             30);
 
     AbilityScores.ImprovementPreview preview = scores.previewImprovement(Ability.STR, 2);
-    AbilityScores improved = scores.withImprovement(Ability.STR, preview.applied());
+    AbilityScores improved = scores.withImprovement(Ability.STR, 2);
 
     assertThat(preview.requested()).isEqualTo(2);
     assertThat(preview.applied()).isEqualTo(1);
