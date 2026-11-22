@@ -1,6 +1,6 @@
 # Progress Tracker
 
-> **Canonical tracker:** [Tabletop RPG Simulator Decision Log and Progress Tracker v1.34](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file is retained as a quick progress mirror for compatibility with existing repository checks. Record authoritative milestone/status changes in the consolidated tracker and keep this summary aligned.
+> **Canonical tracker:** [Tabletop RPG Simulator Decision Log and Progress Tracker v1.35](Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md). This file is retained as a quick progress mirror for compatibility with existing repository checks. Record authoritative milestone/status changes in the consolidated tracker and keep this summary aligned.
 
 Last reconciled for implementation status: 2026-11-22, after Step 2 PR #27 merged and its GitHub CI run passed.
 
@@ -60,9 +60,10 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 
 ### Step 3 — kernel and architecture tests
 
-- [ ] Implement the kernel types and modifier semantics with specified order/rounding.
-- [ ] Add ArchUnit rules and demonstrate that deliberate violations fail the build.
-- [ ] Implement the Part A worked examples for abilities, proficiency, d20 tests, advantage, checks, saves, levels, modifiers and time as named tests.
+- [x] Implement the Step 3 kernel types, modifier precedence and breakdown, exact ratio arithmetic, and absolute duration ends.
+- [x] Add ArchUnit rules and verify that all five checks reject deliberate violations.
+- [x] Cover Part A kernel examples for abilities, proficiency, d20 tests, advantage, checks, saves, levels, modifiers and time.
+- [ ] Complete pull request checks and owner review.
 
 ### Step 4 — campaign, session, and access
 
@@ -96,7 +97,7 @@ Treat this as a tracked quality improvement before the full stack grows substant
 
 ## Working agreement
 
-1. Read \`docs/AI-HANDOFF.md\`, this tracker, \`docs/DECISION-LOG.md\`, \`docs/REPOSITORY-GOVERNANCE.md\`, the current build brief and Architecture v5.16 before coding.
+1. Read \`docs/AI-HANDOFF.md\`, this tracker, \`docs/DECISION-LOG.md\`, \`docs/REPOSITORY-GOVERNANCE.md\`, the current build brief and Architecture v5.17 before coding.
 2. Work one focused PR at a time from a short-lived branch. Use Conventional Commits and do not push directly to `main`.
 3. Keep code efficient and simple. Prefer clear names over redundant comments; document public contracts and non-obvious constraints only.
 4. Define observable done-when criteria, run the relevant tests, report actual outcomes, and update docs in the same PR.
