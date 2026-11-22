@@ -1,10 +1,10 @@
-# Tabletop RPG Simulator: Content Schema Specification
+# Tabletop RPG Simulator: Content Schema Specification (v1.2)
 
 Nov 21, 2026 · @Samarth
 
 ## 1. Purpose, scope and status
 
-This document fixes the exact format of game content: how a content pack is laid out on disk, how each definition is written, which engine pieces a definition may name, and the small grammar used for formulas. The Ruleset Specification says what the rules do; this document says how data refers to them. Current version 1.1. Version 1.0 was accepted by the owner on 2026-11-21. Its decisions are listed in section 18, and the revision history is at the end.
+This document fixes the exact format of game content: how a content pack is laid out on disk, how each definition is written, which engine pieces a definition may name, and the small grammar used for formulas. The Ruleset Specification says what the rules do; this document says how data refers to them. Current version 1.2. Version 1.0 was accepted by the owner on 2026-11-21. Its decisions are listed in section 18, and the revision history is at the end.
 
 | This document owns | Where the rest lives |
 | --- | --- |
@@ -364,8 +364,8 @@ The condition table of the Ruleset (RS-CND-003) makes conditions data: bundles o
 
 | Category | Names |
 | --- | --- |
-| Duration kinds | `INSTANT`, `ROUNDS`, `CLOCK`, `CONCENTRATION`, `UNTIL_TURN_START`, `UNTIL_TURN_END`, `UNTIL_DISPELLED`, `UNTIL_SHORT_OR_LONG_REST`, `UNTIL_LONG_REST` (Part C), with the lifetimes of RS-MOD-004, which the Ruleset states in words and the registry names `PERMANENT`, `WHILE_EQUIPPED`, `WHILE_ATTUNED` and `UNTIL_USED` |
-| Modifier operations | `SET`, `ADD`, `MULTIPLY`, `MIN`, `MAX`, applied in that order (RS-MOD-003) |
+| Duration kinds | `INSTANT`, `ROUNDS(amount)`, `CLOCK(amount, seconds)`, `CONCENTRATION(max)`, `UNTIL_TURN_START`, `UNTIL_TURN_END` (both for a named creature), `UNTIL_DISPELLED`, `UNTIL_SHORT_OR_LONG_REST`, `UNTIL_LONG_REST`, `UNTIL_USED`, `PERMANENT`, `WHILE_EQUIPPED`, `WHILE_ATTUNED` (RS-MOD-004). Store absolute ends or end conditions, never counters; `INSTANT` is never stored as active. |
+| Modifier operations | `SET`, `ADD`, `MULTIPLY`, `MIN`, `MAX`; resolve same-key stacking first, then the newest `SET` across keys, followed by `ADD`, exact `MULTIPLY` with one `floorDiv`, `MIN`, `MAX` (RS-MOD-002, RS-MOD-003) |
 | Rounding modes | `down` (the default, RS-CNV-001), `nearest_half_up` (used for ammunition recovery, E-102) |
 
 ### Enumerations and stat keys
@@ -381,7 +381,9 @@ The fixed lists below are closed because the engine's rules refer to them by nam
 | Creature sizes, creature types, alignments, speed kinds, senses | Part G |
 | Roll kinds: attack, save, check, damage, initiative, death save | Parts A and B |
 
-A stat key names one computed value that a modifier can change. The forms are `ac`, `speed`, `hp_max`, `ability:<ability>`, `skill:<skill>`, `skill:<skill>:prof_multiplier`, `save:<ability>`, `attack:<kind>`, `damage:<kind>`, `crit_threshold`, `attacks_per_action` (the number of attacks of the Attack action, RS-FTR-004) and `jump_distance` (RS-FTR-007). `MULTIPLY` targets a proficiency multiplier and never a final total, so expertise does not double an ability modifier (the rule behind `skill:stealth:prof_multiplier` in Part A). The list is closed. A new key is a registry entry with a handler (CS-VOC-002), and a key the registry lacks rejects the pack (CS-VOC-004).
+A stat key names one computed value that a modifier can change. The forms are `ac`, `speed`, `hp_max`, `ability:<ability>`, `skill:<skill>`, `skill:<skill>:prof_multiplier`, `save:<ability>`, `attack:<kind>`, `damage:<kind>`, `crit_threshold`, `attacks_per_action` (the number of attacks of the Attack action, RS-FTR-004) and `jump_distance` (RS-FTR-007). Proficiency effects like expertise target `skill:stealth:prof_multiplier` or the corresponding skill key so they only affect the proficiency component. Integer stats can also have their own `MULTIPLY` operands under RS-MOD-003. The list is closed. A new key is a registry entry with a handler (CS-VOC-002), and a key the registry lacks rejects the pack (CS-VOC-004).
+
+**Modifier values.** A modifier value is a whole number or an `n/d` string parsed as an exact normalized `Ratio` with a positive denominator; floating-point values are invalid. On integer stats, `SET`, `ADD`, `MIN` and `MAX` require a whole-number value. Only `skill:<skill>:prof_multiplier` is ratio-valued and is not rounded; its proficiency component is `floor(proficiency bonus x multiplier)`. A numerator or denominator above 1,000 is rejected when the pack is loaded.
 
 ### What this section leaves to the Ruleset
 
@@ -512,7 +514,7 @@ This section lists the fields of each kind. What a field means in play is the Ru
 | `Trigger` | `point` (a trigger point), `when` (an optional `bool` formula) |
 | `Cost` | `action` (`action`, `bonus_action`, `reaction` or `none`), `resource` (optional `Ref<resource>`), `amount` (an `int` formula, default 1) |
 | `Limit` | `per` (`turn`, `round`, `short_rest` or `long_rest`), `uses` (an `int` formula, default 1) |
-| `Duration` | `kind` (a duration kind), `amount` (an integer for `ROUNDS` and `CLOCK`), `max` (for `CONCENTRATION`) |
+| `Duration` | `kind`; `amount` for `ROUNDS` and `CLOCK`; `seconds` as the `CLOCK` unit; `max` for `CONCENTRATION`; the named creature for turn-end kinds. The runtime resolves round and clock inputs to absolute ends, and turn kinds to an absolute end round plus creature. |
 | `Save` | `ability`, `dc` (an `int` formula), `onSuccess` (`none` or `half`) |
 | `Area` | `shape` (an area shape), `size` (feet) |
 | `Choice` | `id`, `kind` (`ability`, `skill`, `tool`, `language`, `feature`), `count`, `from` (a list of values or keys) |
@@ -1077,3 +1079,4 @@ These were the points of the draft that rested on something not yet confirmed. E
 | 0.1 | 2026-11-21 | First draft. Pack folder and manifest, keys and hashes, dependencies and overrides, the definition envelope and text, the vocabulary registry, the expression grammar, the schema of every kind, validation, lifecycle, storage, the SRD pack and its attribution, homebrew, visibility, security of imports and release phasing. Decisions CD-1 to CD-16 (CD-1 to CD-6 accepted by the owner, the rest Proposed), tests T-101 to T-116, verification debt V-10 |
 | 1.0 | 2026-11-21 | Accepted by the owner. Decisions CD-7 to CD-16 accepted as proposed. Verification debt V-10 cleared: the registry lists corrected against the Ruleset (the rest duration kind, recharge events, ON\_DAWN and START\_OF\_OWN\_TURN, the Part D feature catalog and its predicates, four Part D labels stored as modifier), the Ruleset references of section 9 corrected, the monster consistency ids corrected, the attribution wording and the JSON Schema library pairing confirmed, the limits checked against the SRD text and the verbatim check prototyped. Accepted risks: the human sample read of the first SRD build, the enumerations at first generation and the hostile-file measurements of T-111. On propagation the schema folder was named (CS-VAL-010) and the Ruleset, Architecture, Requirements, Decision Log and AI Build Brief were updated by reference |
 | 1.1 | 2026-11-21 | UX and API Specification, accepted by the owner on 2026-11-21, applied by reference. The scope table now points to that document. CS-SRD-010 is closed: the attribution statement is on the help page and every rules screen links to it. CS-HBR-003 names the pack screen and the refusal a player gets. Section 9 gains the rule for monster images (a mapping outside the pack, not a field of the definition) and the shape of a map asset, which belongs to a campaign or, as a seam, to a pack. |
+| 1.2 | 2026-11-22 | E-155: the modifier operand representation and pack limits are exact; section 7 now lists all 13 duration names and the end-time/end-condition rules, including modifier value validation. |

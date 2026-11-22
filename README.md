@@ -43,11 +43,11 @@ The initial full image build took approximately **197.8 seconds**. This is a col
 ## Project specification set
 
 - [Requirements Specification v1.20](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
-- [Architecture v5.16](docs/architecture.md)
-- [AI Build Brief v1.28](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
-- [Ruleset Specification v1.3](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-- [Decision Log and Progress Tracker v1.34](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
-- [Content Schema Specification v1.1](docs/Tabletop%20RPG%20Simulator%20Content%20Schema%20Specification.md)
+- [Architecture v5.17](docs/architecture.md)
+- [AI Build Brief v1.29](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+- [Ruleset Specification v1.4](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+- [Decision Log and Progress Tracker v1.35](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [Content Schema Specification v1.2](docs/Tabletop%20RPG%20Simulator%20Content%20Schema%20Specification.md)
 - [Grid and Pathfinder Specification v0.4 (draft)](docs/Tabletop%20RPG%20Simulator%20Grid%20and%20Pathfinder%20Specification%20%28v0.4%29.md)
 - [UX and API Specification v1.5](docs/Tabletop%20RPG%20Simulator%20UX%20and%20API%20Specification%20%28v1.5%29.md)
 - [AI handoff and Step 2 contract review](docs/AI-HANDOFF.md)
