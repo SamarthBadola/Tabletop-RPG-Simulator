@@ -200,8 +200,23 @@ static void test_log_lines() {
     HttpRequest unknown = get("/some/secret/path");
     unknown.headers["x-request-id"] = "t3";
     CHECK(log_line(handle(config, unknown), 0.0, "T") ==
-          R"({"ts":"T","level":"info","event":"request.completed","trace_id":"t3","route":"unmatched",)"
+          R"({"ts":"T","level":"warn","event":"request.completed","trace_id":"t3","route":"unmatched",)"
           R"("status":404,"duration_ms":0.0})");
+}
+
+static void test_log_levels() {  // spec section 10: one request.completed line per request, whatever LOG_LEVEL is
+    // The level on a request line is the severity of the outcome.
+    CHECK(log_line(handle(ServerConfig{}, post("/v1/path", kPathBody)), 0.0, "T").find(R"("level":"info")") != std::string::npos);
+    CHECK(log_line(handle(ServerConfig{}, get("/nope")), 0.0, "T").find(R"("level":"warn")") != std::string::npos);
+    CHECK(log_line(error_response(get("/"), ApiError{500, "INTERNAL", "x", ""}), 0.0, "T").find(R"("level":"error")") !=
+          std::string::npos);
+
+    // LOG_LEVEL filters the other lines (start-up and so on) by severity.
+    CHECK(log_level_allows("debug", "info") && log_level_allows("info", "info"));
+    CHECK(!log_level_allows("warn", "info") && !log_level_allows("error", "info"));
+    CHECK(log_level_allows("warn", "warn") && log_level_allows("warn", "error"));
+    CHECK(!log_level_allows("error", "warn") && log_level_allows("error", "error"));
+    CHECK(log_level_allows("nonsense", "info"));
 }
 
 static void test_logs_and_errors_never_contain_the_request() {
@@ -226,6 +241,7 @@ int main() {
     test_token();
     test_trace_ids();
     test_log_lines();
+    test_log_levels();
     test_logs_and_errors_never_contain_the_request();
 
     if (failures == 0) {
