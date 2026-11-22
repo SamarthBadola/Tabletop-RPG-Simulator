@@ -193,7 +193,7 @@ static std::vector<std::string> enclosed_goal_rows() {  // a 200x200 grid whose 
     return rows;
 }
 
-static void test_deadline() {  // case C-21 at the search level
+static void test_deadline() {  // case C-20 at the search level
     Query q = make_query(enclosed_goal_rows(), {0, 0}, {199, 199}, 10000000);
 
     // The check is made once per 1024 expansions, so a "stop now" answer ends the search at exactly 1024.

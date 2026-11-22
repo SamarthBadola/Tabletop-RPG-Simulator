@@ -66,7 +66,7 @@ std::optional<std::string> load_settings(Settings& settings) {
         if (!parse_whole_number(*value, 1, 64, settings.workers)) return "WORKERS must be a number from 1 to 64";
     }
     if (const auto value = env("MAX_QUEUE")) {
-        if (!parse_whole_number(*value, 1, 10000, settings.max_queue)) return "MAX_QUEUE must be a number from 1 to 10000";
+        if (!parse_whole_number(*value, 0, 10000, settings.max_queue)) return "MAX_QUEUE must be a number from 0 to 10000";
     }
     if (const auto value = env("PATHFINDER_TOKEN")) settings.token = *value;
     if (const auto value = env("LOG_LEVEL")) {

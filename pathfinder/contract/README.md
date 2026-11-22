@@ -39,7 +39,7 @@ through the server. The same files are intended for the Java reference.
 | C-17 | Size limits: 1x1 and 200x200 grids |
 | C-18 | Every error in the spec's error table |
 
-C-19 (expansion cap), C-20 (busy server) and C-21 (deadline) are not data files: they need a small cap, a full queue or a fake clock, so they are unit tests (`test_search.cpp`, `test_work_queue.cpp`, `test_server.cpp`).
+C-19 (expansion cap), C-20 (deadline) and C-21 (busy server) are not data files: they need a small cap, a fake clock or a full queue, so they are unit tests (`test_search.cpp`, `test_work_queue.cpp`, `test_server.cpp`).
 
 ## Where the expected answers come from
 

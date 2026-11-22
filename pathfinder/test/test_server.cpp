@@ -274,6 +274,12 @@ static void test_deadline() {
     CHECK(response.body == R"({"found":false,"reason":"DEADLINE","expansions":1024})");
     CHECK(response.reason == "DEADLINE" && response.path_search && !response.found);
 
+    // The 200 ms count starts when the request starts (spec section 7), before the body is read:
+    // even a request that fails to parse reads the clock once.
+    auto probe = std::make_shared<FakeClock>(FakeClock{0});
+    handle(config_with_fake_clock(probe, 200), post("/v1/path", "{"));
+    CHECK(probe->reads == 1);
+
     // A clock that never moves: the search finishes normally.
     auto frozen = std::make_shared<FakeClock>(FakeClock{0});
     response = handle(config_with_fake_clock(frozen, 200), post("/v1/path", body));
