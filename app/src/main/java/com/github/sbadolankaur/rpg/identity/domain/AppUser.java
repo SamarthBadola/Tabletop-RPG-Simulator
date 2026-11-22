@@ -1,5 +1,6 @@
 package com.github.sbadolankaur.rpg.identity.domain;
 
+import com.github.sbadolankaur.rpg.platform.ServerIds;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -37,7 +38,7 @@ public class AppUser {
       String displayName,
       boolean instanceAdmin,
       Instant createdAt) {
-    this.id = UUID.randomUUID();
+    this.id = ServerIds.at(createdAt);
     this.username = username;
     this.passwordHash = passwordHash;
     this.displayName = displayName;

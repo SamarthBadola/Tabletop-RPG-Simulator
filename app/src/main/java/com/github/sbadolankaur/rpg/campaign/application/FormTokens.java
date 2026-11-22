@@ -1,6 +1,7 @@
 package com.github.sbadolankaur.rpg.campaign.application;
 
 import com.github.sbadolankaur.rpg.campaign.persistence.FormTokenStore;
+import com.github.sbadolankaur.rpg.platform.InstanceMac;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -15,9 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FormTokens {
   private final FormTokenStore store;
+  private final InstanceMac mac;
 
-  public FormTokens(FormTokenStore store) {
+  public FormTokens(FormTokenStore store, InstanceMac mac) {
     this.store = store;
+    this.mac = mac;
   }
 
   @Transactional
@@ -36,6 +39,18 @@ public class FormTokens {
       UUID token,
       String canonicalInput,
       Supplier<String> create) {
+    return execute(
+            sessionId, purpose, token, canonicalInput, () -> new Created<>(create.get(), null))
+        .location();
+  }
+
+  @Transactional
+  public <T> Submission<T> execute(
+      String sessionId,
+      String purpose,
+      UUID token,
+      String canonicalInput,
+      Supplier<Created<T>> create) {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     var row =
         store
@@ -46,18 +61,22 @@ public class FormTokens {
       throw new CampaignException(CampaignException.Code.VALIDATION_FAILED);
     }
 
-    byte[] inputHash = digest(canonicalInput);
+    byte[] inputHash = mac.sign("form:" + token, canonicalInput);
     if (row.consumedAt() != null) {
       if (!MessageDigest.isEqual(row.requestHash(), inputHash)) {
         throw new CampaignException(CampaignException.Code.IDEMPOTENCY_KEY_CONFLICT);
       }
-      return row.location();
+      return new Submission<>(row.location(), null, true);
     }
 
-    String location = create.get();
-    store.consume(token, now, inputHash, location);
-    return location;
+    Created<T> created = create.get();
+    store.consume(token, now, inputHash, created.location());
+    return new Submission<>(created.location(), created.firstResponseValue(), false);
   }
+
+  public record Created<T>(String location, T firstResponseValue) {}
+
+  public record Submission<T>(String location, T firstResponseValue, boolean replay) {}
 
   private static byte[] digest(String value) {
     try {

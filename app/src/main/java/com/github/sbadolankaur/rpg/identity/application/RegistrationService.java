@@ -6,6 +6,7 @@ import com.github.sbadolankaur.rpg.identity.persistence.AppUserRepository;
 import com.github.sbadolankaur.rpg.identity.persistence.InstanceStateRepository;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,30 +29,44 @@ public class RegistrationService {
   }
 
   @Transactional
-  public void register(String suppliedUsername, String suppliedDisplayName, String password) {
+  public boolean tryFirstAccount(
+      String suppliedUsername, String suppliedDisplayName, String password) {
     InstanceState state =
         instanceStateRepository
             .lockById(INSTANCE_STATE_ID)
             .orElseThrow(() -> new IllegalStateException("Instance state row is missing."));
 
     if (state.isInitialized()) {
-      throw new RegistrationClosedException();
+      return false;
     }
 
+    save(suppliedUsername, suppliedDisplayName, password, true);
+    state.initialize();
+    return true;
+  }
+
+  @Transactional
+  public UUID registerInvited(String username, String displayName, String password) {
+    return save(username, displayName, password, false);
+  }
+
+  private UUID save(
+      String suppliedUsername, String suppliedDisplayName, String password, boolean admin) {
     String username = suppliedUsername.strip().toLowerCase(Locale.ROOT);
     if (appUserRepository.existsByUsername(username)) {
       throw new DuplicateUsernameException();
     }
-    appUserRepository.save(
-        new AppUser(
-            username,
-            passwordEncoder.encode(password),
-            suppliedDisplayName == null || suppliedDisplayName.isBlank()
-                ? username
-                : suppliedDisplayName.strip(),
-            true,
-            Instant.now()));
-    state.initialize();
+    return appUserRepository
+        .saveAndFlush(
+            new AppUser(
+                username,
+                passwordEncoder.encode(password),
+                suppliedDisplayName == null || suppliedDisplayName.isBlank()
+                    ? username
+                    : suppliedDisplayName.strip(),
+                admin,
+                Instant.now()))
+        .getId();
   }
 
   @Transactional(readOnly = true)

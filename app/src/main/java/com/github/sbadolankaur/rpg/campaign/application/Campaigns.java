@@ -38,6 +38,11 @@ public class Campaigns {
   }
 
   @Transactional(readOnly = true)
+  public boolean isMember(UUID campaign, UUID actor) {
+    return store.findFor(campaign, actor).isPresent();
+  }
+
+  @Transactional(readOnly = true)
   public CampaignView requireDm(UUID campaign, UUID actor) {
     CampaignView view = requireMember(campaign, actor);
     if (view.role() != CampaignView.Role.DM) {

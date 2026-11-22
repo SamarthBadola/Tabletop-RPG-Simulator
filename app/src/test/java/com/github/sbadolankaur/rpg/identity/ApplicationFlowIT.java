@@ -10,6 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.sbadolankaur.rpg.RpgApplication;
+import com.github.sbadolankaur.rpg.identity.web.RegistrationForm;
+import com.github.sbadolankaur.rpg.platform.ServerIds;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.HexFormat;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,16 +28,19 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
-@SpringBootTest(classes = RpgApplication.class)
+@SpringBootTest(classes = RpgApplication.class, properties = "app.jdbc-sessions=false")
 @AutoConfigureMockMvc(print = org.springframework.boot.webmvc.test.autoconfigure.MockMvcPrint.NONE)
 class ApplicationFlowIT {
   private static final String PASSWORD = "Walking-Skeleton-Pass-27!";
+  private static final String INSTANCE_KEY =
+      HexFormat.of().formatHex(new SecureRandom().generateSeed(32));
 
   @Container
   static final PostgreSQLContainer POSTGRES =
@@ -46,6 +54,7 @@ class ApplicationFlowIT {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    registry.add("app.instance-key", () -> INSTANCE_KEY);
   }
 
   @Autowired private MockMvc mockMvc;
@@ -177,6 +186,7 @@ class ApplicationFlowIT {
         "INSERT INTO campaign (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
         campaign,
         "Private campaign");
+    jdbcTemplate.update("INSERT INTO game_clock (campaign_id) VALUES (?)", campaign);
     jdbcTemplate.update(
         """
         INSERT INTO campaign_member (campaign_id, user_id, role, joined_at)
@@ -221,6 +231,343 @@ class ApplicationFlowIT {
   }
 
   @Test
+  void inviteIssuedOnceLetsASecondAccountRegisterAndKeepsCampaignsPrivate() throws Exception {
+    registerAndReadHash("owner");
+    UUID otherCampaign = newCampaign("owner", "Other campaign");
+    UUID campaign = newCampaign("owner", "Invite campaign");
+    var session = new MockHttpSession();
+    String base = "/campaigns/" + campaign;
+    var form =
+        mockMvc
+            .perform(get(base + "/players").with(user("owner")).session(session))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("No invites yet.")))
+            .andReturn();
+    String token = form.getModelAndView().getModel().get("formToken").toString();
+    var issue =
+        mockMvc
+            .perform(
+                post(base + "/invites")
+                    .with(user("owner"))
+                    .with(csrf())
+                    .session(session)
+                    .param("formToken", token))
+            .andExpect(status().isOk())
+            .andReturn();
+    String code = (String) issue.getModelAndView().getModel().get("inviteCode");
+    assertThat(code.length()).isEqualTo(10);
+    assertThat(issue.getResponse().getRedirectedUrl()).isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT octet_length(code_hash) FROM invite", Integer.class))
+        .isEqualTo(32);
+    mockMvc
+        .perform(
+            post(base + "/invites")
+                .with(user("owner"))
+                .with(csrf())
+                .session(session)
+                .param("formToken", token))
+        .andExpect(status().isOk())
+        .andExpect(
+            content().string(org.hamcrest.Matchers.containsString("The code was shown once.")))
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(code))));
+
+    var register =
+        mockMvc
+            .perform(registration("guest", PASSWORD, code))
+            .andExpect(status().isSeeOther())
+            .andExpect(redirectedUrl("/campaigns"))
+            .andReturn();
+    var guestSession = (MockHttpSession) register.getRequest().getSession(false);
+    mockMvc.perform(get(base).session(guestSession)).andExpect(status().isOk());
+    mockMvc
+        .perform(get("/campaigns/" + otherCampaign).session(guestSession))
+        .andExpect(status().isNotFound());
+    mockMvc.perform(get(base + "/players").session(guestSession)).andExpect(status().isForbidden());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT instance_admin FROM app_user WHERE username = 'guest'", Boolean.class))
+        .isFalse();
+    assertThat(jdbcTemplate.queryForObject("SELECT uses_left FROM invite", Long.class)).isZero();
+    mockMvc.perform(registration("third", PASSWORD, code)).andExpect(status().isForbidden());
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM app_user", Long.class))
+        .isEqualTo(2);
+    var hashes = jdbcTemplate.queryForList("SELECT password_hash FROM app_user", String.class);
+    assertThat(hashes.get(0).equals(hashes.get(1))).isFalse();
+
+    var join =
+        mockMvc.perform(get("/join").session(guestSession)).andExpect(status().isOk()).andReturn();
+    mockMvc
+        .perform(
+            post("/join")
+                .session(guestSession)
+                .with(csrf())
+                .param("inviteCode", code)
+                .param("formToken", join.getModelAndView().getModel().get("formToken").toString()))
+        .andExpect(status().isSeeOther())
+        .andExpect(redirectedUrl(base));
+    assertThat(jdbcTemplate.queryForObject("SELECT uses_left FROM invite", Long.class)).isZero();
+  }
+
+  @Test
+  void pausedSessionRejectsPlayAndClockRetriesDoNotApplyTwice() throws Exception {
+    registerAndReadHash("owner");
+    UUID campaign = newCampaign("owner", "Session campaign");
+    String base = "/campaigns/" + campaign;
+    mockMvc.perform(command(base + "/sessions", 0)).andExpect(status().isOk());
+    UUID session = jdbcTemplate.queryForObject("SELECT id FROM game_session", UUID.class);
+    mockMvc
+        .perform(command(base + "/sessions/" + session + "/pause", 1))
+        .andExpect(status().isOk());
+    UUID blocked = ServerIds.at(Instant.now());
+    mockMvc
+        .perform(
+            command(base + "/clock/advances", 2, blocked)
+                .param("amount", "1")
+                .param("unit", "minutes"))
+        .andExpect(status().isConflict())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("SESSION_NOT_ACTIVE")));
+    assertThat(jdbcTemplate.queryForObject("SELECT game_seconds FROM game_clock", Long.class))
+        .isZero();
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM campaign_action", Long.class))
+        .isEqualTo(2);
+
+    mockMvc
+        .perform(command(base + "/sessions/" + session + "/resume", 2))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            command(base + "/clock/advances", 3, blocked)
+                .param("amount", "1")
+                .param("unit", "minutes"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            command(base + "/clock/advances", 3, blocked)
+                .param("amount", "1")
+                .param("unit", "minutes"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            command(base + "/clock/advances", 3, blocked)
+                .param("amount", "2")
+                .param("unit", "minutes"))
+        .andExpect(status().isConflict())
+        .andExpect(
+            content().string(org.hamcrest.Matchers.containsString("IDEMPOTENCY_KEY_CONFLICT")));
+    assertThat(jdbcTemplate.queryForObject("SELECT game_seconds FROM game_clock", Long.class))
+        .isEqualTo(60);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM campaign_event WHERE type = 'ClockAdvanced'", Long.class))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void wizardSkipLeavesInvitesEmptyAndSettingsHaveAnOrderedAuditTrail() throws Exception {
+    registerAndReadHash("owner");
+    UUID campaign = newCampaign("owner", "House rules campaign");
+    String base = "/campaigns/" + campaign;
+    mockMvc
+        .perform(command(base + "/setup", 0).param("step", "1").param("skip", "true"))
+        .andExpect(status().isOk())
+        .andExpect(
+            org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                .string("HX-Redirect", base + "/players"));
+    mockMvc
+        .perform(get(base + "/players").with(user("owner")))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("No invites yet.")));
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM invite", Long.class)).isZero();
+    mockMvc.perform(get(base + "/settings").with(user("owner"))).andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            command(base + "/settings/criticalDiceMode/decisions", 1).param("value", "UNSUPPORTED"))
+        .andExpect(status().isUnprocessableContent());
+    mockMvc
+        .perform(
+            command(base + "/settings/criticalDiceMode/decisions", 1)
+                .param("value", "EXTRA_DIE_ONLY"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(command(base + "/settings/criticalDiceMode/resets", 2))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT payload->>'newValue' FROM campaign_event WHERE type = 'SettingDecided' ORDER BY seq",
+                String.class))
+        .containsExactly("EXTRA_DIE_ONLY", "ROLL_AGAIN_ADD");
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT settings_read->>'criticalDiceMode' FROM campaign_action
+        WHERE kind IN ('SETTING_DECIDE', 'SETTING_RESET') ORDER BY created_at
+        """,
+                String.class))
+        .containsExactly("ROLL_AGAIN_ADD", "EXTRA_DIE_ONLY");
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM campaign_setting", Long.class))
+        .isZero();
+  }
+
+  private UUID newCampaign(String owner, String name) throws Exception {
+    var session = new MockHttpSession();
+    var form =
+        mockMvc
+            .perform(get("/campaigns").with(user(owner)).session(session))
+            .andExpect(status().isOk())
+            .andReturn();
+    mockMvc
+        .perform(
+            post("/campaigns")
+                .with(user(owner))
+                .with(csrf())
+                .session(session)
+                .param("name", name)
+                .param("formToken", form.getModelAndView().getModel().get("formToken").toString()))
+        .andExpect(status().isSeeOther());
+    return jdbcTemplate.queryForObject("SELECT id FROM campaign WHERE name = ?", UUID.class, name);
+  }
+
+  @Test
+  void sceneActivationIsCampaignScopedAndPlayerRecapKeepsDmNotesPrivate() throws Exception {
+    registerAndReadHash("owner");
+    UUID foreign = newCampaign("owner", "Foreign campaign");
+    UUID campaign = newCampaign("owner", "Scene campaign");
+    String base = "/campaigns/" + campaign;
+    mockMvc
+        .perform(
+            command("/campaigns/" + foreign + "/scenes", 0)
+                .param("name", "Foreign scene")
+                .param("light", "bright"))
+        .andExpect(status().isOk());
+    UUID foreignScene =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM scene WHERE campaign_id = ?", UUID.class, foreign);
+    mockMvc.perform(command(base + "/sessions", 0)).andExpect(status().isOk());
+    mockMvc
+        .perform(
+            command(base + "/scenes", 1)
+                .param("name", "Public scene")
+                .param("notes", "DM secret notes")
+                .param("light", "dark"))
+        .andExpect(status().isOk());
+    UUID scene =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM scene WHERE campaign_id = ?", UUID.class, campaign);
+    mockMvc
+        .perform(command(base + "/scenes/" + scene + "/activations", 2))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(command(base + "/scenes/" + foreignScene + "/activations", 3))
+        .andExpect(status().isNotFound());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT id FROM scene WHERE campaign_id = ? AND active", UUID.class, campaign))
+        .isEqualTo(scene);
+
+    UUID viewer = UUID.randomUUID();
+    jdbcTemplate.update(
+        """
+        INSERT INTO app_user (id, username, password_hash, display_name, instance_admin, created_at)
+        VALUES (?, 'viewer', 'test-hash', 'Viewer', FALSE, CURRENT_TIMESTAMP)
+        """,
+        viewer);
+    jdbcTemplate.update(
+        """
+        INSERT INTO campaign_member (campaign_id, user_id, role, joined_at)
+        VALUES (?, ?, 'PLAYER', CURRENT_TIMESTAMP)
+        """,
+        campaign,
+        viewer);
+    String playerPage =
+        mockMvc
+            .perform(get(base).with(user("viewer")))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(playerPage)
+        .contains("Public scene", "SceneActivated")
+        .doesNotContain("DM secret notes", "SceneCreated");
+    mockMvc.perform(get(base + "/scenes").with(user("viewer"))).andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post(base + "/clock/advances")
+                .with(user("viewer"))
+                .with(csrf())
+                .param("actionId", ServerIds.at(Instant.now()).toString())
+                .param("expectedVersion", "3")
+                .param("amount", "1")
+                .param("unit", "hours"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void inviteFailuresUseTheSameErrorAndThrottlingDoesNotConsumeAnInvite() throws Exception {
+    registerAndReadHash("owner");
+    String base = "/campaigns/" + newCampaign("owner", "Rate limit campaign");
+    var session = new MockHttpSession();
+    var form =
+        mockMvc
+            .perform(get(base + "/players").with(user("owner")).session(session))
+            .andExpect(status().isOk())
+            .andReturn();
+    var issue =
+        mockMvc
+            .perform(
+                post(base + "/invites")
+                    .with(user("owner"))
+                    .with(csrf())
+                    .session(session)
+                    .param(
+                        "formToken", form.getModelAndView().getModel().get("formToken").toString()))
+            .andExpect(status().isOk())
+            .andReturn();
+    String valid = (String) issue.getModelAndView().getModel().get("inviteCode");
+    for (int i = 0; i < 10; i++) {
+      mockMvc
+          .perform(
+              registration("another", PASSWORD, "INVALID-CODE")
+                  .with(
+                      request -> {
+                        request.setRemoteAddr("192.0.2.42");
+                        return request;
+                      }))
+          .andExpect(status().isForbidden())
+          .andExpect(content().string(org.hamcrest.Matchers.containsString("INVITE_INVALID")));
+    }
+    mockMvc
+        .perform(
+            registration("another", PASSWORD, valid)
+                .with(
+                    request -> {
+                      request.setRemoteAddr("192.0.2.42");
+                      return request;
+                    }))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(
+            org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                .exists("Retry-After"));
+    assertThat(jdbcTemplate.queryForObject("SELECT uses_left FROM invite", Long.class))
+        .isEqualTo(1);
+  }
+
+  private static MockHttpServletRequestBuilder command(String path, long version) {
+    return command(path, version, ServerIds.at(Instant.now()));
+  }
+
+  private static MockHttpServletRequestBuilder command(String path, long version, UUID actionId) {
+    return post(path)
+        .with(user("owner"))
+        .with(csrf())
+        .header("HX-Request", "true")
+        .param("actionId", actionId.toString())
+        .param("expectedVersion", Long.toString(version));
+  }
+
+  @Test
   void registrationRequiresCsrf() throws Exception {
     mockMvc
         .perform(
@@ -232,16 +579,11 @@ class ApplicationFlowIT {
   }
 
   @Test
-  void firstRegistrationCreatesAnAdminWithAHashedPasswordAndClosesRegistration() throws Exception {
+  void firstRegistrationCreatesAnAdminAndLaterRegistrationRequiresAnInvite() throws Exception {
     mockMvc
-        .perform(
-            post("/register")
-                .with(csrf())
-                .param("username", "Admin_User")
-                .param("displayName", "Instance Admin")
-                .param("password", PASSWORD))
-        .andExpect(status().is3xxRedirection())
-        .andExpect(redirectedUrl("/login?registered"));
+        .perform(registration("Admin_User", PASSWORD, null))
+        .andExpect(status().isSeeOther())
+        .andExpect(redirectedUrl("/campaigns"));
 
     Boolean isAdmin =
         jdbcTemplate.queryForObject(
@@ -251,7 +593,7 @@ class ApplicationFlowIT {
             "SELECT password_hash FROM app_user WHERE username = ?", String.class, "admin_user");
 
     assertThat(isAdmin).isTrue();
-    assertThat(passwordHash).isNotEqualTo(PASSWORD);
+    assertThat(PASSWORD.equals(passwordHash)).isFalse();
     assertThat(passwordEncoder.matches(PASSWORD, passwordHash)).isTrue();
     assertThat(
             jdbcTemplate.queryForObject(
@@ -259,13 +601,9 @@ class ApplicationFlowIT {
         .isTrue();
 
     mockMvc
-        .perform(
-            post("/register")
-                .with(csrf())
-                .param("username", "second-user")
-                .param("displayName", "Second User")
-                .param("password", PASSWORD))
-        .andExpect(status().isConflict());
+        .perform(registration("second-user", PASSWORD, null))
+        .andExpect(status().isForbidden())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("INVITE_INVALID")));
 
     assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM app_user", Integer.class))
         .isEqualTo(1);
@@ -274,12 +612,7 @@ class ApplicationFlowIT {
   @Test
   void registeredAdminCanAuthenticateAndAccessTheProtectedHome() throws Exception {
     mockMvc
-        .perform(
-            post("/register")
-                .with(csrf())
-                .param("username", "admin_user")
-                .param("displayName", "Instance Admin")
-                .param("password", PASSWORD))
+        .perform(registration("admin_user", PASSWORD, null))
         .andExpect(status().is3xxRedirection());
 
     mockMvc.perform(get("/")).andExpect(status().is3xxRedirection());
@@ -292,7 +625,7 @@ class ApplicationFlowIT {
                     .param("username", "ADMIN_USER")
                     .param("password", PASSWORD))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/"))
+            .andExpect(redirectedUrl("/campaigns"))
             .andReturn();
 
     MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
@@ -312,19 +645,12 @@ class ApplicationFlowIT {
   void registrationAndSignInAccept128AsciiAndUnicodeCharacters() throws Exception {
     for (String password : new String[] {"a".repeat(127) + "Z", "🔑".repeat(127) + "ß"}) {
       resetRegistrationState();
-      mockMvc
-          .perform(
-              post("/register")
-                  .with(csrf())
-                  .param("username", "owner")
-                  .param("displayName", "Owner")
-                  .param("password", password))
-          .andExpect(status().is3xxRedirection());
+      mockMvc.perform(registration("owner", password, null)).andExpect(status().is3xxRedirection());
 
       mockMvc
           .perform(
               post("/login").with(csrf()).param("username", "owner").param("password", password))
-          .andExpect(redirectedUrl("/"));
+          .andExpect(redirectedUrl("/campaigns"));
       mockMvc
           .perform(
               post("/login")
@@ -338,12 +664,7 @@ class ApplicationFlowIT {
   @Test
   void registrationRejects129CharactersAsAValidationErrorOnPassword() throws Exception {
     mockMvc
-        .perform(
-            post("/register")
-                .with(csrf())
-                .param("username", "owner")
-                .param("displayName", "Owner")
-                .param("password", "a".repeat(129)))
+        .perform(registration("owner", "a".repeat(129), null))
         .andExpect(status().isBadRequest())
         .andExpect(
             org.springframework.test.web.servlet.result.MockMvcResultMatchers.model()
@@ -368,30 +689,35 @@ class ApplicationFlowIT {
   }
 
   private String registerAndReadHash(String username) throws Exception {
-    mockMvc
-        .perform(
-            post("/register")
-                .with(csrf())
-                .param("username", username)
-                .param("displayName", username)
-                .param("password", PASSWORD))
-        .andExpect(status().is3xxRedirection());
+    mockMvc.perform(registration(username, PASSWORD, null)).andExpect(status().is3xxRedirection());
     return jdbcTemplate.queryForObject(
         "SELECT password_hash FROM app_user WHERE username = ?", String.class, username);
   }
 
   @Test
   void invalidRegistrationInputIsRejected() throws Exception {
-    mockMvc
-        .perform(
-            post("/register")
-                .with(csrf())
-                .param("username", "x")
-                .param("displayName", "Name")
-                .param("password", "short"))
-        .andExpect(status().isBadRequest());
+    mockMvc.perform(registration("x", "short", null)).andExpect(status().isBadRequest());
 
     assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM app_user", Integer.class))
         .isZero();
+  }
+
+  private MockHttpServletRequestBuilder registration(String username, String password, String code)
+      throws Exception {
+    var session = new MockHttpSession();
+    var result =
+        mockMvc.perform(get("/register").session(session)).andExpect(status().isOk()).andReturn();
+    var form = (RegistrationForm) result.getModelAndView().getModel().get("form");
+    var request =
+        post("/register")
+            .with(csrf())
+            .session(session)
+            .param("username", username)
+            .param("password", password)
+            .param("formToken", form.getFormToken().toString());
+    if (code != null) {
+      request.param("inviteCode", code);
+    }
+    return request;
   }
 }

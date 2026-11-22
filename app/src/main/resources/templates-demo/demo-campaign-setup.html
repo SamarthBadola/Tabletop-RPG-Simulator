@@ -3,8 +3,22 @@
 <head><meta charset="utf-8"><title>Campaign setup</title></head>
 <body>
 <main>
+    <section id="setup" th:fragment="setup">
     <h1 th:text="${campaign.name}">Campaign</h1>
-    <p><a th:href="@{/campaigns/{id}(id=${campaign.id})}">Open campaign</a></p>
+    <h2 th:text="|Step ${panel.setupStep} of 5: ${row.definition.label}|"></h2>
+    <form th:action="@{/campaigns/{id}/setup(id=${campaign.id})}" method="post">
+        <div th:replace="~{demo-command :: envelope}"></div>
+        <input type="hidden" name="step" th:value="${panel.setupStep}">
+        <label>Preset
+            <select th:name="${row.definition.key}">
+                <option th:each="option : ${row.definition.options}" th:value="${option.key}"
+                        th:selected="${option.key == row.text()}" th:text="${option.value}"></option>
+            </select>
+        </label>
+        <button type="submit">Continue</button>
+        <button th:if="${panel.setupStep == 1}" name="skip" value="true" type="submit">Use the defaults and decide later</button>
+    </form>
+    </section>
 </main>
 </body>
 </html>

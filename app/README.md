@@ -10,6 +10,6 @@ cd app
 ./mvnw -B -ntp verify -Pintegration
 \`\`\`
 
-The \`integration\` profile uses Testcontainers and therefore requires a working Docker daemon. The first-account registration transaction locks a singleton initialization row; only the first user is created as the instance administrator. Additional registrations remain closed until the invitation flow is implemented.
+The \`integration\` profile uses Testcontainers and therefore requires a working Docker daemon. The first-account registration transaction locks a singleton initialization row; only the first user is created as the instance administrator. Additional registrations require campaign invites. For application-only startup, supply APP_INSTANCE_KEY as a stable 32-byte key encoded in 64 hexadecimal characters. Docker Compose obtains it from the environment initializer.
 
 Keep any future rules engine under a pure-JDK \`engine\` package. It must not import Spring, JPA, HTTP, or filesystem I/O.

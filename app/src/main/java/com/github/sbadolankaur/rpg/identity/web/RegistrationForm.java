@@ -4,6 +4,7 @@ import com.github.sbadolankaur.rpg.identity.application.PasswordPolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 import org.hibernate.validator.constraints.CodePointLength;
 
 public class RegistrationForm {
@@ -23,6 +24,25 @@ public class RegistrationForm {
       max = PasswordPolicy.MAX_CHARACTERS,
       message = "Password must be between 10 and 128 characters.")
   private String password;
+
+  private String inviteCode;
+  @jakarta.validation.constraints.NotNull private UUID formToken;
+
+  public String getInviteCode() {
+    return inviteCode;
+  }
+
+  public void setInviteCode(String inviteCode) {
+    this.inviteCode = inviteCode;
+  }
+
+  public UUID getFormToken() {
+    return formToken;
+  }
+
+  public void setFormToken(UUID formToken) {
+    this.formToken = formToken;
+  }
 
   public String getUsername() {
     return username;

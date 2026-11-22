@@ -4,10 +4,12 @@
 <body>
 <main>
     <h1>Campaigns</h1>
+    <a th:href="@{/join}">Join with a code</a>
     <ul>
         <li th:each="item : ${items}">
             <a th:href="@{/campaigns/{id}(id=${item.id})}" th:text="${item.name}">Campaign</a>
             <span th:text="${item.role}">DM</span>
+            <span th:text="${item.sessionState}">Session state</span>
         </li>
     </ul>
     <form th:action="@{/campaigns}" method="post">
