@@ -2,6 +2,7 @@ package com.github.sbadolankaur.rpg.identity.web;
 
 import com.github.sbadolankaur.rpg.identity.application.PasswordPolicy;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
@@ -18,7 +19,7 @@ public class RegistrationForm {
   @Size(max = 80)
   private String displayName;
 
-  @NotBlank
+  @NotNull
   @CodePointLength(
       min = PasswordPolicy.MIN_CHARACTERS,
       max = PasswordPolicy.MAX_CHARACTERS,
@@ -26,7 +27,7 @@ public class RegistrationForm {
   private String password;
 
   private String inviteCode;
-  @jakarta.validation.constraints.NotNull private UUID formToken;
+  @NotNull private UUID formToken;
 
   public String getInviteCode() {
     return inviteCode;

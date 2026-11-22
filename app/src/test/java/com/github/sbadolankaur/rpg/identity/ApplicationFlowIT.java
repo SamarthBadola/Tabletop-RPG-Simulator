@@ -642,8 +642,9 @@ class ApplicationFlowIT {
   }
 
   @Test
-  void registrationAndSignInAccept128AsciiAndUnicodeCharacters() throws Exception {
-    for (String password : new String[] {"a".repeat(127) + "Z", "🔑".repeat(127) + "ß"}) {
+  void registrationAndSignInAccept128CharactersWithoutCompositionRules() throws Exception {
+    for (String password :
+        new String[] {"a".repeat(127) + "Z", "🔑".repeat(127) + "ß", " ".repeat(128)}) {
       resetRegistrationState();
       mockMvc.perform(registration("owner", password, null)).andExpect(status().is3xxRedirection());
 
