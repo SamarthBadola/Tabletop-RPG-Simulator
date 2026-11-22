@@ -147,7 +147,6 @@ int main(int argc, char** argv) {
     pf::ServerConfig config;
     config.token = settings.token;
     config.build = PATHFINDER_BUILD;
-    const bool log_requests = settings.log_level == "debug" || settings.log_level == "info";
 
     httplib::Server server;
     server.set_payload_max_length(pf::kMaxBodyBytes + 1);  // one byte over reaches pf::handle, which answers 413
@@ -169,7 +168,7 @@ int main(int argc, char** argv) {
         const pf::HttpResponse answer = pf::handle(config, convert(request));
         send(answer, response);
         const std::chrono::duration<double, std::milli> took = std::chrono::steady_clock::now() - started;
-        if (log_requests || answer.status >= 500) write_log(pf::log_line(answer, took.count(), timestamp_now()));
+        write_log(pf::log_line(answer, took.count(), timestamp_now()));  // one line per request at every LOG_LEVEL (spec section 10)
     };
     server.Get(".*", serve);
     server.Post(".*", serve);
@@ -191,7 +190,7 @@ int main(int argc, char** argv) {
         if (!error) return;
         const pf::HttpResponse answer = pf::error_response(convert(request), *error);
         send(answer, response);
-        if (log_requests) write_log(pf::log_line(answer, 0.0, timestamp_now()));
+        write_log(pf::log_line(answer, 0.0, timestamp_now()));
     });
 
     if (!server.bind_to_port(settings.bind, settings.port)) {
@@ -209,7 +208,7 @@ int main(int argc, char** argv) {
     started["workers"] = settings.workers;
     started["token_required"] = !settings.token.empty();  // whether, never the token itself
     started["log_level"] = settings.log_level;
-    write_log(started.dump());
+    if (pf::log_level_allows(settings.log_level, "info")) write_log(started.dump());
 
     server.listen_after_bind();
     return 0;

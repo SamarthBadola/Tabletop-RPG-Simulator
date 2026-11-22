@@ -47,4 +47,9 @@ HttpResponse error_response(const HttpRequest& request, const ApiError& error);
 // One JSON line for the log (spec section 10). It never contains cells or noStop.
 std::string log_line(const HttpResponse& response, double duration_ms, const std::string& timestamp);
 
+// Whether a log line of `line_level` is written when LOG_LEVEL is `configured`
+// (order: debug, info, warn, error). The request.completed line is exempt: spec section 10
+// requires one for every request at every level, so it is always written.
+bool log_level_allows(const std::string& configured, const std::string& line_level);
+
 }  // namespace pf

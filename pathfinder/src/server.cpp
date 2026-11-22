@@ -211,7 +211,8 @@ HttpResponse error_response(const HttpRequest& request, const ApiError& error) {
 std::string log_line(const HttpResponse& response, double duration_ms, const std::string& timestamp) {
     ordered_json line;
     line["ts"] = timestamp;
-    line["level"] = response.status >= 500 ? "error" : "info";
+    // The level is the severity of the outcome; it does not decide whether the line is written.
+    line["level"] = response.status >= 500 ? "error" : response.status >= 400 ? "warn" : "info";
     line["event"] = "request.completed";
     line["trace_id"] = response.trace_id;
     line["route"] = response.route;
@@ -228,6 +229,17 @@ std::string log_line(const HttpResponse& response, double duration_ms, const std
         line["metric"] = response.metric;
     }
     return line.dump();
+}
+
+bool log_level_allows(const std::string& configured, const std::string& line_level) {
+    const auto rank = [](const std::string& level) {
+        if (level == "debug") return 0;
+        if (level == "info") return 1;
+        if (level == "warn") return 2;
+        if (level == "error") return 3;
+        return 1;  // an unknown level is treated as info
+    };
+    return rank(line_level) >= rank(configured);
 }
 
 }  // namespace pf
