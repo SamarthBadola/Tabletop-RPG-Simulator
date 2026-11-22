@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: AI Build Brief (v1.27)
+# Tabletop RPG Simulator: AI Build Brief (v1.28)
 
 Oct 15, 2026 · @Samarth
 
@@ -242,7 +242,7 @@ public record Modifier(String targetStat, ModOp op, int value,
 public interface RandomSource { int nextInt(int bound); }   // 0..bound-1, uniform; production: SecureRandom
 
 public record DieRoll(int rolled, Integer rerollFace, int value, boolean kept, boolean rerolled, boolean floored, boolean critical) {}
-public record RollTerm(String label, String source, int sign, String expression, List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit) {}  // RollResult holds List<RollTerm>, total, naturalD20, mode
+public record RollTerm(String label, String source, int sign, String expression, List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit, boolean criticalNotApplied) {}  // D-16 runtime REJECT marker; Step 7 reads it. RollResult holds List<RollTerm>, total, naturalD20, mode
 
 public final class DiceExpression {
     public static DiceExpression parse(String s);            // throws on malformed or over-limit input
@@ -673,7 +673,7 @@ Frontend in every step. Every step that has a screen is built as routes, fragmen
 
 **Step 1, walking skeleton.** Maven project with wrapper; Spring Boot app with health endpoints; PostgreSQL via Compose; Flyway baseline; register and login (the first user is the instance admin); Dockerfile; compose file; CI with the required checks; README quick start. *Done when:* a fresh clone runs `init-env.sh` then `docker compose up`, the first account registers at `http://localhost:8080`, and CI is green on the pull request.
 
-**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass. The notation, limits, error codes, composition API and test contract are in Ruleset Specification section 3.10; its decisions D-1 to D-14 are decided (DEC-085, DEC-086 and DEC-097), so implement them as written, including the critical dice mode of D-14; D-15 (a boolean critical on each die, set for dice added by critical doubling) is decided (DEC-098): include it.
+**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass. The notation, limits, error codes, composition API and test contract are in Ruleset Specification section 3.10; D-1 to D-16 are decided (DEC-085, DEC-086, DEC-097, DEC-098 and DEC-109), so implement them as written. D-15 marks dice added by critical doubling; D-16 marks only a flagged keep/drop term that D-14 REJECT leaves undoubled. Step 2 emits no event or log; Step 7 consumes `criticalNotApplied` for the dice-event marker and warning.
 
 **Step 2 additions (decided, DEC-095).** Build these with the dice engine; Step 2 is not done until they exist. They run on every push unless noted.
 
@@ -802,7 +802,7 @@ Commits use Conventional Commits, for example `feat(engine): parse keep-highest 
 
 ## 15. Version and revision history
 
-Current version: **1.28**. Companion document versions this brief was written against: Ruleset Specification 1.2, Content Schema Specification 1.1, Grid and Pathfinder Specification 0.4, UX and API Specification 1.5, Requirements Specification 1.20, Decision Log 1.33, Architecture 5.16.
+Current version: **1.28**. Companion document versions this brief was written against: Ruleset Specification 1.3, Content Schema Specification 1.1, Grid and Pathfinder Specification 0.4, UX and API Specification 1.5, Requirements Specification 1.20, Decision Log 1.34, Architecture 5.16.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -842,4 +842,4 @@ Current version: **1.28**. Companion document versions this brief was written ag
 | 1.25 | 2026-11-22 | Steps 6 to 20 written (character creation and the derived sheet, combat core, class features and the reaction window, rests and sessions, spells, equipment, monsters, the version 1 environment, grid and Java pathfinder, the C++ pathfinder and Milestone A, then the version 1.5 steps: live player view, journal, checkpoints and export, maps, levels 6 to 12, release). Each names its specification sections, screens (built as demo elements), tests and a done-when. The old stop-here note is replaced by a stop-and-ask rule for version 2 and for anything not decided. No contract or earlier step changed. Companion versions unchanged. |
 | 1.26 | 2026-11-22 | Document review fixes. The stack table now names C++20, as the Architecture and the Grid and Pathfinder Specification do. Step 0 no longer asks the human for values that are settled (Java, Spring Boot and PostgreSQL versions, GHCR owner, attribution text, and the repository name, group id and root package that the repository already records), and the group id placeholder note points to the repository instead. The 1.25 history row, which had been left blank, is filled. Companion versions updated (UX and API Specification 1.4, Requirements Specification 1.19, Decision Log 1.31, Architecture 5.15). No build rule or contract changed. |
 | 1.27 | 2026-11-22 | The owner accepted how DM overrides are shown to players (UXD-11, UXQ-24, UX-059 to UX-061). The open item that told the coding AI to wait is removed, and Step 7 now says the server sets who sees a correction and refuses a quiet correction when a player can see the value. Companion versions updated (UX and API Specification 1.5, Requirements Specification 1.20, Decision Log 1.32, Architecture 5.16). No other build rule changed. |
-| 1.28 | 2026-11-22 | Companion Decision Log and Progress Tracker updated to 1.33 for the accepted UXD-11 citation correction. No build rule changed. |
+| 1.28 | 2026-11-22 | Companion Decision Log and Progress Tracker updated to 1.33 for the accepted UXD-11 citation correction. D-16 is recorded in the Step 2 result model and done-when guidance; the companion Ruleset and Decision Log versions are now 1.3 and 1.34. Step 2 is complete; implementation proceeds to Step 3. |

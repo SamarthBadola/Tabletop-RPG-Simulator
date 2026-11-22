@@ -38,15 +38,18 @@ The attribution is also recorded in [NOTICE](NOTICE). Do not add non-SRD officia
 
 The initial full image build took approximately **197.8 seconds**. This is a cold-build baseline, not a diagnosis; build-time optimization is tracked in the combined Decision Log and Progress Tracker.
 
-**Current milestone: Step 2 — dice engine.** The parser, dice notation, limits, result model, RollPlan API, error contract and deterministic test contract are specified in Ruleset Specification v0.12.1; decisions D-1 to D-13 are accepted (DEC-085 and DEC-086). The next engineering task is tests-first implementation, limited to producing correct RollResult values.
+**Current milestone: Step 3 — kernel and architecture tests.** Step 2 is complete and merged in PR #27. The dice engine implements Ruleset Specification 1.3, including D-16's `criticalNotApplied` term marker; Step 2 stops at `RollResult`, and Step 7 will consume the marker for event and warning output.
 
 ## Project specification set
 
-- [Requirements Specification v1.7.1](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
-- [Architecture v5.1](docs/architecture.md)
-- [AI Build Brief v1.10.2](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
-- [Ruleset Specification v0.12.1 (draft)](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-- [Decision Log and Progress Tracker v1.11.1](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [Requirements Specification v1.20](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
+- [Architecture v5.16](docs/architecture.md)
+- [AI Build Brief v1.28](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+- [Ruleset Specification v1.3](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+- [Decision Log and Progress Tracker v1.34](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [Content Schema Specification v1.1](docs/Tabletop%20RPG%20Simulator%20Content%20Schema%20Specification.md)
+- [Grid and Pathfinder Specification v0.4 (draft)](docs/Tabletop%20RPG%20Simulator%20Grid%20and%20Pathfinder%20Specification%20%28v0.4%29.md)
+- [UX and API Specification v1.5](docs/Tabletop%20RPG%20Simulator%20UX%20and%20API%20Specification%20%28v1.5%29.md)
 - [AI handoff and Step 2 contract review](docs/AI-HANDOFF.md)
 - [Repository governance](docs/REPOSITORY-GOVERNANCE.md)
 
