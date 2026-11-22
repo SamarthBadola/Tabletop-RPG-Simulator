@@ -1,0 +1,7 @@
+{
+  "name": "C-18-nostop-blocked",
+  "description": "A noStop entry names a blocked cell (spec section 3).",
+  "endpoint": "/v1/path",
+  "request": {"width":3,"height":1,"cells":["101"],"start":[0,0],"goal":[2,0],"budget":100,"noStop":[[0,0],[1,0]]},
+  "expect": {"status":422,"body":{"code":"INVALID_REQUEST","pointer":"/noStop/1"}}
+}
