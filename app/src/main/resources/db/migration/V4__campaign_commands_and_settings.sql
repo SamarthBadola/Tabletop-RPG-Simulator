@@ -1,3 +1,6 @@
+SET LOCAL lock_timeout = '2s';
+SET LOCAL statement_timeout = '10s';
+
 CREATE TABLE campaign_action (
     campaign_id UUID NOT NULL REFERENCES campaign (id) ON DELETE CASCADE,
     action_id UUID NOT NULL,

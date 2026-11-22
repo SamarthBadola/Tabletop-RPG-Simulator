@@ -1,3 +1,6 @@
+SET LOCAL lock_timeout = '2s';
+SET LOCAL statement_timeout = '10s';
+
 CREATE TABLE campaign (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL CHECK (char_length(btrim(name)) BETWEEN 1 AND 80),
@@ -23,8 +26,8 @@ CREATE TABLE invite (
     created_by UUID NOT NULL REFERENCES app_user (id),
     created_at TIMESTAMPTZ NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL CHECK (expires_at > created_at),
-    max_uses INTEGER NOT NULL CHECK (max_uses BETWEEN 1 AND 20),
-    uses_left INTEGER NOT NULL CHECK (uses_left BETWEEN 0 AND max_uses),
+    max_uses BIGINT NOT NULL CHECK (max_uses BETWEEN 1 AND 20),
+    uses_left BIGINT NOT NULL CHECK (uses_left BETWEEN 0 AND max_uses),
     revoked_at TIMESTAMPTZ
 );
 

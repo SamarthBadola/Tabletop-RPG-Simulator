@@ -1,3 +1,6 @@
+SET LOCAL lock_timeout = '2s';
+SET LOCAL statement_timeout = '10s';
+
 CREATE TABLE game_clock (
     campaign_id UUID PRIMARY KEY REFERENCES campaign (id) ON DELETE CASCADE,
     game_seconds BIGINT NOT NULL DEFAULT 0 CONSTRAINT clock_ok CHECK (game_seconds >= 0),
@@ -7,7 +10,7 @@ CREATE TABLE game_clock (
 CREATE TABLE game_session (
     id UUID PRIMARY KEY,
     campaign_id UUID NOT NULL REFERENCES campaign (id) ON DELETE CASCADE,
-    number INTEGER NOT NULL CHECK (number > 0),
+    number BIGINT NOT NULL CHECK (number > 0),
     status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'PAUSED', 'ENDED')),
     started_at TIMESTAMPTZ NOT NULL,
     ended_at TIMESTAMPTZ,

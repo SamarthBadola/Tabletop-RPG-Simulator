@@ -63,12 +63,15 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 - [x] Implement the Step 3 kernel types, modifier precedence and breakdown, exact ratio arithmetic, and absolute duration ends.
 - [x] Add ArchUnit rules and verify that all five checks reject deliberate violations.
 - [x] Cover Part A kernel examples for abilities, proficiency, d20 tests, advantage, checks, saves, levels, modifiers and time.
-- [ ] Complete pull request checks and owner review.
+- [x] Complete pull request checks and owner review. Merged in [PR #31](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/pull/31).
 
 ### Step 4 — campaign, session, and access
 
-- [ ] Add campaign/member/invite/session/scene/game-clock/audience schema and service flows.
-- [ ] Test invite enforcement, cross-campaign isolation (foreign resource is 404), and inactive-session rejection.
+- [x] Add the campaign, membership, invite, session, scene, clock, audience, action and settings migrations. Verify a fresh database and an upgrade from V1.
+- [x] Configure Argon2id for all accounts and verify 10 to 128 Unicode characters at registration. Demo accounts with earlier BCrypt hashes need to be reseeded.
+- [x] Create and list campaigns, assign DM membership to the creator, initialize the clock, and verify that a nonmember sees a 404. A repeated creation form returns the original campaign.
+- [ ] Implement invites and registration with an invite, the setup wizard and House rules, and session, clock and scene commands.
+- [ ] Verify invite enforcement and inactive-session rejection.
 
 ### Step 5 — content-pack skeleton
 
