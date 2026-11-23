@@ -11,6 +11,7 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignSettings;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignView.Role;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
+import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
 import com.github.sbadolankaur.rpg.character.application.CharacterCatalog.Choice;
 import com.github.sbadolankaur.rpg.character.application.CharacterCreation.EquipmentGroup;
 import com.github.sbadolankaur.rpg.character.persistence.CharacterStore;
@@ -20,6 +21,7 @@ import com.github.sbadolankaur.rpg.character.persistence.CharacterStore.State;
 import com.github.sbadolankaur.rpg.engine.character.AbilityGeneration;
 import com.github.sbadolankaur.rpg.engine.character.CharacterRules;
 import com.github.sbadolankaur.rpg.engine.content.ContentExpression;
+import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.dice.DiceExpression;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AbilityScores;
@@ -45,17 +47,20 @@ public class Characters {
   private final CampaignCommands commands;
   private final CampaignSettings settings;
   private final CharacterStore store;
+  private final ReactionStore reactions;
   private final SecureRandom random = new SecureRandom();
 
   Characters(
       Campaigns campaigns,
       CampaignCommands commands,
       CampaignSettings settings,
-      CharacterStore store) {
+      CharacterStore store,
+      ReactionStore reactions) {
     this.campaigns = campaigns;
     this.commands = commands;
     this.settings = settings;
     this.store = store;
+    this.reactions = reactions;
   }
 
   @Transactional(readOnly = true)
@@ -76,6 +81,14 @@ public class Characters {
         catalog(campaign, actor),
         settings.effective(campaign, actor),
         access.dm());
+  }
+
+  @Transactional(readOnly = true)
+  public CharacterSheets.View combatSheet(
+      UUID campaign, UUID actor, UUID id, ContentSet content, SettingsView effective) {
+    var access = access(campaign, actor, id);
+    return CharacterSheets.derive(
+        store.read(access.character()), new CharacterCatalog(content), effective, access.dm());
   }
 
   @Transactional(readOnly = true)
@@ -313,6 +326,7 @@ public class Characters {
         new Target(id, classKey),
         clock -> {
           var state = state(campaign, actor, id);
+          requireUnfrozen(campaign, id);
           var selected = selectedClass(state, classKey);
           catalog(campaign, actor).level(selected.key(), selected.level() + 1);
           if (state.rawHealth().size() >= FIGHTER_SCOPE_LIMIT) throw invalid();
@@ -345,8 +359,9 @@ public class Characters {
         Kind.CHARACTER_LEVEL_UP,
         new LevelAction(id, form),
         clock -> {
-          if (store.inActiveEncounter(id)) throw new CampaignException(Code.ENCOUNTER_ACTIVE);
           var state = state(campaign, actor, id);
+          requireUnfrozen(campaign, id);
+          if (store.inActiveEncounter(id)) throw new CampaignException(Code.ENCOUNTER_ACTIVE);
           var catalog = catalog(campaign, actor);
           var effective = settings.effective(campaign, actor);
           var plan = plan(state, catalog, effective, form);
@@ -504,6 +519,7 @@ public class Characters {
         new EditAction(id, form),
         clock -> {
           var rights = access(campaign, actor, id);
+          requireUnfrozen(campaign, id);
           var state = store.read(rights.character());
           var catalog = catalog(campaign, actor);
           if (form.section() == null) throw invalid();
@@ -632,6 +648,11 @@ public class Characters {
 
   private State state(UUID campaign, UUID actor, UUID id) {
     return store.read(access(campaign, actor, id).character());
+  }
+
+  private void requireUnfrozen(UUID campaign, UUID id) {
+    if (reactions.protectsCharacter(campaign, id))
+      throw new CampaignException(Code.REACTION_PENDING);
   }
 
   private CharacterCatalog catalog(UUID campaign, UUID actor) {

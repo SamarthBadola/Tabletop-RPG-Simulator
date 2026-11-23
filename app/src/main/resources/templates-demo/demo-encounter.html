@@ -19,6 +19,34 @@
         <ul th:unless="${fight.recap.resourcesSpent.isEmpty()}"><li th:each="resource : ${fight.recap.resourcesSpent}"
             th:text="|${resource.key} × ${resource.value}|"></li></ul>
     </section>
+    <section id="reaction" th:fragment="reaction" aria-live="polite">
+        <div th:if="${reaction != null}">
+            <h2>Reaction decision</h2>
+            <p th:text="|Decide for ${reactionDecider}.|"></p>
+            <div th:with="shown=${reaction.prompt.disclosure}" th:if="${reaction.prompt.disclosure != null}">
+                <p th:if="${shown.natural != null}" th:text="|Natural roll: ${shown.natural}|"></p>
+                <p th:if="${shown.total != null}" th:text="|Total: ${shown.total}|"></p>
+                <p th:if="${shown.success != null}" th:text="${shown.success ? 'Success' : 'Failure'}"></p>
+            </div>
+            <form th:action="@{${reactionPath + (reaction.prompt.followUp ? '/follow-ups' : '/answers')}}"
+                  method="post" th:each="option : ${reaction.prompt.options}">
+                <th:block th:replace="~{demo-encounter :: command}"></th:block>
+                <input type="hidden" name="deciderId" th:value="${reaction.prompt.decider}">
+                <input type="hidden" name="optionKey" th:value="${option.key}">
+                <button type="submit" name="choice" value="use" th:text="${option.label}"></button>
+            </form>
+            <form th:unless="${reaction.prompt.followUp}" th:action="@{${reactionPath + '/answers'}}" method="post">
+                <th:block th:replace="~{demo-encounter :: command}"></th:block>
+                <input type="hidden" name="deciderId" th:value="${reaction.prompt.decider}">
+                <button type="submit" name="choice" value="pass">Pass</button>
+            </form>
+            <form th:action="@{${reactionPath + '/cancellations'}}" method="post">
+                <th:block th:replace="~{demo-encounter :: command}"></th:block>
+                <label>Reason (optional) <input name="reason" maxlength="200"></label>
+                <button type="submit">Cancel action</button>
+            </form>
+        </div>
+    </section>
     <section id="turn-order" th:fragment="turn-order" th:if="${fight.table.phase.name() != 'FINISHED'}">
         <h2>Turn order</h2>
         <p th:if="${fight.table.round > 0}" th:text="|Round ${fight.table.round}|"></p>
@@ -155,7 +183,7 @@
             <button type="submit">Save order</button>
         </form>
     </section>
-    <section id="acting-panel" th:fragment="acting-panel" th:if="${acting != null}">
+    <section id="acting-panel" th:fragment="acting-panel" th:if="${acting != null and reaction == null}">
         <h2 th:text="|${acting.name}'s turn|"></h2>
         <p th:text="|${fight.table.budget.actions} action(s), ${fight.table.budget.attacksLeft} follow-up attack(s), ${fight.table.budget.movementRemaining(acting.speed)} ft remaining|"></p>
         <form th:unless="${acting.attacks.isEmpty()}" th:action="@{${commandPath + '/attacks'}}" method="post">
@@ -169,6 +197,13 @@
             <label><input type="checkbox" name="attackerObscured" value="true">Attacker is obscured</label>
             <label><input type="checkbox" name="targetObscured" value="true">Target is obscured</label>
             <label><input type="checkbox" name="fearSourceVisible" value="true">Attacker can see the source of fear</label>
+            <fieldset>
+                <legend>Allies within 5 feet who can see the target</legend>
+                <label th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}">
+                    <input type="checkbox" name="protectingAllyIds" th:value="${creature.id}">
+                    <span th:text="${creature.name}"></span>
+                </label>
+            </fieldset>
             <button type="submit">Attack</button>
         </form>
         <form th:action="@{${commandPath + '/dashes'}}" method="post">

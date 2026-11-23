@@ -176,6 +176,24 @@ public final class EncounterState {
           stealth);
     }
 
+    public Tactics spendReaction() {
+      if (!reactionAvailable) throw new IllegalStateException("No reaction available");
+      return new Tactics(
+          firstRound,
+          lastTurn,
+          surprised,
+          dodging,
+          hidden,
+          false,
+          deathSaveDue,
+          helping,
+          helpedTarget,
+          readied,
+          conditions,
+          deathMode,
+          stealth);
+    }
+
     public Tactics deathSave(boolean due) {
       return new Tactics(
           firstRound,

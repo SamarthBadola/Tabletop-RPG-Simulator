@@ -12,10 +12,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.sbadolankaur.rpg.RpgApplication;
+import com.github.sbadolankaur.rpg.campaign.application.CampaignPlay.ClockUnit;
 import com.github.sbadolankaur.rpg.content.BundledPacksFixture;
 import com.github.sbadolankaur.rpg.content.ContentPack;
 import com.github.sbadolankaur.rpg.content.ContentPacks;
 import com.github.sbadolankaur.rpg.content.ContentPacks.UpgradeReview;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.AnswerKind;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.ReactionAnswer;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterDice;
 import com.github.sbadolankaur.rpg.identity.web.RegistrationForm;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.security.SecureRandom;
@@ -25,6 +30,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -1028,6 +1036,285 @@ class ApplicationFlowIT {
     org.mockito.Mockito.verify(combatDice, org.mockito.Mockito.times(4)).nextInt(20);
   }
 
+  @Test
+  void protectionPausesBeforeDiceAndAnAnswerIsAppliedExactlyOnce() throws Exception {
+    var bout = combatFixture(false);
+    UUID protector = addProtector(bout);
+    forceCombatDice(18, 12, 6, 20, 2);
+    submitBout(bout, "/start");
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(bout.first());
+    long initialVersion = combatVersion(bout.id());
+    UUID attackId = commands.newActionId();
+    var waiting =
+        result(
+            mockMvc
+                .perform(
+                    combatStrike(
+                            bout.url(),
+                            attackId,
+                            initialVersion,
+                            bout.first(),
+                            bout.second(),
+                            "unarmed")
+                        .param("protectingAllyIds", protector.toString()))
+                .andExpect(status().isOk())
+                .andExpect(
+                    content().string(org.hamcrest.Matchers.containsString("Reaction decision")))
+                .andReturn());
+    assertThat(waiting.path("reaction").path("prompt").path("point").asString())
+        .isEqualTo("BEFORE_ATTACK_ROLL");
+    String window = waiting.path("reactionWindowId").asString();
+    long version = combatVersion(bout.id());
+    assertThat(version).isEqualTo(initialVersion + 1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM combat_event WHERE action_id = ? AND type = 'DiceRolled'",
+                Long.class,
+                attackId))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject("SELECT budget->>'actions' FROM encounter", Integer.class))
+        .isEqualTo(1);
+    mockMvc
+        .perform(get(bout.url() + "/reaction").with(user("combat-dm")).header("HX-Request", "true"))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Protection")));
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/end-turn", bout.id())
+                .accept("application/problem+json")
+                .param("actorId", bout.first().toString()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
+    assertThatThrownBy(
+            () ->
+                play.advance(
+                    bout.campaign(),
+                    bout.dm(),
+                    combatCampaignEnvelope(bout.campaign(), bout.dm()),
+                    1,
+                    ClockUnit.MINUTES))
+        .hasMessage("REACTION_PENDING");
+    mockMvc
+        .perform(
+            action(
+                    "/campaigns/" + bout.campaign() + "/characters/" + bout.left() + "/edits",
+                    "combat-dm",
+                    bout.campaign(),
+                    bout.dm())
+                .accept("application/problem+json")
+                .param("section", "details")
+                .param("name", "Frozen until the attack ends"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
+    mockMvc
+        .perform(
+            combatStrike(
+                    bout.url(), attackId, initialVersion, bout.first(), bout.second(), "unarmed")
+                .param("protectingAllyIds", protector.toString()))
+        .andExpect(status().isOk());
+    UUID answerId = commands.newActionId();
+    String answer = "/campaigns/" + bout.campaign() + "/reactions/" + window + "/answers";
+    mockMvc
+        .perform(reactionAnswer(answer, answerId, version, protector, "combat-protector"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("REACTION_NOT_PERMITTED"));
+    mockMvc
+        .perform(reactionAnswer(answer, answerId, initialVersion, protector, "combat-dm"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("ENCOUNTER_VERSION_CONFLICT"));
+    var outcome =
+        result(
+            mockMvc
+                .perform(
+                    reactionAnswer(answer, answerId, version, protector, "combat-dm")
+                        .accept("text/html"))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(outcome.path("hit").asBoolean()).isFalse();
+    assertThat(outcome.path("attack").path("roll").path("naturalD20").asInt()).isEqualTo(2);
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pending_reaction", Long.class))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT tactics->>'reactionAvailable' FROM combatant WHERE id = ?",
+                Boolean.class,
+                protector))
+        .isFalse();
+    var repeated =
+        mockMvc
+            .perform(
+                reactionAnswer(answer, answerId, version, protector, "combat-dm")
+                    .accept("text/html"))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertThat(repeated.getModelAndView().getModel().get("replay")).isEqualTo(true);
+    assertThat(result(repeated)).isEqualTo(outcome);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM combat_event WHERE action_id = ? AND type = 'DiceRolled'",
+                Long.class,
+                answerId))
+        .isOne();
+  }
+
+  @Test
+  void coldInstanceCanResumePersistedProtectionPrompt() throws Exception {
+    var bout = combatFixture(false);
+    UUID protector = addProtector(bout);
+    forceCombatDice(18, 12, 6);
+    submitBout(bout, "/start");
+    var waiting =
+        result(
+            mockMvc
+                .perform(
+                    combatStrike(
+                            bout.url(),
+                            commands.newActionId(),
+                            combatVersion(bout.id()),
+                            bout.first(),
+                            bout.second(),
+                            "unarmed")
+                        .param("protectingAllyIds", protector.toString()))
+                .andExpect(status().isOk())
+                .andReturn());
+    UUID window = UUID.fromString(waiting.path("reactionWindowId").asString());
+    long version = combatVersion(bout.id());
+    var restartDice = org.mockito.Mockito.mock(EncounterDice.class);
+    org.mockito.Mockito.when(restartDice.nextInt(20)).thenReturn(19, 1);
+    try (var restarted =
+        new SpringApplicationBuilder(RpgApplication.class)
+            .initializers(
+                context -> {
+                  var fixedDice = new RootBeanDefinition(EncounterDice.class);
+                  fixedDice.setPrimary(true);
+                  fixedDice.setInstanceSupplier(() -> restartDice);
+                  ((BeanDefinitionRegistry) context.getBeanFactory())
+                      .registerBeanDefinition("restartDice", fixedDice);
+                })
+            .run(
+                "--server.port=0",
+                "--app.jdbc-sessions=false",
+                "--app.instance-key=" + INSTANCE_KEY,
+                "--spring.datasource.url=" + POSTGRES.getJdbcUrl(),
+                "--spring.datasource.username=" + POSTGRES.getUsername(),
+                "--spring.datasource.password=" + POSTGRES.getPassword())) {
+      var reactions = restarted.getBean(EncounterCommands.class);
+      assertThat(reactions.reaction(bout.campaign(), bout.id(), bout.dm()).id()).isEqualTo(window);
+      var envelope =
+          new com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelope(
+              commands.newActionId(), version);
+      var resolved =
+          reactions.answer(
+              bout.campaign(),
+              window,
+              bout.dm(),
+              envelope,
+              new ReactionAnswer(AnswerKind.ANSWER, protector, "protection", null));
+      assertThat(resolved.data().path("attack").path("roll").path("naturalD20").asInt())
+          .isEqualTo(2);
+      assertThat(resolved.version()).isEqualTo(version + 1);
+      org.mockito.Mockito.verify(restartDice, org.mockito.Mockito.times(2)).nextInt(20);
+      assertThat(reactions.reaction(bout.campaign(), bout.id(), bout.dm())).isNull();
+    }
+  }
+
+  @Test
+  void cancellingProtectionLeavesOriginalAttackAndReactionUnspent() throws Exception {
+    var bout = combatFixture(false);
+    UUID protector = addProtector(bout);
+    forceCombatDice(18, 12, 6);
+    submitBout(bout, "/start");
+    var waiting =
+        result(
+            mockMvc
+                .perform(
+                    combatStrike(
+                            bout.url(),
+                            commands.newActionId(),
+                            combatVersion(bout.id()),
+                            bout.first(),
+                            bout.second(),
+                            "unarmed")
+                        .param("protectingAllyIds", protector.toString()))
+                .andExpect(status().isOk())
+                .andReturn());
+    String cancel =
+        "/campaigns/"
+            + bout.campaign()
+            + "/reactions/"
+            + waiting.path("reactionWindowId").asString()
+            + "/cancellations";
+    UUID cancelId = commands.newActionId();
+    long version = combatVersion(bout.id());
+    var cancellation =
+        post(cancel)
+            .with(user("combat-dm"))
+            .with(csrf())
+            .header("HX-Request", "true")
+            .param("actionId", cancelId.toString())
+            .param("expectedVersion", Long.toString(version))
+            .param("reason", "Target selected in error");
+    var completed = result(mockMvc.perform(cancellation).andExpect(status().isOk()).andReturn());
+    assertThat(completed.path("outcome").asString()).isEqualTo("cancelled");
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pending_reaction", Long.class))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject("SELECT budget->>'actions' FROM encounter", Integer.class))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT tactics->>'reactionAvailable' FROM combatant WHERE id = ?",
+                Boolean.class,
+                protector))
+        .isTrue();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT type FROM combat_event WHERE action_id = ?", String.class, cancelId))
+        .isEqualTo("ActionCancelled");
+  }
+
+  private UUID addProtector(CombatFixture bout) throws Exception {
+    UUID player = characterAccount("combat-protector", false);
+    joinFixture(bout.campaign(), player);
+    UUID character =
+        createCombatFighter(
+            "/campaigns/" + bout.campaign() + "/characters",
+            bout.campaign(),
+            player,
+            "combat-protector",
+            "srd-5.1:protection");
+    jdbcTemplate.update(
+        "UPDATE inventory_item SET equipment_slot = 'OFF_HAND' WHERE player_character_id = ? AND item_key = ?",
+        character,
+        "srd-5.1:shield");
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/combatants", bout.id())
+                .param("characterId", character.toString()))
+        .andExpect(status().isSeeOther());
+    return jdbcTemplate.queryForObject(
+        "SELECT id FROM combatant WHERE encounter_id = ? AND character_id = ?",
+        UUID.class,
+        bout.id(),
+        character);
+  }
+
+  private MockHttpServletRequestBuilder reactionAnswer(
+      String url, UUID id, long version, UUID decider, String userName) {
+    return post(url)
+        .with(user(userName))
+        .with(csrf())
+        .header("HX-Request", "true")
+        .accept("application/problem+json")
+        .param("actionId", id.toString())
+        .param("expectedVersion", Long.toString(version))
+        .param("deciderId", decider.toString())
+        .param("choice", "use")
+        .param("optionKey", "protection");
+  }
+
   private tools.jackson.databind.JsonNode grapple(CombatFixture bout) throws Exception {
     return result(
         mockMvc
@@ -1262,10 +1549,15 @@ class ApplicationFlowIT {
 
   private UUID createCombatFighter(String url, UUID campaign, UUID owner, String username)
       throws Exception {
+    return createCombatFighter(url, campaign, owner, username, "srd-5.1:defense");
+  }
+
+  private UUID createCombatFighter(
+      String url, UUID campaign, UUID owner, String username, String style) throws Exception {
     var response =
         mockMvc
             .perform(
-                fighterForm(url, username, "review")
+                fighterForm(url, username, "review", style)
                     .param("actionId", commands.newActionId().toString())
                     .param(
                         "expectedVersion",
@@ -1320,13 +1612,18 @@ class ApplicationFlowIT {
   }
 
   private MockHttpServletRequestBuilder fighterForm(String url, String name, String step) {
+    return fighterForm(url, name, step, "srd-5.1:defense");
+  }
+
+  private MockHttpServletRequestBuilder fighterForm(
+      String url, String name, String step, String style) {
     return post(url)
         .with(user(name))
         .with(csrf())
         .param("step", step)
         .param("speciesKey", "srd-5.1:human")
         .param("classKey", "srd-5.1:fighter")
-        .param("fightingStyleKey", "srd-5.1:defense")
+        .param("fightingStyleKey", style)
         .param("abilityMethod", "STANDARD_ARRAY")
         .param("abilityScores", "14", "13", "15", "8", "12", "10")
         .param("skillChoices", "athletics", "perception")

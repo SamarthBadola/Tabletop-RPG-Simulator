@@ -16,6 +16,7 @@ import com.github.sbadolankaur.rpg.engine.combat.CombatRolls;
 import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
+import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -62,8 +63,21 @@ class CombatRoster {
         : npc(entry, content);
   }
 
+  Creature load(
+      UUID campaign, UUID actor, Entry entry, ContentSet content, SettingsView effective) {
+    if (entry.character() == null) return npc(entry, content);
+    return player(
+        campaign,
+        entry,
+        content,
+        characters.combatSheet(campaign, actor, entry.character(), content, effective));
+  }
+
   private Creature player(UUID campaign, UUID actor, Entry entry, ContentSet content) {
-    View sheet = characters.sheet(campaign, actor, entry.character());
+    return player(campaign, entry, content, characters.sheet(campaign, actor, entry.character()));
+  }
+
+  private Creature player(UUID campaign, Entry entry, ContentSet content, View sheet) {
     var details = characterStore.combatMetadata(entry.character());
     var state =
         sheet.currentHp() > 0
@@ -118,7 +132,10 @@ class CombatRoster {
         resources,
         List.of(),
         Set.of(),
-        DeathMode.PLAYER);
+        DeathMode.PLAYER,
+        sheet.features().stream().map(view -> view.key()).collect(Collectors.toUnmodifiableSet()),
+        sheet.inventory().stream()
+            .anyMatch(item -> "OFF_HAND".equals(item.slot()) && "shield".equals(item.category())));
   }
 
   private boolean wearsNoisyArmor(View sheet, ContentSet content) {
@@ -324,7 +341,9 @@ class CombatRoster {
             .valueStream()
             .map(JsonNode::asString)
             .collect(Collectors.toUnmodifiableSet()),
-        entry.tactics().deathMode() == null ? DeathMode.DIE_AT_ZERO : entry.tactics().deathMode());
+        entry.tactics().deathMode() == null ? DeathMode.DIE_AT_ZERO : entry.tactics().deathMode(),
+        Set.of(),
+        false);
   }
 
   void writePlayer(Creature current, Vitals next) {
@@ -393,7 +412,35 @@ class CombatRoster {
       Map<String, Integer> resources,
       List<Defense> defenses,
       Set<String> immunities,
-      DeathMode deathMode) {
+      DeathMode deathMode,
+      Set<String> features,
+      boolean shield) {
+    Creature withState(Entry next, Vitals state) {
+      return new Creature(
+          next,
+          name,
+          owner,
+          armor,
+          initiative,
+          baseSpeed,
+          baseMaximumHp,
+          attacksPerAction,
+          size,
+          state,
+          abilities,
+          saves,
+          skills,
+          passivePerceptionBonus,
+          noisyArmor,
+          attacks,
+          resources,
+          defenses,
+          immunities,
+          deathMode,
+          features,
+          shield);
+    }
+
     Set<String> conditions() {
       var keys = new HashSet<>(vitals.conditions());
       entry.tactics().conditions().forEach(condition -> keys.add(condition.key()));

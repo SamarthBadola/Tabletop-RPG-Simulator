@@ -101,6 +101,57 @@ class CampaignSchemaIT {
     }
   }
 
+  @Test
+  void pendingReactionHasExactlyOneOwnerAndValidDepthAndPoint() throws SQLException {
+    flyway("reaction_window").load().migrate();
+    try (var db = connect("reaction_window");
+        var sql = db.createStatement()) {
+      sql.execute(
+          """
+          INSERT INTO campaign (id, name, created_at)
+          VALUES ('00000000-0000-0000-0000-000000000001', 'Reaction table', CURRENT_TIMESTAMP)
+          """);
+      sql.execute(
+          """
+          INSERT INTO encounter (id, campaign_id, name, state, round, budget, version)
+          VALUES ('00000000-0000-0000-0000-000000000002',
+                  '00000000-0000-0000-0000-000000000001', 'Reaction encounter',
+                  'SETUP', 0, '{}', 0)
+          """);
+      String encounter = "'00000000-0000-0000-0000-000000000002'";
+      String scene = "'00000000-0000-0000-0000-000000000003'";
+      String insert =
+          """
+          INSERT INTO pending_reaction (id, campaign_id, encounter_id, scene_id,
+                  opened_by_action_id, point, depth, offers, continuation, created_at)
+          VALUES (gen_random_uuid(), '00000000-0000-0000-0000-000000000001',
+                  %s, %s, gen_random_uuid(), '%s', %d, '[]', '{}', CURRENT_TIMESTAMP)
+          """;
+      for (String bad :
+          java.util.List.of(
+              insert.formatted("NULL", "NULL", "AFTER_HIT", 1),
+              insert.formatted(encounter, scene, "AFTER_HIT", 1))) {
+        assertThatThrownBy(() -> sql.execute(bad))
+            .isInstanceOf(SQLException.class)
+            .hasMessageContaining("pending_reaction_one_owner");
+      }
+      for (int depth : new int[] {0, 7}) {
+        assertThatThrownBy(
+                () -> sql.execute(insert.formatted(encounter, "NULL", "AFTER_HIT", depth)))
+            .isInstanceOf(SQLException.class)
+            .hasMessageContaining("pending_reaction_depth");
+      }
+      assertThatThrownBy(
+              () -> sql.execute(insert.formatted(encounter, "NULL", "ON_DAMAGE_ROLL", 1)))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("pending_reaction_point");
+      sql.execute(insert.formatted(encounter, "NULL", "AFTER_DAMAGE_ROLL", 6));
+      assertThatThrownBy(() -> sql.execute(insert.formatted(encounter, "NULL", "AFTER_HIT", 1)))
+          .isInstanceOf(SQLException.class)
+          .hasMessageContaining("pending_reaction_encounter_id_key");
+    }
+  }
+
   private static org.flywaydb.core.api.configuration.FluentConfiguration flyway(String schema) {
     return Flyway.configure()
         .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())

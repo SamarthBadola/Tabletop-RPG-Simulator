@@ -175,6 +175,25 @@ public class EncounterStore {
         .optional();
   }
 
+  public Optional<Replay> reactionAction(UUID campaign, UUID window, UUID action) {
+    return jdbc.sql(
+            """
+        SELECT a.actor_id, a.request_hash, a.result::text, a.version
+        FROM encounter_action a JOIN encounter e ON a.encounter_id = e.id
+        WHERE e.campaign_id = ? AND a.action_id = ?
+          AND a.result->>'reactionWindowId' = ?
+        """)
+        .params(campaign, action, window.toString())
+        .query(
+            (row, index) ->
+                new Replay(
+                    row.getObject(1, UUID.class),
+                    row.getBytes(2),
+                    json.readTree(row.getString(3)),
+                    row.getLong(4)))
+        .optional();
+  }
+
   public void action(
       UUID encounter,
       UUID action,

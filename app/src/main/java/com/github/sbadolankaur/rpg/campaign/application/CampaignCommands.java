@@ -1,6 +1,7 @@
 package com.github.sbadolankaur.rpg.campaign.application;
 
 import com.github.sbadolankaur.rpg.campaign.persistence.CommandStore;
+import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
 import com.github.sbadolankaur.rpg.platform.InstanceMac;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.security.MessageDigest;
@@ -21,13 +22,19 @@ public class CampaignCommands {
   private final CommandStore store;
   private final InstanceMac mac;
   private final JsonMapper json;
+  private final ReactionStore reactions;
 
   public CampaignCommands(
-      Campaigns campaigns, CommandStore store, InstanceMac mac, JsonMapper json) {
+      Campaigns campaigns,
+      CommandStore store,
+      InstanceMac mac,
+      JsonMapper json,
+      ReactionStore reactions) {
     this.campaigns = campaigns;
     this.store = store;
     this.mac = mac;
     this.json = json;
+    this.reactions = reactions;
   }
 
   @Transactional(readOnly = true)
@@ -84,6 +91,9 @@ public class CampaignCommands {
     }
     if (clock.version() != envelope.expectedVersion()) {
       throw new CampaignException(CampaignException.Code.CAMPAIGN_VERSION_CONFLICT);
+    }
+    if (kind == Kind.CLOCK_ADVANCE && reactions.campaignHasWindow(campaign)) {
+      throw new CampaignException(CampaignException.Code.REACTION_PENDING);
     }
     Change change = mutation.apply(clock);
     long next = Math.incrementExact(clock.version());

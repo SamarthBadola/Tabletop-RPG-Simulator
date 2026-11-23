@@ -45,7 +45,8 @@ class CampaignErrorAdvice {
     HttpStatus status =
         switch (failure.code()) {
           case NOT_FOUND -> HttpStatus.NOT_FOUND;
-          case FORBIDDEN, INVITE_INVALID, CSRF_INVALID -> HttpStatus.FORBIDDEN;
+          case FORBIDDEN, INVITE_INVALID, CSRF_INVALID, REACTION_NOT_PERMITTED ->
+              HttpStatus.FORBIDDEN;
           case VALIDATION_FAILED -> HttpStatus.BAD_REQUEST;
           case IDEMPOTENCY_KEY_CONFLICT,
               CAMPAIGN_VERSION_CONFLICT,
@@ -54,6 +55,7 @@ class CampaignErrorAdvice {
               ENCOUNTER_ACTIVE,
               ENCOUNTER_STARTED,
               ENCOUNTER_VERSION_CONFLICT,
+              REACTION_PENDING,
               SETTING_DECISION_REQUIRED ->
               HttpStatus.CONFLICT;
           case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
@@ -64,7 +66,9 @@ class CampaignErrorAdvice {
               NO_ACTIONS_LEFT,
               TARGET_OUT_OF_RANGE,
               TOTAL_COVER,
-              INVALID_TARGET ->
+              INVALID_TARGET,
+              REACTION_OPTION_INVALID,
+              REACTION_NOT_AVAILABLE ->
               HttpStatus.UNPROCESSABLE_CONTENT;
         };
     String detail =
@@ -83,6 +87,11 @@ class CampaignErrorAdvice {
           case PACK_REVIEW_STALE -> "Review the current pack changes again.";
           case CONTENT_INVALID -> "Resolve the issues shown in the content pack review.";
           case ENCOUNTER_VERSION_CONFLICT -> "This changed while you were looking at it.";
+          case REACTION_PENDING ->
+              "Resolve or cancel the pending reaction before taking another action.";
+          case REACTION_OPTION_INVALID -> "Choose one of the offered reactions.";
+          case REACTION_NOT_AVAILABLE -> "This reaction is no longer available.";
+          case REACTION_NOT_PERMITTED -> "You do not have permission to answer this reaction.";
           case ENCOUNTER_ACTIVE -> "End the active encounter before doing this.";
           case ENCOUNTER_STARTED -> "This encounter has already started.";
           case NOT_YOUR_TURN -> "Choose the creature whose turn it is.";

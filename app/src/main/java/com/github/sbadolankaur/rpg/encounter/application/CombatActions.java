@@ -2,6 +2,7 @@ package com.github.sbadolankaur.rpg.encounter.application;
 
 import static com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.invalid;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelope;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Reply;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
@@ -25,6 +26,10 @@ import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AdvantageSources;
 import com.github.sbadolankaur.rpg.engine.kernel.CheckRules;
 import com.github.sbadolankaur.rpg.engine.kernel.D20Test;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Offer;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Option;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Point;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Step;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -53,213 +58,260 @@ public class CombatActions {
         "attacks",
         request,
         true,
-        context -> {
-          var attacker = context.canAct(request.actor());
-          var target = target(context, request.target());
-          if (request.actor().equals(request.target()))
-            throw new CampaignException(Code.INVALID_TARGET);
-          var weapon =
-              attacker.attacks().stream()
-                  .filter(option -> option.key().equals(request.key()))
-                  .findFirst()
-                  .orElseThrow(EncounterCommands::invalid);
-          if (request.distance() < 0 || request.distance() > weapon.longRange())
-            throw new CampaignException(Code.TARGET_OUT_OF_RANGE);
-          if (request.cover() == Cover.TOTAL) throw new CampaignException(Code.TOTAL_COVER);
-          if (request.knockOut() && weapon.ranged()) throw invalid();
-          if (sourced(attacker, "srd-5.1:charmed", target.entry().id()))
-            throw new CampaignException(Code.INVALID_TARGET);
-          if (!Encounters.ties(context.entries.values()).isEmpty()) throw invalid();
-          spend(
-              context,
-              budget ->
-                  weapon.offHand()
-                      ? budget.offHand()
-                      : budget.attack(attacker.attacksPerAction(), weapon.light()));
+        context -> resolveAttack(context, request));
+  }
 
-          boolean seeTarget =
-              CombatConditions.canSee(
-                  attacker.conditions(),
-                  target.conditions(),
-                  target.entry().tactics().hiddenFrom(request.actor()) || request.targetObscured());
-          boolean seenByTarget =
-              CombatConditions.canSee(
-                  target.conditions(),
-                  attacker.conditions(),
-                  attacker.entry().tactics().hiddenFrom(request.target())
-                      || request.attackerObscured());
-          var helper =
-              context.entries.values().stream()
-                  .filter(Encounters::present)
-                  .filter(
-                      entry ->
-                          attacker.entry().id().equals(entry.tactics().helping())
-                              && target.entry().id().equals(entry.tactics().helpedTarget()))
-                  .findFirst()
-                  .orElse(null);
-          var sources =
-              CombatConditions.attack(
-                  attacker.conditions(),
-                  target.conditions(),
-                  request.distance(),
-                  seeTarget,
-                  seenByTarget,
-                  weapon.ranged()
-                      && (request.nearbyHostile()
-                          || request.distance() <= 5 && seenByTarget && !target.incapacitated()),
-                  target.entry().tactics().dodging()
-                      && target.speed() > 0
-                      && !target.incapacitated(),
-                  helper != null,
-                  request.fearSourceVisible()
-                      && attacker.conditions().contains("srd-5.1:frightened"),
-                  request.mode());
-          var opponentSources =
-              CombatEffects.rollSources(
-                  context, target, "attack", "against_holder", request.distance(), seenByTarget);
-          var ownSources =
-              CombatEffects.rollSources(
-                  context, attacker, "attack", "holder", request.distance(), seeTarget);
-          var advantages = new ArrayList<>(sources.advantages());
-          advantages.addAll(opponentSources.advantages());
-          advantages.addAll(ownSources.advantages());
-          var penalties = new ArrayList<>(sources.disadvantages());
-          penalties.addAll(opponentSources.disadvantages());
-          penalties.addAll(ownSources.disadvantages());
-          if (weapon.ranged() && request.distance() > weapon.normalRange())
-            penalties.add("Long range");
-          if (Exhaustion.disadvantagesAttacksAndSaves(attacker.vitals().exhaustion()))
-            penalties.add("Exhaustion");
-          RollMode mode = new AdvantageSources(advantages, penalties).mode();
+  static void resolveAttack(Context context, Attack request) {
+    var attacker = context.canAct(request.actor());
+    var target = target(context, request.target());
+    if (request.actor().equals(request.target())) throw new CampaignException(Code.INVALID_TARGET);
+    var weapon =
+        attacker.attacks().stream()
+            .filter(option -> option.key().equals(request.key()))
+            .findFirst()
+            .orElseThrow(EncounterCommands::invalid);
+    if (request.distance() < 0 || request.distance() > weapon.longRange())
+      throw new CampaignException(Code.TARGET_OUT_OF_RANGE);
+    if (request.cover() == Cover.TOTAL) throw new CampaignException(Code.TOTAL_COVER);
+    if (request.knockOut() && weapon.ranged()) throw invalid();
+    if (sourced(attacker, "srd-5.1:charmed", target.entry().id()))
+      throw new CampaignException(Code.INVALID_TARGET);
+    if (!Encounters.ties(context.entries.values()).isEmpty()) throw invalid();
+    spend(
+        context,
+        budget ->
+            weapon.offHand()
+                ? budget.offHand()
+                : budget.attack(attacker.attacksPerAction(), weapon.light()));
 
-          var preflight = new ArrayList<String>();
-          if (weapon.damage().stream().anyMatch(dice -> dice.notation().contains("d")))
-            preflight.add("criticalDiceMode");
-          if (target.vitals().health().current() == 0 && target.vitals().health().temporary() > 0)
-            preflight.add("temporaryHpAbsorbsDeathSaveFailure");
-          context.preflight(preflight);
-          String criticalMode = context.setting("criticalDiceMode", String.class);
-          boolean absorb =
-              target.vitals().health().current() == 0
-                  && target.vitals().health().temporary() > 0
-                  && context.setting("temporaryHpAbsorbsDeathSaveFailure", Boolean.class);
-          var attack =
-              CombatRolls.attack(
-                  weapon.bonus(),
-                  target.armor(),
-                  request.cover(),
-                  weapon.criticalOn(),
-                  CombatConditions.automaticCritical(target.conditions(), request.distance()),
-                  mode,
-                  context.random());
-          context.dice("Attack", request.actor(), attack.roll());
-          if (request.targetAbsent())
-            attack = new CombatRolls.Attack(attack.roll(), attack.target(), false, false);
-          context.result("attack", attack);
-          if (attacker.entry().tactics().hidden() || attacker.entry().tactics().stealth() != null) {
-            Tactics flags = attacker.entry().tactics();
-            context.update(
-                attacker
-                    .entry()
-                    .tactics(
-                        flags.flags(
-                            flags.dodging(),
-                            false,
-                            flags.helping(),
-                            flags.helpedTarget(),
-                            flags.readied())));
-          }
-          if (helper != null) {
-            var flags = helper.tactics();
-            context.update(
-                helper.tactics(
-                    flags.flags(flags.dodging(), flags.hidden(), null, null, flags.readied())));
-          }
-          boolean hit = attack.hit();
-          context.result("actorId", request.actor());
-          context.result("action", "attack");
-          context.result("outcome", hit ? (attack.critical() ? "critical-hit" : "hit") : "miss");
-          context.result("hit", hit);
-          if (hit) {
-            var damage = new LinkedHashMap<String, Integer>();
-            for (var part : weapon.damage()) {
-              var roll =
-                  CombatRolls.damage(
-                      CombatRolls.weaponDamage(weapon.label(), weapon.key(), part.notation()),
-                      attack.critical(),
-                      CriticalDiceMode.valueOf(criticalMode),
-                      context.random());
-              context.dice("Weapon damage", request.actor(), roll);
-              damage.merge(part.type(), roll.total(), Math::addExact);
-            }
-            var applied = new LinkedHashMap<String, Integer>();
-            int total = 0;
-            for (var value : damage.entrySet()) {
-              String type = value.getKey();
-              boolean resistant =
-                  defense(target, "resistance", type, weapon.magical())
-                      || target.conditions().contains("srd-5.1:petrified");
-              int amount =
-                  CombatHealth.damageAmount(
-                      value.getValue(),
-                      0,
+    boolean seeTarget =
+        CombatConditions.canSee(
+            attacker.conditions(),
+            target.conditions(),
+            target.entry().tactics().hiddenFrom(request.actor()) || request.targetObscured());
+    boolean seenByTarget =
+        CombatConditions.canSee(
+            target.conditions(),
+            attacker.conditions(),
+            attacker.entry().tactics().hiddenFrom(request.target()) || request.attackerObscured());
+    var helper =
+        context.entries.values().stream()
+            .filter(Encounters::present)
+            .filter(
+                entry ->
+                    attacker.entry().id().equals(entry.tactics().helping())
+                        && target.entry().id().equals(entry.tactics().helpedTarget()))
+            .findFirst()
+            .orElse(null);
+    var sources =
+        CombatConditions.attack(
+            attacker.conditions(),
+            target.conditions(),
+            request.distance(),
+            seeTarget,
+            seenByTarget,
+            weapon.ranged()
+                && (request.nearbyHostile()
+                    || request.distance() <= 5 && seenByTarget && !target.incapacitated()),
+            target.entry().tactics().dodging() && target.speed() > 0 && !target.incapacitated(),
+            helper != null,
+            request.fearSourceVisible() && attacker.conditions().contains("srd-5.1:frightened"),
+            request.mode());
+    var opponentSources =
+        CombatEffects.rollSources(
+            context, target, "attack", "against_holder", request.distance(), seenByTarget);
+    var ownSources =
+        CombatEffects.rollSources(
+            context, attacker, "attack", "holder", request.distance(), seeTarget);
+    var advantages = new ArrayList<>(sources.advantages());
+    advantages.addAll(opponentSources.advantages());
+    advantages.addAll(ownSources.advantages());
+    var penalties = new ArrayList<>(sources.disadvantages());
+    penalties.addAll(opponentSources.disadvantages());
+    penalties.addAll(ownSources.disadvantages());
+    if (weapon.ranged() && request.distance() > weapon.normalRange()) penalties.add("Long range");
+    if (Exhaustion.disadvantagesAttacksAndSaves(attacker.vitals().exhaustion()))
+      penalties.add("Exhaustion");
+    var preflight = new ArrayList<String>();
+    if (weapon.damage().stream().anyMatch(dice -> dice.notation().contains("d")))
+      preflight.add("criticalDiceMode");
+    if (target.vitals().health().current() == 0 && target.vitals().health().temporary() > 0)
+      preflight.add("temporaryHpAbsorbsDeathSaveFailure");
+    context.preflight(preflight);
+    String criticalMode = context.setting("criticalDiceMode", String.class);
+    boolean absorb =
+        target.vitals().health().current() == 0
+            && target.vitals().health().temporary() > 0
+            && context.setting("temporaryHpAbsorbsDeathSaveFailure", Boolean.class);
+    protection(context, request, target, penalties);
+    RollMode mode = new AdvantageSources(advantages, penalties).mode();
+    var attack =
+        CombatRolls.attack(
+            weapon.bonus(),
+            target.armor(),
+            request.cover(),
+            weapon.criticalOn(),
+            CombatConditions.automaticCritical(target.conditions(), request.distance()),
+            mode,
+            context.random());
+    context.dice("Attack", request.actor(), attack.roll());
+    if (request.targetAbsent())
+      attack = new CombatRolls.Attack(attack.roll(), attack.target(), false, false);
+    context.result("attack", attack);
+    if (attacker.entry().tactics().hidden() || attacker.entry().tactics().stealth() != null) {
+      Tactics flags = attacker.entry().tactics();
+      context.update(
+          attacker
+              .entry()
+              .tactics(
+                  flags.flags(
+                      flags.dodging(),
                       false,
-                      resistant,
-                      defense(target, "vulnerability", type, weapon.magical()),
-                      defense(target, "immunity", type, weapon.magical()));
-              applied.put(type, amount);
-              total = Math.addExact(total, amount);
-            }
-            var after =
-                target
-                    .vitals()
-                    .health()
-                    .damage(
-                        total, attack.critical(), target.deathMode(), request.knockOut(), absorb);
-            context.health(target, after.health());
-            context.dm(
-                total > 0 ? "DamageTaken" : "DamageBlocked",
-                Map.of(
-                    "targetId",
-                    request.target(),
-                    "magical",
-                    weapon.magical(),
-                    "damage",
-                    applied,
-                    "absorbed",
-                    after.absorbed(),
-                    "hitPointsLost",
-                    after.hitPointsLost(),
-                    "state",
-                    after.health().state()));
-            if (after.hitPointsLost() > 0)
-              context.dm(
-                  "HitPointsLost",
-                  Map.of("targetId", request.target(), "amount", after.hitPointsLost()));
-            context.result("hitPointsAfter", after.health());
-            context.result("damage", applied);
-            if (target.owner() != null)
-              context.tell(
-                  "OwnHitPointsChanged",
-                  target.owner(),
-                  target.name() + " now has " + after.health().current() + " hit points.");
-          }
-          context.dm(
-              "AttackResolved",
-              Map.of(
-                  "actorId",
-                  request.actor(),
-                  "targetId",
-                  request.target(),
-                  "cover",
-                  request.cover(),
-                  "weapon",
-                  weapon.key(),
-                  "hit",
-                  hit,
-                  "critical",
-                  hit && attack.critical()));
-        });
+                      flags.helping(),
+                      flags.helpedTarget(),
+                      flags.readied())));
+    }
+    if (helper != null) {
+      var flags = helper.tactics();
+      context.update(
+          helper.tactics(
+              flags.flags(flags.dodging(), flags.hidden(), null, null, flags.readied())));
+    }
+    boolean hit = attack.hit();
+    context.result("actorId", request.actor());
+    context.result("action", "attack");
+    context.result("outcome", hit ? (attack.critical() ? "critical-hit" : "hit") : "miss");
+    context.result("hit", hit);
+    if (hit) {
+      var damage = new LinkedHashMap<String, Integer>();
+      for (var part : weapon.damage()) {
+        var roll =
+            CombatRolls.damage(
+                CombatRolls.weaponDamage(weapon.label(), weapon.key(), part.notation()),
+                attack.critical(),
+                CriticalDiceMode.valueOf(criticalMode),
+                context.random());
+        context.dice("Weapon damage", request.actor(), roll);
+        damage.merge(part.type(), roll.total(), Math::addExact);
+      }
+      var applied = new LinkedHashMap<String, Integer>();
+      int total = 0;
+      for (var value : damage.entrySet()) {
+        String type = value.getKey();
+        boolean resistant =
+            defense(target, "resistance", type, weapon.magical())
+                || target.conditions().contains("srd-5.1:petrified");
+        int amount =
+            CombatHealth.damageAmount(
+                value.getValue(),
+                0,
+                false,
+                resistant,
+                defense(target, "vulnerability", type, weapon.magical()),
+                defense(target, "immunity", type, weapon.magical()));
+        applied.put(type, amount);
+        total = Math.addExact(total, amount);
+      }
+      var after =
+          target
+              .vitals()
+              .health()
+              .damage(total, attack.critical(), target.deathMode(), request.knockOut(), absorb);
+      context.health(target, after.health());
+      context.dm(
+          total > 0 ? "DamageTaken" : "DamageBlocked",
+          Map.of(
+              "targetId",
+              request.target(),
+              "magical",
+              weapon.magical(),
+              "damage",
+              applied,
+              "absorbed",
+              after.absorbed(),
+              "hitPointsLost",
+              after.hitPointsLost(),
+              "state",
+              after.health().state()));
+      if (after.hitPointsLost() > 0)
+        context.dm(
+            "HitPointsLost", Map.of("targetId", request.target(), "amount", after.hitPointsLost()));
+      context.result("hitPointsAfter", after.health());
+      context.result("damage", applied);
+      if (target.owner() != null)
+        context.tell(
+            "OwnHitPointsChanged",
+            target.owner(),
+            target.name() + " now has " + after.health().current() + " hit points.");
+    }
+    context.dm(
+        "AttackResolved",
+        Map.of(
+            "actorId",
+            request.actor(),
+            "targetId",
+            request.target(),
+            "cover",
+            request.cover(),
+            "weapon",
+            weapon.key(),
+            "hit",
+            hit,
+            "critical",
+            hit && attack.critical()));
+  }
+
+  private static void protection(
+      Context context, Attack request, Creature target, List<String> disadvantages) {
+    var candidates = request.protectingAllyIds();
+    if (candidates.isEmpty() || context.reactions() == null || request.targetAbsent()) return;
+    for (UUID id : candidates) {
+      if (!context.entries.containsKey(id)
+          || id.equals(request.actor())
+          || id.equals(request.target())) throw invalid();
+    }
+    context
+        .reactions()
+        .window(
+            Point.BEFORE_ATTACK_ROLL,
+            () ->
+                candidates.stream()
+                    .map(context::creature)
+                    .filter(creature -> Encounters.present(creature.entry()))
+                    .filter(CombatActions::canReact)
+                    .filter(
+                        creature ->
+                            creature.shield() && creature.features().contains("srd-5.1:protection"))
+                    .filter(
+                        creature ->
+                            CombatConditions.canSee(
+                                creature.conditions(),
+                                target.conditions(),
+                                target.entry().tactics().hiddenFrom(creature.entry().id())))
+                    .map(
+                        creature ->
+                            new Offer(
+                                Step.DEFENDING_RESULT,
+                                creature.entry().id(),
+                                creature.entry().initiative(),
+                                0,
+                                new Option("protection", "Protection", true, null, 0)))
+                    .toList(),
+            null,
+            (decider, key) -> {
+              var defender = context.creature(decider);
+              context.update(defender.entry().tactics(defender.entry().tactics().spendReaction()));
+              disadvantages.add("Protection");
+              context.dm("ReactionUsed", Map.of("deciderId", decider, "optionKey", key));
+            });
+  }
+
+  private static boolean canReact(Creature creature) {
+    var tactics = creature.entry().tactics();
+    return tactics.reactionAvailable()
+        && !tactics.surprised()
+        && !creature.incapacitated()
+        && !creature.conditions().contains("srd-5.1:turned");
   }
 
   public Reply hide(UUID campaign, UUID id, UUID actor, Envelope envelope, Hide form) {
@@ -796,7 +848,15 @@ public class CombatActions {
       boolean targetObscured,
       boolean nearbyHostile,
       boolean fearSourceVisible,
-      boolean targetAbsent) {}
+      boolean targetAbsent,
+      @JsonInclude(JsonInclude.Include.NON_EMPTY) List<UUID> protectingAllyIds) {
+    public Attack {
+      protectingAllyIds =
+          protectingAllyIds == null
+              ? List.of()
+              : protectingAllyIds.stream().distinct().sorted().toList();
+    }
+  }
 
   public record Contest(
       UUID actor, UUID target, int distance, ContestKind kind, boolean acrobatics) {}

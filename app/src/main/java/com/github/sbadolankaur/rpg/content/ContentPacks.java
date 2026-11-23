@@ -124,6 +124,11 @@ public class ContentPacks {
                 .param(campaign)
                 .query(String.class)
                 .list());
+    return openPinned(hashes);
+  }
+
+  /** Opens immutable pack versions recorded by a resumable action. */
+  public ContentSet openPinned(List<String> hashes) {
     synchronized (cache) {
       var available = cache.get(hashes);
       if (available != null) return available;

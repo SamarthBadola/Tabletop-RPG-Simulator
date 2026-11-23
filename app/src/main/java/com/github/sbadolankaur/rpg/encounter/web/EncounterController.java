@@ -92,7 +92,7 @@ class EncounterController {
     return "demo-encounter";
   }
 
-  @GetMapping("/{id}/{region:turn-order|acting-panel|log|clock}")
+  @GetMapping("/{id}/{region:turn-order|acting-panel|log|clock|reaction}")
   String region(
       @PathVariable UUID campaign,
       @PathVariable UUID id,
@@ -290,7 +290,8 @@ class EncounterController {
                 form.flag("targetObscured"),
                 form.flag("nearbyHostile"),
                 form.flag("fearSourceVisible"),
-                form.flag("targetAbsent")));
+                form.flag("targetAbsent"),
+                form.ids("protectingAllyIds")));
     return updated(campaign, id, actor, request, model, result, "workspace");
   }
 
@@ -750,7 +751,7 @@ class EncounterController {
     }
   }
 
-  private Object updated(
+  Object updated(
       UUID campaign,
       UUID id,
       UUID actor,
@@ -768,6 +769,18 @@ class EncounterController {
 
   private void populate(UUID campaign, UUID id, UUID actor, Model model, long before, int limit) {
     var view = encounters.view(campaign, id, actor, before, limit);
+    var reaction = commands.reaction(campaign, id, actor);
+    model.addAttribute("reaction", reaction);
+    if (reaction != null) {
+      model.addAttribute("reactionPath", "/campaigns/" + campaign + "/reactions/" + reaction.id());
+      model.addAttribute(
+          "reactionDecider",
+          view.combatants().stream()
+              .filter(creature -> creature.id().equals(reaction.prompt().decider()))
+              .map(Encounters.Combatant::name)
+              .findFirst()
+              .orElse("Creature"));
+    }
     model.addAttribute("fight", view);
     model.addAttribute(
         "acting",
@@ -786,7 +799,7 @@ class EncounterController {
         java.util.Arrays.stream(DurationKind.values())
             .filter(kind -> kind != DurationKind.INSTANT)
             .toList());
-    envelope(model, view.table().version());
+    envelope(model, reaction == null ? view.table().version() : reaction.version());
   }
 
   private void envelope(Model model, long version) {
@@ -808,7 +821,7 @@ class EncounterController {
     return new CampaignException(Code.VALIDATION_FAILED);
   }
 
-  private record Fields(MultiValueMap<String, String> values) {
+  record Fields(MultiValueMap<String, String> values) {
     String optional(String key) {
       var list = values.get(key);
       if (list == null || list.isEmpty()) return null;
