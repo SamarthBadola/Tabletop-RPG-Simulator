@@ -110,7 +110,8 @@ void fail(HttpResponse& response, const ApiError& error) {
     response.body = error_json(error);
 }
 
-void dispatch(const ServerConfig& config, const HttpRequest& request, HttpResponse& response) {
+void dispatch(const ServerConfig& config, const HttpRequest& request, HttpResponse& response,
+              std::chrono::steady_clock::time_point started) {
     // 1. The token comes first, so a caller without it learns nothing about the service.
     if (!config.token.empty()) {
         const std::string* given = find_header(request, "authorization");
@@ -171,7 +172,9 @@ void dispatch(const ServerConfig& config, const HttpRequest& request, HttpRespon
     response.height = query.grid.height;
     response.metric = metric_name(query.metric);
     if (is_path) {
-        const PathResult result = find_path(query);
+        const auto limit = std::chrono::milliseconds(config.deadline_ms);
+        const StopCheck out_of_time = [&] { return config.now() - started >= limit; };
+        const PathResult result = find_path(query, kExpansionCap, out_of_time);
         response.body = path_response_json(result);
         response.path_search = true;
         response.found = result.found;
@@ -186,8 +189,11 @@ void dispatch(const ServerConfig& config, const HttpRequest& request, HttpRespon
 
 HttpResponse handle(const ServerConfig& config, const HttpRequest& request) {
     HttpResponse response;
+    // Spec section 7: the 200 ms deadline counts from the moment a worker starts the request,
+    // so the clock is read first, before the JSON is parsed.
+    const auto started = config.now();
     try {
-        dispatch(config, request, response);
+        dispatch(config, request, response, started);
     } catch (...) {
         // A bug. The caller gets a generic message; nothing about the request or the bug is sent.
         HttpResponse failed;
@@ -203,6 +209,16 @@ HttpResponse handle(const ServerConfig& config, const HttpRequest& request) {
 HttpResponse error_response(const HttpRequest& request, const ApiError& error) {
     HttpResponse response;
     fail(response, error);
+    response.trace_id = trace_id_for(request);
+    response.headers["X-Request-Id"] = response.trace_id;
+    return response;
+}
+
+HttpResponse busy_response(const HttpRequest& request) {
+    HttpResponse response;
+    fail(response, ApiError{503, "BUSY", "the service is busy, try again shortly", ""});
+    response.headers.emplace("Retry-After", "1");
+    response.headers.emplace("Connection", "close");
     response.trace_id = trace_id_for(request);
     response.headers["X-Request-Id"] = response.trace_id;
     return response;

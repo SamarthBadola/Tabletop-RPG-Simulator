@@ -47,6 +47,29 @@ adapt_httplib(
   "if (!detail::read_headers(strm, req.headers)) {"
   "if (!detail::read_headers(strm, req.headers, 8192)) {")
 
+# Give the service a chance to reject an accepted connection when both queues are full.
+adapt_httplib([=[
+  virtual bool enqueue(std::function<void()> fn) = 0;
+  virtual void shutdown() = 0;
+]=] [=[
+  virtual bool enqueue(std::function<void()> fn) = 0;
+  virtual bool on_rejected_connection(socket_t) { return false; }
+  virtual void shutdown() = 0;
+]=])
+adapt_httplib([=[
+        output_error_log(Error::ResourceExhaustion, nullptr);
+        detail::shutdown_socket(sock);
+        detail::close_socket(sock);
+]=] [=[
+        output_error_log(Error::ResourceExhaustion, nullptr);
+        if (task_queue->on_rejected_connection(sock)) {
+          detail::drain_and_close_socket(sock);
+        } else {
+          detail::shutdown_socket(sock);
+          detail::close_socket(sock);
+        }
+]=])
+
 set(httplib_generated "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(CONFIGURE OUTPUT "${httplib_generated}/httplib/httplib.h" CONTENT "${httplib}" @ONLY)
 target_include_directories(pathfinder_server SYSTEM BEFORE PRIVATE "${httplib_generated}")

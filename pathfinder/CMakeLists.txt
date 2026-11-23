@@ -13,6 +13,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 enable_testing()
+find_package(Threads REQUIRED)
 add_executable(pathfinder_tests test/test_search.cpp)
 target_link_libraries(pathfinder_tests PRIVATE pathfinder_core)
 add_test(NAME pathfinder_tests COMMAND pathfinder_tests)
@@ -30,9 +31,12 @@ target_link_libraries(pathfinder_contract_tests PRIVATE pathfinder_core)
 target_compile_definitions(pathfinder_contract_tests PRIVATE CONTRACT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/contract/cases")
 add_test(NAME pathfinder_contract_tests COMMAND pathfinder_contract_tests)
 
+add_executable(pathfinder_work_queue_tests test/test_work_queue.cpp)
+target_link_libraries(pathfinder_work_queue_tests PRIVATE pathfinder_core Threads::Threads)
+add_test(NAME pathfinder_work_queue_tests COMMAND pathfinder_work_queue_tests)
+
 # The service itself: the program that listens on a port.
 set(PATHFINDER_BUILD "dev" CACHE STRING "Build identifier shown by GET /v1/info")
-find_package(Threads REQUIRED)
 add_executable(pathfinder_server src/main.cpp)
 include(cmake/httplib.cmake)
 target_link_libraries(pathfinder_server PRIVATE pathfinder_core Threads::Threads)

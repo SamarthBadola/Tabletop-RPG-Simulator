@@ -259,7 +259,6 @@ std::optional<ApiError> parse_request(const std::string& body, bool with_goal, Q
     return std::nullopt;
 }
 
-
 const char* title_for(const std::string& code) {
     if (code == "INVALID_JSON") return "Invalid JSON";
     if (code == "UNAUTHORIZED") return "Unauthorized";
@@ -281,11 +280,11 @@ const char* reason_name(Reason reason) {
         case Reason::GoalBlocked: return "GOAL_BLOCKED";
         case Reason::GoalNoStop: return "GOAL_NO_STOP";
         case Reason::ExpansionCap: return "EXPANSION_CAP";
+        case Reason::Deadline: return "DEADLINE";
         case Reason::None: break;
     }
     return "NO_PATH_WITHIN_BUDGET";
 }
-
 
 std::optional<ApiError> parse_path_request(const std::string& body, Query& query) {
     return parse_request(body, true, query);
