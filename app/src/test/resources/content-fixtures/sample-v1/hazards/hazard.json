@@ -1,0 +1,19 @@
+{
+  "kind": "hazard",
+  "key": "sample-pack:hazard",
+  "name": "Fixture hazard",
+  "text": "Fixture description.",
+  "area": {
+    "shape": "square",
+    "size": 5
+  },
+  "trigger": "STEP_ON",
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ac",
+      "operation": "ADD",
+      "value": 1
+    }
+  ]
+}

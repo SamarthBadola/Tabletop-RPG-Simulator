@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Encounters</title></head>
+<body><main>
+    <a th:href="@{/campaigns/{id}(id=${campaignId})}">Campaign</a>
+    <h1>Encounters</h1>
+    <form th:action="@{/campaigns/{id}/encounters(id=${campaignId})}" method="post">
+        <th:block th:replace="~{demo-encounter :: command}"></th:block>
+        <label>Encounter name <input name="name" required maxlength="80"></label>
+        <button type="submit">Create encounter</button>
+    </form>
+    <ul><li th:each="encounter : ${encounters}">
+        <a th:href="@{/campaigns/{id}/encounters/{encounter}(id=${campaignId},encounter=${encounter.id})}"
+           th:text="${encounter.name}"></a>
+        <span th:text="${encounter.phase}"></span>
+    </li></ul>
+</main><footer th:replace="~{demo-footer :: help}"></footer></body>
+</html>

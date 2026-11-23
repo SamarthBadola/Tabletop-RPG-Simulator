@@ -1,0 +1,217 @@
+{
+  "$defs" : {
+    "ability" : {
+      "enum" : [ "str", "dex", "con", "int", "wis", "cha" ]
+    },
+    "alignment" : {
+      "enum" : [ "lawful_good", "neutral_good", "chaotic_good", "lawful_neutral", "neutral", "chaotic_neutral", "lawful_evil", "neutral_evil", "chaotic_evil", "unaligned", "any" ]
+    },
+    "creatureType" : {
+      "enum" : [ "aberration", "beast", "celestial", "construct", "dragon", "elemental", "fey", "fiend", "giant", "humanoid", "monstrosity", "ooze", "plant", "undead" ]
+    },
+    "damageType" : {
+      "enum" : [ "acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder" ]
+    },
+    "duration" : {
+      "enum" : [ "INSTANT", "ROUNDS", "CLOCK", "CONCENTRATION", "UNTIL_TURN_START", "UNTIL_TURN_END", "UNTIL_DISPELLED", "UNTIL_SHORT_OR_LONG_REST", "UNTIL_LONG_REST", "UNTIL_USED", "PERMANENT", "WHILE_EQUIPPED", "WHILE_ATTUNED" ]
+    },
+    "effect-damage_die_reroll" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "atOrBelow" ],
+      "properties" : {
+        "type" : {
+          "const" : "damage_die_reroll"
+        },
+        "atOrBelow" : {
+          "type" : "integer",
+          "minimum" : 1,
+          "maximum" : 100
+        }
+      }
+    },
+    "effect-grant_action" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "amount" ],
+      "properties" : {
+        "type" : {
+          "const" : "grant_action"
+        },
+        "amount" : {
+          "type" : "integer",
+          "minimum" : 1
+        }
+      }
+    },
+    "effect-grant_advantage" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "roll", "activeWhen" ],
+      "properties" : {
+        "type" : {
+          "const" : "grant_advantage"
+        },
+        "roll" : {
+          "$ref" : "#/$defs/rollKind"
+        },
+        "activeWhen" : {
+          "$ref" : "common.schema.json#/$defs/predicate"
+        }
+      }
+    },
+    "effect-heal" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "amount" ],
+      "properties" : {
+        "type" : {
+          "const" : "heal"
+        },
+        "amount" : {
+          "$ref" : "common.schema.json#/$defs/roll"
+        }
+      }
+    },
+    "effect-modifier" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "stat", "operation", "value" ],
+      "properties" : {
+        "type" : {
+          "const" : "modifier"
+        },
+        "stat" : {
+          "type" : "string"
+        },
+        "operation" : {
+          "$ref" : "#/$defs/operation"
+        },
+        "value" : {
+          "anyOf" : [ {
+            "type" : "integer",
+            "minimum" : -1000,
+            "maximum" : 1000
+          }, {
+            "type" : "string",
+            "pattern" : "^-?[0-9]{1,4}/[0-9]{1,4}$"
+          } ]
+        },
+        "appliesWhen" : {
+          "enum" : [ "carried", "equipped", "attuned" ]
+        },
+        "activeWhen" : {
+          "$ref" : "common.schema.json#/$defs/predicate"
+        },
+        "duration" : {
+          "$ref" : "common.schema.json#/$defs/duration"
+        }
+      }
+    },
+    "effect-reaction_option" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "point" ],
+      "properties" : {
+        "type" : {
+          "const" : "reaction_option"
+        },
+        "point" : {
+          "$ref" : "#/$defs/trigger"
+        }
+      }
+    },
+    "effect-two_weapon_fighting" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "two_weapon_fighting"
+        }
+      }
+    },
+    "equipmentPick" : {
+      "enum" : [ "martial_weapon", "simple_weapon", "armor", "gear" ]
+    },
+    "hazardTrigger" : {
+      "enum" : [ "STEP_ON", "ENTER_AREA", "START_TURN_IN_AREA", "ACTION", "DM" ]
+    },
+    "itemCategory" : {
+      "enum" : [ "weapon", "armor", "shield", "gear", "tool", "consumable", "magic", "container", "ammunition" ]
+    },
+    "operation" : {
+      "enum" : [ "SET", "ADD", "MULTIPLY", "MIN", "MAX", "ADVANTAGE", "DISADVANTAGE" ]
+    },
+    "part-advantage_source" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "roll", "mode", "direction" ],
+      "properties" : {
+        "type" : {
+          "const" : "advantage_source"
+        },
+        "roll" : {
+          "$ref" : "#/$defs/rollKind"
+        },
+        "mode" : {
+          "enum" : [ "advantage", "disadvantage" ]
+        },
+        "direction" : {
+          "enum" : [ "holder", "against_holder" ]
+        },
+        "maxDistance" : {
+          "type" : "integer",
+          "minimum" : 0
+        },
+        "minDistanceExclusive" : {
+          "type" : "integer",
+          "minimum" : 0
+        },
+        "lineOfSight" : {
+          "type" : "boolean"
+        }
+      }
+    },
+    "part-restriction" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type", "movement" ],
+      "properties" : {
+        "type" : {
+          "const" : "restriction"
+        },
+        "movement" : {
+          "const" : "crawl_or_stand"
+        }
+      }
+    },
+    "rarity" : {
+      "enum" : [ "common", "uncommon", "rare", "very_rare", "legendary", "artifact" ]
+    },
+    "recharge" : {
+      "enum" : [ "SHORT_REST", "LONG_REST", "DAWN", "ROLL_INITIATIVE", "START_OF_OWN_TURN", "MANUAL" ]
+    },
+    "rollKind" : {
+      "enum" : [ "attack", "save", "check", "damage", "initiative", "death_save" ]
+    },
+    "school" : {
+      "enum" : [ "abjuration", "conjuration", "divination", "enchantment", "evocation", "illusion", "necromancy", "transmutation" ]
+    },
+    "size" : {
+      "enum" : [ "tiny", "small", "medium", "large", "huge", "gargantuan" ]
+    },
+    "skill" : {
+      "enum" : [ "acrobatics", "animal_handling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleight_of_hand", "stealth", "survival" ]
+    },
+    "trigger" : {
+      "enum" : [ "ON_MOVE_STEP", "BEFORE_ATTACK_ROLL", "AFTER_ATTACK_ROLL", "AFTER_HIT", "AFTER_DAMAGE_ROLL", "AFTER_SAVE_ROLL", "AFTER_SAVE_FAIL", "AFTER_CHECK_ROLL", "ON_CAST", "AFTER_DAMAGE_TAKEN", "ON_READIED_TRIGGER", "ON_TURN_END", "ON_DAWN", "START_OF_OWN_TURN" ]
+    },
+    "weaponProperty" : {
+      "enum" : [ "ammunition", "finesse", "heavy", "light", "loading", "range", "reach", "special", "thrown", "two_handed", "versatile" ]
+    }
+  },
+  "$id" : "https://schemas.tabletop-rpg.invalid/content/v1/vocabulary.json",
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-vocabularyVersion" : 2
+}

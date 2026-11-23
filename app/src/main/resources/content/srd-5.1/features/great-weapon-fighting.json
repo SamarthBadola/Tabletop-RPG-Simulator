@@ -1,0 +1,14 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:great-weapon-fighting",
+  "name": "Great Weapon Fighting",
+  "text": {
+    "file": "text/features/great-weapon-fighting.md"
+  },
+  "effects": [
+    {
+      "type": "damage_die_reroll",
+      "atOrBelow": 2
+    }
+  ]
+}

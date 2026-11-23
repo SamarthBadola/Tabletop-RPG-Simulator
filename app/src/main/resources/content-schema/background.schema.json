@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/background.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "vocabulary.json#/$defs/skill"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/choice"
+              }
+            ]
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              {
+                "$ref": "common.schema.json#/$defs/choice"
+              }
+            ]
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              {
+                "$ref": "common.schema.json#/$defs/choice"
+              }
+            ]
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "equipment": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "dm"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "feature"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "background",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "text"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

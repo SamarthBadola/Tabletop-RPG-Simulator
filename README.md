@@ -38,15 +38,18 @@ The attribution is also recorded in [NOTICE](NOTICE). Do not add non-SRD officia
 
 The initial full image build took approximately **197.8 seconds**. This is a cold-build baseline, not a diagnosis; build-time optimization is tracked in the combined Decision Log and Progress Tracker.
 
-**Current milestone: Step 2 — dice engine.** The parser, dice notation, limits, result model, RollPlan API, error contract and deterministic test contract are specified in Ruleset Specification v0.12.1; decisions D-1 to D-13 are accepted (DEC-085 and DEC-086). The next engineering task is tests-first implementation, limited to producing correct RollResult values.
+**Current milestone: Step 6 — Fighter creation and leveling.** The content-pack skeleton merged in PR #33.
 
 ## Project specification set
 
-- [Requirements Specification v1.7.1](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
-- [Architecture v5.1](docs/architecture.md)
-- [AI Build Brief v1.10.2](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
-- [Ruleset Specification v0.12.1 (draft)](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
-- [Decision Log and Progress Tracker v1.11.1](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [Requirements Specification v1.20](docs/Tabletop%20RPG%20Simulator%20Requirements%20Specification.md)
+- [Architecture v5.17](docs/architecture.md)
+- [AI Build Brief v1.29](docs/Tabletop%20RPG%20Simulator%20AI%20Build%20Brief.md)
+- [Ruleset Specification v1.4](docs/Tabletop%20RPG%20Simulator%20Ruleset%20Specification.md)
+- [Decision Log and Progress Tracker v1.35](docs/Tabletop%20RPG%20Simulator%20Decision%20Log%20and%20Progress%20Tracker.md)
+- [Content Schema Specification v1.2](docs/Tabletop%20RPG%20Simulator%20Content%20Schema%20Specification.md)
+- [Grid and Pathfinder Specification v0.4 (draft)](docs/Tabletop%20RPG%20Simulator%20Grid%20and%20Pathfinder%20Specification%20%28v0.4%29.md)
+- [UX and API Specification v1.5](docs/Tabletop%20RPG%20Simulator%20UX%20and%20API%20Specification%20%28v1.5%29.md)
 - [AI handoff and Step 2 contract review](docs/AI-HANDOFF.md)
 - [Repository governance](docs/REPOSITORY-GOVERNANCE.md)
 
@@ -63,7 +66,7 @@ Use Bash (Git Bash or WSL on Windows). From the repository root:
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --env-file deploy/.env up --build -d
 \`\`\`
 
-Then open http://localhost:8080 and create the first account. It becomes the instance administrator. Registration closes once that account is created; additional accounts will be enabled after the invitation flow is implemented.
+Then open http://localhost:8080 and create the first account. It becomes the instance administrator. After that, registration requires a campaign invite. Finish campaign setup, then use Create invite on Players.
 
 To inspect logs:
 

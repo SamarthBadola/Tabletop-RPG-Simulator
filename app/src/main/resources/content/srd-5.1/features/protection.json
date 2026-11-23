@@ -1,0 +1,14 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:protection",
+  "name": "Protection",
+  "text": {
+    "file": "text/features/protection.md"
+  },
+  "effects": [
+    {
+      "type": "reaction_option",
+      "point": "BEFORE_ATTACK_ROLL"
+    }
+  ]
+}

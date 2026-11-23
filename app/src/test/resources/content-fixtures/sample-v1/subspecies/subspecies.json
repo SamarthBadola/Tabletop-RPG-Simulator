@@ -1,0 +1,10 @@
+{
+  "kind": "subspecies",
+  "key": "sample-pack:subspecies",
+  "name": "Fixture subspecies",
+  "text": "Fixture description.",
+  "species": "sample-pack:species",
+  "features": [
+    "sample-pack:feature"
+  ]
+}

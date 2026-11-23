@@ -1,0 +1,35 @@
+{
+  "kind": "condition",
+  "key": "srd-5.1:prone",
+  "name": "Prone",
+  "source": "Conditions, page 359",
+  "text": {
+    "file": "text/conditions/prone.md"
+  },
+  "parts": [
+    {
+      "type": "restriction",
+      "movement": "crawl_or_stand"
+    },
+    {
+      "type": "advantage_source",
+      "roll": "attack",
+      "mode": "disadvantage",
+      "direction": "holder"
+    },
+    {
+      "type": "advantage_source",
+      "roll": "attack",
+      "mode": "advantage",
+      "direction": "against_holder",
+      "maxDistance": 5
+    },
+    {
+      "type": "advantage_source",
+      "roll": "attack",
+      "mode": "disadvantage",
+      "direction": "against_holder",
+      "minDistanceExclusive": 5
+    }
+  ]
+}

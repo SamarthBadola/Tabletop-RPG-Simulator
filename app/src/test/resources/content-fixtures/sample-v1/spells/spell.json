@@ -1,0 +1,31 @@
+{
+  "kind": "spell",
+  "key": "sample-pack:spell",
+  "name": "Fixture spell",
+  "text": "Fixture description.",
+  "level": 1,
+  "school": "evocation",
+  "castingTime": {
+    "kind": "action"
+  },
+  "range": {
+    "kind": "ranged",
+    "feet": 30
+  },
+  "components": {
+    "verbal": true
+  },
+  "duration": {
+    "kind": "INSTANT"
+  },
+  "classes": [
+    "sample-pack:class"
+  ],
+  "tier": 1,
+  "rolls": [
+    {
+      "label": "Healing",
+      "roll": "1d4+spell_mod"
+    }
+  ]
+}

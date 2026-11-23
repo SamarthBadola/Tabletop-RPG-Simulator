@@ -1,0 +1,766 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/common.schema.json",
+  "$defs": {
+    "key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 105,
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,39}:[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "text": {
+      "oneOf": [
+        {
+          "type": "string",
+          "maxLength": 16384
+        },
+        {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^text/[a-z0-9-]+/[a-z0-9-]+[.]md$",
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "file"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "expression": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "x-expression": "int"
+    },
+    "roll": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "x-expression": "roll"
+    },
+    "predicate": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "x-expression": "bool"
+    },
+    "choice": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "enum": [
+            "ability",
+            "skill",
+            "tool",
+            "language",
+            "feature"
+          ],
+          "x-visibility": "dm"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "x-visibility": "dm"
+        },
+        "from": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "count",
+        "from"
+      ],
+      "additionalProperties": false
+    },
+    "level": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "x-visibility": "dm"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "feature"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "asi",
+              "subclass"
+            ]
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "additionalProperties": false
+    },
+    "spellcasting": {
+      "type": "object",
+      "properties": {
+        "ability": {
+          "$ref": "vocabulary.json#/$defs/ability",
+          "x-visibility": "dm"
+        },
+        "progression": {
+          "enum": [
+            "full",
+            "half",
+            "third",
+            "pact",
+            "none"
+          ],
+          "x-visibility": "dm"
+        },
+        "preparation": {
+          "enum": [
+            "known",
+            "prepared"
+          ],
+          "x-visibility": "dm"
+        },
+        "slots": {
+          "$ref": "common.schema.json#/$defs/key",
+          "x-reference": "ruleTable",
+          "x-visibility": "dm"
+        },
+        "ritualCasting": {
+          "type": "boolean",
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "ability",
+        "progression",
+        "preparation"
+      ],
+      "additionalProperties": false
+    },
+    "duration": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "vocabulary.json#/$defs/duration",
+          "x-visibility": "public"
+        },
+        "amount": {
+          "$ref": "common.schema.json#/$defs/expression",
+          "x-visibility": "dm"
+        },
+        "seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "x-visibility": "public"
+        },
+        "max": {
+          "$ref": "common.schema.json#/$defs/expression",
+          "x-visibility": "dm"
+        },
+        "creature": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "x-visibility": "dm"
+        },
+        "concentration": {
+          "type": "boolean",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "ROUNDS"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "amount"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "seconds"
+                  ]
+                },
+                {
+                  "required": [
+                    "max"
+                  ]
+                },
+                {
+                  "required": [
+                    "creature"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "CLOCK"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "amount",
+              "seconds"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "max"
+                  ]
+                },
+                {
+                  "required": [
+                    "creature"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "CONCENTRATION"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "max"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "amount"
+                  ]
+                },
+                {
+                  "required": [
+                    "seconds"
+                  ]
+                },
+                {
+                  "required": [
+                    "creature"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "UNTIL_TURN_START"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "creature"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "amount"
+                  ]
+                },
+                {
+                  "required": [
+                    "seconds"
+                  ]
+                },
+                {
+                  "required": [
+                    "max"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "UNTIL_TURN_END"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "creature"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "amount"
+                  ]
+                },
+                {
+                  "required": [
+                    "seconds"
+                  ]
+                },
+                {
+                  "required": [
+                    "max"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "not": {
+                  "enum": [
+                    "ROUNDS",
+                    "CLOCK",
+                    "CONCENTRATION",
+                    "UNTIL_TURN_START",
+                    "UNTIL_TURN_END"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "amount"
+                  ]
+                },
+                {
+                  "required": [
+                    "seconds"
+                  ]
+                },
+                {
+                  "required": [
+                    "max"
+                  ]
+                },
+                {
+                  "required": [
+                    "creature"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "area": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "enum": [
+            "circle",
+            "cone",
+            "cube",
+            "cylinder",
+            "line",
+            "sphere",
+            "square",
+            "wall"
+          ],
+          "x-visibility": "public"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "shape",
+        "size"
+      ],
+      "additionalProperties": false
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "enum": [
+            "action",
+            "bonus_action",
+            "reaction",
+            "none"
+          ],
+          "x-visibility": "dm"
+        },
+        "resource": {
+          "$ref": "common.schema.json#/$defs/key",
+          "x-reference": "resource",
+          "x-visibility": "dm"
+        },
+        "amount": {
+          "$ref": "common.schema.json#/$defs/expression",
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "limit": {
+      "type": "object",
+      "properties": {
+        "per": {
+          "enum": [
+            "turn",
+            "round",
+            "short_rest",
+            "long_rest"
+          ],
+          "x-visibility": "dm"
+        },
+        "uses": {
+          "$ref": "common.schema.json#/$defs/expression",
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "per"
+      ],
+      "additionalProperties": false
+    },
+    "save": {
+      "type": "object",
+      "properties": {
+        "ability": {
+          "$ref": "vocabulary.json#/$defs/ability",
+          "x-visibility": "dm"
+        },
+        "dc": {
+          "$ref": "common.schema.json#/$defs/expression",
+          "x-visibility": "dm"
+        },
+        "onSuccess": {
+          "enum": [
+            "none",
+            "half"
+          ],
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "ability",
+        "dc",
+        "onSuccess"
+      ],
+      "additionalProperties": false
+    },
+    "trigger": {
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "vocabulary.json#/$defs/trigger",
+          "x-visibility": "dm"
+        },
+        "when": {
+          "$ref": "common.schema.json#/$defs/predicate",
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "point"
+      ],
+      "additionalProperties": false
+    },
+    "effect": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "part": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "recharge": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "$ref": "vocabulary.json#/$defs/recharge",
+          "x-visibility": "dm"
+        },
+        "restore": {
+          "anyOf": [
+            {
+              "const": "all"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/expression"
+            }
+          ],
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "on",
+        "restore"
+      ],
+      "additionalProperties": false
+    },
+    "distance": {
+      "type": "object",
+      "properties": {
+        "normal": {
+          "type": "integer",
+          "minimum": 0,
+          "x-visibility": "dm"
+        },
+        "long": {
+          "type": "integer",
+          "minimum": 0,
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "normal"
+      ],
+      "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "x-visibility": "public"
+        },
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "attack": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "melee_weapon",
+                "ranged_weapon",
+                "melee_spell",
+                "ranged_spell"
+              ],
+              "x-visibility": "dm"
+            },
+            "bonus": {
+              "$ref": "common.schema.json#/$defs/expression",
+              "x-visibility": "dm"
+            },
+            "reach": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "range": {
+              "$ref": "common.schema.json#/$defs/distance",
+              "x-visibility": "dm"
+            },
+            "hits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "roll": {
+                    "$ref": "common.schema.json#/$defs/roll",
+                    "x-visibility": "dm"
+                  },
+                  "damageType": {
+                    "$ref": "vocabulary.json#/$defs/damageType",
+                    "x-visibility": "dm"
+                  }
+                },
+                "required": [
+                  "roll",
+                  "damageType"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "kind",
+            "bonus",
+            "hits"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "save": {
+          "$ref": "common.schema.json#/$defs/save",
+          "x-visibility": "dm"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "recharge": {
+          "type": "object",
+          "properties": {
+            "on": {
+              "$ref": "vocabulary.json#/$defs/recharge",
+              "x-visibility": "dm"
+            },
+            "die": {
+              "$ref": "common.schema.json#/$defs/roll",
+              "x-visibility": "dm"
+            },
+            "threshold": {
+              "type": "integer",
+              "minimum": 1,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "on"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "limit": {
+          "$ref": "common.schema.json#/$defs/limit",
+          "x-visibility": "dm"
+        },
+        "cost": {
+          "type": "integer",
+          "minimum": 1,
+          "x-visibility": "dm"
+        },
+        "attacks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "replacements": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "name",
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/poison.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "delivery": {
+          "enum": [
+            "ingested",
+            "inhaled",
+            "injury",
+            "contact"
+          ],
+          "x-visibility": "dm"
+        },
+        "save": {
+          "$ref": "common.schema.json#/$defs/save",
+          "x-visibility": "dm"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "duration": {
+          "$ref": "common.schema.json#/$defs/duration",
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "poison",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "revealed"
+        },
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "revealed"
+        }
+      },
+      "required": [
+        "delivery",
+        "save",
+        "effects",
+        "duration"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

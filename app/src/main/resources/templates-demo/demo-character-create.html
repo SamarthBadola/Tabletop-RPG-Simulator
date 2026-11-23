@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Create character</title></head>
+<body><main id="character-wizard" th:fragment="wizard">
+    <a th:href="@{/campaigns/{id}/characters(id=${campaignId})}">Characters</a>
+    <h1>Create character</h1>
+    <p th:if="${wizard.classes.isEmpty()}">Ask your DM to enable the Fighter content pack.</p>
+    <form th:unless="${wizard.classes.isEmpty()}" th:action="@{/campaigns/{id}/characters(id=${campaignId})}" method="post">
+        <input type="hidden" name="step" th:value="${creationStep}">
+        <input type="hidden" name="actionId" th:value="${actionId}">
+        <input type="hidden" name="expectedVersion" th:value="${expectedVersion}">
+        <th:block th:unless="${creationStep == 'species'}">
+            <input type="hidden" name="speciesKey" th:value="${form.speciesKey}">
+        </th:block>
+        <th:block th:if="${creationStep != 'species' and creationStep != 'class'}">
+            <input type="hidden" name="classKey" th:value="${form.classKey}">
+            <input type="hidden" name="fightingStyleKey" th:value="${form.fightingStyleKey}">
+        </th:block>
+        <th:block th:if="${creationStep == 'background' or creationStep == 'equipment' or creationStep == 'review'}">
+            <input type="hidden" name="abilityMethod" th:value="${form.abilityMethod}">
+            <input th:each="value : ${form.abilityScores}" type="hidden" name="abilityScores" th:value="${value}">
+        </th:block>
+        <th:block th:if="${creationStep == 'equipment' or creationStep == 'review'}">
+            <input type="hidden" name="backgroundKey" th:value="${form.backgroundKey}">
+            <input th:each="value : ${form.skillChoices}" type="hidden" name="skillChoices" th:value="${value}">
+            <input th:each="value : ${form.skillReplacements}" type="hidden" name="skillReplacements" th:value="${value}">
+            <input th:each="value : ${form.languageChoices}" type="hidden" name="languageChoices" th:value="${value}">
+        </th:block>
+        <input th:if="${creationStep == 'review'}" th:each="value : ${form.equipmentChoices}" type="hidden" name="equipmentChoices" th:value="${value}">
+        <fieldset th:if="${creationStep == 'species'}">
+            <legend>Species</legend>
+            <label th:each="choice : ${wizard.species}"><input type="radio" name="speciesKey" required th:value="${choice.key}"><span th:text="${choice.label}"></span></label>
+        </fieldset>
+        <fieldset th:if="${creationStep == 'class'}">
+            <legend>Class and Fighting Style</legend>
+            <label th:each="choice : ${wizard.classes}"><input type="radio" name="classKey" required th:value="${choice.key}" th:checked="${choice.key == form.classKey}"><span th:text="${choice.label}"></span></label>
+            <label for="style">Fighting Style</label>
+            <select id="style" name="fightingStyleKey" required>
+                <option th:each="choice : ${wizard.styles}" th:value="${choice.key}" th:text="${choice.label}"></option>
+            </select>
+        </fieldset>
+        <fieldset th:if="${creationStep == 'abilities'}">
+            <legend>Ability scores</legend>
+            <p th:text="${wizard.method}"></p>
+            <input type="hidden" name="abilityMethod" th:value="${wizard.method}">
+            <p th:if="${wizard.method.name() == 'STANDARD_ARRAY'}">Assign 15, 14, 13, 12, 10, and 8, using each score once.</p>
+            <p th:if="${wizard.method.name() == 'POINT_BUY'}">Spend up to 27 points across scores from 8 to 15.</p>
+            <p th:if="${wizard.method.rolled() and !rolls.isEmpty()}" th:text="${rolls}"></p>
+            <button th:if="${wizard.method.rolled() and rolls.isEmpty()}" type="submit" name="rollSet" value="true" formnovalidate>Roll abilities</button>
+            <label th:each="ability : ${abilityNames}">
+                <span th:text="${ability}"></span><input type="number" name="abilityScores" min="1" max="30" required>
+            </label>
+        </fieldset>
+        <fieldset th:if="${creationStep == 'background'}">
+            <legend>Background and proficiencies</legend>
+            <label for="background">Background</label>
+            <select id="background" name="backgroundKey"><option value="">None</option>
+                <option th:each="choice : ${wizard.backgrounds}" th:value="${choice.key}" th:text="${choice.label}"></option>
+            </select>
+            <fieldset><legend>Choose two class skills</legend>
+                <label th:each="skill : ${wizard.skills}"><input type="checkbox" name="skillChoices" th:value="${skill}"><span th:text="${skill}"></span></label>
+            </fieldset>
+            <fieldset><legend>Replace any duplicate skills if the campaign requires it</legend>
+                <label th:each="skill : ${wizard.replacements}"><input type="checkbox" name="skillReplacements" th:value="${skill}"><span th:text="${skill}"></span></label>
+            </fieldset>
+            <fieldset><legend>Languages</legend><p>Choose one for Human and two more if you choose Acolyte.</p>
+                <label th:each="language : ${languages}"><input type="checkbox" name="languageChoices" th:value="${language}"><span th:text="${language}"></span></label>
+            </fieldset>
+        </fieldset>
+        <fieldset th:if="${creationStep == 'equipment'}">
+            <legend>Starting equipment</legend>
+            <p>Choose one option per group, or choose starting gold and leave the groups blank.</p>
+            <label th:if="${wizard.gold}"><input type="checkbox" name="equipmentChoices" value="srd-5.1:starting-gold">Starting gold</label>
+            <label th:each="group, index : ${wizard.equipment}">
+                <span th:text="|Equipment group ${index.count}|"></span>
+                <select name="equipmentChoices" th:multiple="${group.choose > 1}">
+                    <option value=""></option>
+                    <option th:each="option : ${group.options}" th:value="${option.key}" th:text="${option.label}"></option>
+                </select>
+            </label>
+        </fieldset>
+        <fieldset th:if="${creationStep == 'review'}">
+            <legend>Review character</legend>
+            <p th:text="|${form.classKey} · ${form.fightingStyleKey}|"></p>
+            <p th:text="${form.abilityScores}"></p>
+            <label for="name">Character name</label>
+            <input id="name" name="name" maxlength="80" required>
+        </fieldset>
+        <button th:unless="${creationStep == 'abilities' and wizard.method.rolled() and rolls.isEmpty()}"
+                type="submit" th:text="${creationStep == 'review' ? 'Create character' : 'Continue'}">Continue</button>
+    </form>
+</main><footer th:replace="~{demo-footer :: help}"></footer></body></html>

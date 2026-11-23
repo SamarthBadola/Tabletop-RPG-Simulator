@@ -1,0 +1,42 @@
+{
+  "kind": "ruleTable",
+  "key": "srd-5.1:acolyte-equipment",
+  "name": "Acolyte equipment",
+  "index": "name",
+  "columns": [
+    {
+      "name": "quantity",
+      "type": "int"
+    }
+  ],
+  "rows": [
+    {
+      "name": "srd-5.1:holy-symbol",
+      "quantity": 1
+    },
+    {
+      "name": "srd-5.1:prayer-book",
+      "quantity": 1
+    },
+    {
+      "name": "srd-5.1:incense",
+      "quantity": 5
+    },
+    {
+      "name": "srd-5.1:vestments",
+      "quantity": 1
+    },
+    {
+      "name": "srd-5.1:common-clothes",
+      "quantity": 1
+    },
+    {
+      "name": "srd-5.1:pouch",
+      "quantity": 1
+    },
+    {
+      "name": "copper",
+      "quantity": 1500
+    }
+  ]
+}

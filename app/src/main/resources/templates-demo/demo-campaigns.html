@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Campaigns</title></head>
+<body>
+<main>
+    <h1>Campaigns</h1>
+    <a th:href="@{/join}">Join with a code</a>
+    <ul>
+        <li th:each="item : ${items}">
+            <a th:href="@{/campaigns/{id}(id=${item.id})}" th:text="${item.name}">Campaign</a>
+            <span th:text="${item.role}">DM</span>
+            <span th:text="${item.sessionState}">Session state</span>
+        </li>
+    </ul>
+    <form th:action="@{/campaigns}" method="post">
+        <input type="hidden" name="formToken" th:value="${formToken}">
+        <label for="name">Campaign name</label>
+        <input id="name" name="name" maxlength="80" required>
+        <button type="submit">Create campaign</button>
+    </form>
+</main>
+<footer th:replace="~{demo-footer :: help}"></footer>
+</body>
+</html>

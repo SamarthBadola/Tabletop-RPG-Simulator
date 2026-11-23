@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Campaign</title></head>
+<body>
+<main>
+    <h1 th:text="${campaign.name}">Campaign</h1>
+    <section id="session-bar" th:fragment="session-bar">
+        <h2>Session</h2>
+        <p th:if="${sessionResult != null}"
+           th:attr="data-session-id=${sessionResult.path('sessionId').asString()}"
+           th:text="|${sessionResult.path('number').asLong()}: ${sessionResult.path('state').asString()}|"></p>
+        <time th:if="${sessionResult != null}" th:text="${sessionResult.path('startedAt').asString()}"></time>
+        <p th:if="${sessionResult == null && gameSession != null}" th:attr="data-session-id=${gameSession.id}"
+           th:text="|${gameSession.number}: ${gameSession.state}|"></p>
+        <time th:if="${sessionResult == null && gameSession != null}" th:text="${gameSession.startedAt}"></time>
+        <p th:if="${sessionResult == null && gameSession == null}">No session has started.</p>
+        <form th:if="${isDm && (gameSession == null || gameSession.state.name() == 'ENDED')}"
+              th:action="@{/campaigns/{id}/sessions(id=${campaign.id})}" method="post">
+        <div th:replace="~{demo-command :: envelope}"></div>
+            <button type="submit">Start session</button>
+        </form>
+        <th:block th:if="${isDm && gameSession != null && gameSession.state.name() != 'ENDED'}">
+            <form th:if="${gameSession.state.name() == 'ACTIVE'}" method="post"
+                  th:action="@{/campaigns/{id}/sessions/{sid}/pause(id=${campaign.id},sid=${gameSession.id})}">
+        <div th:replace="~{demo-command :: envelope}"></div>
+                <button type="submit">Pause</button>
+            </form>
+            <form th:if="${gameSession.state.name() == 'PAUSED'}" method="post"
+                  th:action="@{/campaigns/{id}/sessions/{sid}/resume(id=${campaign.id},sid=${gameSession.id})}">
+        <div th:replace="~{demo-command :: envelope}"></div>
+                <button type="submit">Resume</button>
+            </form>
+            <form th:action="@{/campaigns/{id}/sessions/{sid}/end(id=${campaign.id},sid=${gameSession.id})}" method="post">
+        <div th:replace="~{demo-command :: envelope}"></div>
+                <button type="submit">End session</button>
+            </form>
+        </th:block>
+    </section>
+    <section id="clock" th:fragment="clock">
+        <h2>Game clock</h2>
+        <p th:text="${clockResult == null ? clock.gameSeconds : clockResult.path('gameTimeSeconds').asLong()}"></p>
+        <form th:if="${isDm}" th:action="@{/campaigns/{id}/clock/advances(id=${campaign.id})}" method="post">
+        <div th:replace="~{demo-command :: envelope}"></div>
+            <label>Amount <input name="amount" type="number" min="1" value="1" required></label>
+            <label>Units <select name="unit"><option>minutes</option><option>hours</option><option>days</option></select></label>
+            <button type="submit">Advance clock</button>
+        </form>
+    </section>
+    <section>
+        <h2>Recap</h2>
+        <p th:if="${scene != null}" th:text="${scene.name}"></p>
+        <p th:if="${isDm && scene != null}" th:text="${scene.notes}"></p>
+        <ul><li th:each="event : ${events}" th:text="|${event.type} at ${event.gameSeconds} s|"></li></ul>
+    </section>
+    <nav><a th:href="@{/campaigns/{id}/characters(id=${campaign.id})}">Characters</a></nav>
+    <nav th:if="${isDm}">
+        <a th:href="@{/campaigns/{id}/encounters(id=${campaign.id})}">Encounters</a>
+        <a th:href="@{/campaigns/{id}/packs(id=${campaign.id})}">Content packs</a>
+        <a th:href="@{/campaigns/{id}/players(id=${campaign.id})}">Players and invites</a>
+        <a th:href="@{/campaigns/{id}/scenes(id=${campaign.id})}">Scenes</a>
+        <a th:href="@{/campaigns/{id}/settings(id=${campaign.id})}">House rules</a>
+    </nav>
+    <p><a th:href="@{/campaigns}">Back to campaigns</a></p>
+    <p th:if="${hasRulesContent == true}">Rules source <a th:href="@{/help}">SRD 5.1</a></p>
+</main>
+<footer th:replace="~{demo-footer :: help}"></footer>
+</body>
+</html>

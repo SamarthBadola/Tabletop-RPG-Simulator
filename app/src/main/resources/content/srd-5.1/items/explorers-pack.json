@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:explorers-pack",
+  "name": "Explorer's Pack",
+  "text": {
+    "file": "text/items/explorers-pack.md"
+  },
+  "cost": 1000,
+  "weight": 0,
+  "tier": 0,
+  "category": "gear"
+}

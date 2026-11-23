@@ -1,0 +1,15 @@
+{
+  "kind": "subclass",
+  "key": "sample-pack:subclass",
+  "name": "Fixture subclass",
+  "text": "Fixture description.",
+  "class": "sample-pack:class",
+  "levels": [
+    {
+      "level": 3,
+      "features": [
+        "sample-pack:feature"
+      ]
+    }
+  ]
+}

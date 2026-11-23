@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/hazard.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "revealed"
+        },
+        "area": {
+          "$ref": "common.schema.json#/$defs/area",
+          "x-visibility": "revealed"
+        },
+        "trigger": {
+          "$ref": "vocabulary.json#/$defs/hazardTrigger",
+          "x-visibility": "dm"
+        },
+        "detection": {
+          "type": "object",
+          "properties": {
+            "check": {
+              "anyOf": [
+                {
+                  "$ref": "vocabulary.json#/$defs/ability"
+                },
+                {
+                  "$ref": "vocabulary.json#/$defs/skill"
+                }
+              ],
+              "x-visibility": "dm"
+            },
+            "dc": {
+              "$ref": "common.schema.json#/$defs/expression",
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "check",
+            "dc"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "disabling": {
+          "type": "object",
+          "properties": {
+            "check": {
+              "anyOf": [
+                {
+                  "$ref": "vocabulary.json#/$defs/ability"
+                },
+                {
+                  "$ref": "vocabulary.json#/$defs/skill"
+                }
+              ],
+              "x-visibility": "dm"
+            },
+            "dc": {
+              "$ref": "common.schema.json#/$defs/expression",
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "check",
+            "dc"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/effect"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "visibility": {
+          "enum": [
+            "hidden",
+            "visible"
+          ],
+          "x-visibility": "dm"
+        },
+        "resets": {
+          "type": "boolean",
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "hazard",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "revealed"
+        }
+      },
+      "required": [
+        "text",
+        "area",
+        "trigger",
+        "effects"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

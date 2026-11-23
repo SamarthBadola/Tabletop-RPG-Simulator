@@ -1,0 +1,12 @@
+{
+  "kind": "resource",
+  "key": "sample-pack:resource",
+  "name": "Fixture resource",
+  "max": "lookup('sample-pack:table', 1)",
+  "recharge": [
+    {
+      "on": "SHORT_REST",
+      "restore": "all"
+    }
+  ]
+}

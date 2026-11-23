@@ -1,0 +1,16 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:archery",
+  "name": "Archery",
+  "text": {
+    "file": "text/features/archery.md"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "attack:ranged_weapon",
+      "operation": "ADD",
+      "value": 2
+    }
+  ]
+}
