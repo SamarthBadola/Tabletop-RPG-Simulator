@@ -13,7 +13,8 @@
             "MADNESS_SHORT",
             "MADNESS_LONG",
             "MADNESS_INDEFINITE",
-            "DISEASE"
+            "DISEASE",
+            "POISON"
           ],
           "x-visibility": "dm"
         },
@@ -57,7 +58,7 @@
   "if": {
     "properties": {
       "afflictionKind": {
-        "const": "DISEASE"
+        "enum": ["DISEASE", "POISON"]
       }
     }
   },

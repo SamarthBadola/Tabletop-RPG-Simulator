@@ -122,7 +122,12 @@ class CombatRoster {
         sheet.attacksPerAction(),
         size,
         new Vitals(
-            health, details.recoveryAt(), conditionKeys, details.effects(), details.exhaustion()),
+            health,
+            details.recoveryAt(),
+            conditionKeys,
+            details.effects(),
+            details.exhaustion(),
+            details.inspiration()),
         abilities,
         saves,
         sheet.skills(),
@@ -135,7 +140,9 @@ class CombatRoster {
         DeathMode.PLAYER,
         sheet.features().stream().map(view -> view.key()).collect(Collectors.toUnmodifiableSet()),
         sheet.inventory().stream()
-            .anyMatch(item -> "OFF_HAND".equals(item.slot()) && "shield".equals(item.category())));
+            .anyMatch(item -> "OFF_HAND".equals(item.slot()) && "shield".equals(item.category())),
+        sheet.classes().stream()
+            .collect(Collectors.toUnmodifiableMap(line -> line.key(), line -> line.level())));
   }
 
   private boolean wearsNoisyArmor(View sheet, ContentSet content) {
@@ -343,7 +350,8 @@ class CombatRoster {
             .collect(Collectors.toUnmodifiableSet()),
         entry.tactics().deathMode() == null ? DeathMode.DIE_AT_ZERO : entry.tactics().deathMode(),
         Set.of(),
-        false);
+        false,
+        Map.of());
   }
 
   void writePlayer(Creature current, Vitals next) {
@@ -357,7 +365,8 @@ class CombatRoster {
         health.failures(),
         next.recoveryAt(),
         next.exhaustion(),
-        next.effects());
+        next.effects(),
+        next.inspiration());
     for (String key : current.vitals().conditions()) {
       if (!next.conditions().contains(key)) characterStore.condition(player, key, false);
     }
@@ -366,8 +375,18 @@ class CombatRoster {
     }
   }
 
+  Map<Integer, Integer> spentSlots(Creature creature) {
+    return creature.entry().character() == null
+        ? Map.of()
+        : characterStore.spentSlots(creature.entry().character());
+  }
+
+  void spellSlot(Creature creature, int level, int used) {
+    characterStore.spellSlot(creature.entry().character(), level, used);
+  }
+
   void setResource(Creature creature, String key, int used) {
-    if (!creature.resources().containsKey(key) || used < 0 || used > 1)
+    if (!creature.resources().containsKey(key) || used < 0 || used > creature.resourceLimit(key))
       throw new CampaignException(Code.VALIDATION_FAILED);
     characterStore.resource(creature.entry().character(), key, used);
   }
@@ -414,7 +433,21 @@ class CombatRoster {
       Set<String> immunities,
       DeathMode deathMode,
       Set<String> features,
-      boolean shield) {
+      boolean shield,
+      Map<String, Integer> classLevels) {
+    int resourceLimit(String key) {
+      return switch (key) {
+        case "srd-5.1:action-surge-uses" -> classLevel("srd-5.1:fighter") >= 17 ? 2 : 1;
+        case "srd-5.1:bardic-inspiration-uses" -> Math.max(1, abilities.get(Ability.CHA));
+        case "srd-5.1:lay-on-hands-pool" -> 5 * classLevel("srd-5.1:paladin");
+        default -> 1;
+      };
+    }
+
+    int classLevel(String key) {
+      return classLevels.getOrDefault(key, 0);
+    }
+
     Creature withState(Entry next, Vitals state) {
       return new Creature(
           next,
@@ -438,7 +471,8 @@ class CombatRoster {
           immunities,
           deathMode,
           features,
-          shield);
+          shield,
+          classLevels);
     }
 
     Set<String> conditions() {

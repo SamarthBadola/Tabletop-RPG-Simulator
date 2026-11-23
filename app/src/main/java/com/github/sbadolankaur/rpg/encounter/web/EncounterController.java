@@ -5,9 +5,11 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelop
 import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Reply;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
+import com.github.sbadolankaur.rpg.campaign.application.CampaignSettings;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
 import com.github.sbadolankaur.rpg.campaign.web.CampaignWeb;
 import com.github.sbadolankaur.rpg.encounter.application.CombatActions;
+import com.github.sbadolankaur.rpg.encounter.application.CombatFeatures;
 import com.github.sbadolankaur.rpg.encounter.application.CombatOverrides;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands;
 import com.github.sbadolankaur.rpg.encounter.application.Encounters;
@@ -39,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 class EncounterController {
   private final Campaigns campaigns;
   private final CampaignCommands campaignCommands;
+  private final CampaignSettings settings;
   private final EncounterCommands commands;
   private final Encounters encounters;
   private final CombatActions combat;
@@ -48,6 +51,7 @@ class EncounterController {
   EncounterController(
       Campaigns campaigns,
       CampaignCommands campaignCommands,
+      CampaignSettings settings,
       EncounterCommands commands,
       Encounters encounters,
       CombatActions combat,
@@ -55,6 +59,7 @@ class EncounterController {
       AccountDirectory accounts) {
     this.campaigns = campaigns;
     this.campaignCommands = campaignCommands;
+    this.settings = settings;
     this.commands = commands;
     this.encounters = encounters;
     this.combat = combat;
@@ -291,8 +296,89 @@ class EncounterController {
                 form.flag("nearbyHostile"),
                 form.flag("fearSourceVisible"),
                 form.flag("targetAbsent"),
-                form.ids("protectingAllyIds")));
+                form.ids("protectingAllyIds"),
+                form.integer("smiteSlotLevel")));
     return updated(campaign, id, actor, request, model, result, "workspace");
+  }
+
+  @PostMapping("/{id}/feature-uses")
+  Object featureUse(
+      @PathVariable UUID campaign,
+      @PathVariable UUID id,
+      @RequestParam MultiValueMap<String, String> fields,
+      Principal principal,
+      HttpServletRequest request,
+      Model model) {
+    UUID actor = dm(campaign, principal);
+    var form = new Fields(fields);
+    String featureKey = featureField(form, "featureKey", Function.identity());
+    UUID acting = featureField(form, "actorId", UUID::fromString);
+    var names =
+        switch (featureKey) {
+          case CombatFeatures.BARDIC_INSPIRATION -> Set.of("targetId");
+          case CombatFeatures.LAY_ON_HANDS -> Set.of("targetId", "healPoints", "cureIds");
+          default -> Set.<String>of();
+        };
+    var common = Set.of("_csrf", "actionId", "expectedVersion", "actorId", "featureKey");
+    for (String key : fields.keySet()) {
+      if (!common.contains(key) && !names.contains(key)) throw CombatFeatures.invalidInput(key);
+    }
+    UUID targetId =
+        names.contains("targetId") ? featureField(form, "targetId", UUID::fromString) : null;
+    Integer healPoints =
+        names.contains("healPoints") ? featureField(form, "healPoints", Integer::valueOf) : null;
+    List<UUID> cureIds = List.of();
+    if (names.contains("cureIds")) {
+      if (fields.getOrDefault("cureIds", List.of()).size() > 20)
+        throw CombatFeatures.invalidInput("cureIds");
+      try {
+        cureIds = form.ids("cureIds");
+      } catch (CampaignException bad) {
+        throw CombatFeatures.invalidInput("cureIds");
+      }
+    }
+    var use = new CombatFeatures.Use(acting, featureKey, targetId, healPoints, cureIds);
+    return updated(
+        campaign,
+        id,
+        actor,
+        request,
+        model,
+        combat.featureUse(campaign, id, actor, form.envelope(), use),
+        "workspace");
+  }
+
+  private static <T> T featureField(Fields form, String key, Function<String, T> parse) {
+    try {
+      String value = form.optional(key);
+      if (value != null) return parse.apply(value);
+    } catch (CampaignException | IllegalArgumentException bad) {
+      throw CombatFeatures.invalidInput(key);
+    }
+    throw CombatFeatures.invalidInput(key);
+  }
+
+  @PostMapping("/{id}/manual-moves")
+  Object manualMove(
+      @PathVariable UUID campaign,
+      @PathVariable UUID id,
+      @RequestParam MultiValueMap<String, String> fields,
+      Principal principal,
+      HttpServletRequest request,
+      Model model) {
+    UUID actor = dm(campaign, principal);
+    var form = new Fields(fields);
+    var move =
+        new CombatActions.ManualMove(
+            form.uuid("actorId"), form.number("distanceFeet", 0), form.ids("leavesReachOf"));
+    return updated(
+        campaign,
+        id,
+        actor,
+        request,
+        model,
+        combat.manualMove(campaign, id, actor, form.envelope(), move),
+        "workspace");
   }
 
   @PostMapping("/{id}/dashes")
@@ -782,12 +868,18 @@ class EncounterController {
               .orElse("Creature"));
     }
     model.addAttribute("fight", view);
-    model.addAttribute(
-        "acting",
+    var acting =
         view.combatants().stream()
             .filter(row -> row.id().equals(view.table().acting()))
             .findFirst()
-            .orElse(null));
+            .orElse(null);
+    model.addAttribute("acting", acting);
+    model.addAttribute(
+        "smitePredeclare",
+        acting != null
+            && acting.features().contains("srd-5.1:divine-smite")
+            && "BEFORE_ATTACK"
+                .equals(settings.effective(campaign, actor).value("divineSmiteTiming")));
     model.addAttribute("campaignId", campaign);
     model.addAttribute("commandPath", path(campaign, id));
     model.addAttribute("gameSeconds", campaignCommands.readClock(campaign, actor).gameSeconds());

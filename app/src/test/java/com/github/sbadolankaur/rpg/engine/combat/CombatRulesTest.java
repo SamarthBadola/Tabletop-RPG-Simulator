@@ -31,6 +31,21 @@ class CombatRulesTest {
   }
 
   @Test
+  void divineSmiteCapsDiceAndCriticalsDoubleThem() {
+    assertThat(CombatRolls.divineSmite(1, false).roll(draw(3, 2)).total()).isEqualTo(5);
+    assertThat(CombatRolls.divineSmite(9, false).roll(draw(1, 1, 1, 1, 1)).total()).isEqualTo(5);
+    assertThat(CombatRolls.divineSmite(9, true).roll(draw(1, 1, 1, 1, 1, 1)).total()).isEqualTo(6);
+    assertThat(
+            CombatRolls.damage(
+                    CombatRolls.divineSmite(1, true),
+                    true,
+                    CriticalDiceMode.ROLL_AGAIN_ADD,
+                    draw(1, 2, 3, 4, 5, 6))
+                .total())
+        .isEqualTo(21);
+  }
+
+  @Test
   void RS_DMG_003_doublesDiceAndAddsTheModifierOnce() {
     var plan =
         RollPlan.builder()

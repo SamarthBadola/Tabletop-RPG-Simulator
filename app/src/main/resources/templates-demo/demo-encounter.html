@@ -204,7 +204,54 @@
                     <span th:text="${creature.name}"></span>
                 </label>
             </fieldset>
+            <label th:if="${smitePredeclare}">
+                Declared Divine Smite slot <input type="number" name="smiteSlotLevel" min="1" max="9">
+            </label>
             <button type="submit">Attack</button>
+        </form>
+        <form th:action="@{${commandPath + '/manual-moves'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <label>Distance (feet) <input type="number" name="distanceFeet" min="1" max="1000" required></label>
+            <label>Hostile creatures whose reach the move leaves
+                <select name="leavesReachOf" multiple>
+                    <option th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}"
+                            th:value="${creature.id}" th:text="${creature.name}"></option>
+                </select>
+            </label>
+            <button type="submit">Move</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:action-surge')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:action-surge">
+            <button type="submit">Action Surge</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:bardic-inspiration')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:bardic-inspiration">
+            <th:block th:replace="~{demo-encounter :: target}"></th:block>
+            <button type="submit">Grant Bardic Inspiration</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:lay-on-hands')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:lay-on-hands">
+            <label>Creature within touch range <select name="targetId" required>
+                <option th:each="creature : ${fight.combatants}"
+                        th:value="${creature.id}" th:text="${creature.name}"></option>
+            </select></label>
+            <label>Hit points to heal <input type="number" name="healPoints" min="0" value="0" required></label>
+            <label th:unless="${fight.cureChoices.isEmpty()}">Afflictions to cure (5 points each)
+                <select name="cureIds" multiple>
+                    <optgroup th:each="creature : ${fight.combatants}" th:label="${creature.name}"
+                              th:if="${fight.cureChoices.containsKey(creature.id)}">
+                        <option th:each="cure : ${fight.cureChoices.get(creature.id)}"
+                                th:value="${cure.id}" th:text="|${cure.kind} — ${cure.definitionKey}|"></option>
+                    </optgroup>
+                </select>
+            </label>
+            <button type="submit">Lay on Hands</button>
         </form>
         <form th:action="@{${commandPath + '/dashes'}}" method="post">
             <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>

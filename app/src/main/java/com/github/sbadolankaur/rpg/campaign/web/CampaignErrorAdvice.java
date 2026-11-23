@@ -68,7 +68,10 @@ class CampaignErrorAdvice {
               TOTAL_COVER,
               INVALID_TARGET,
               REACTION_OPTION_INVALID,
-              REACTION_NOT_AVAILABLE ->
+              REACTION_NOT_AVAILABLE,
+              FEATURE_INPUT_INVALID,
+              FEATURE_NOT_AVAILABLE,
+              FEATURE_USES_EXHAUSTED ->
               HttpStatus.UNPROCESSABLE_CONTENT;
         };
     String detail =
@@ -92,6 +95,9 @@ class CampaignErrorAdvice {
           case REACTION_OPTION_INVALID -> "Choose one of the offered reactions.";
           case REACTION_NOT_AVAILABLE -> "This reaction is no longer available.";
           case REACTION_NOT_PERMITTED -> "You do not have permission to answer this reaction.";
+          case FEATURE_INPUT_INVALID -> "Check the input for this feature.";
+          case FEATURE_NOT_AVAILABLE -> "This creature cannot use that feature.";
+          case FEATURE_USES_EXHAUSTED -> "This creature has no uses of that feature left.";
           case ENCOUNTER_ACTIVE -> "End the active encounter before doing this.";
           case ENCOUNTER_STARTED -> "This encounter has already started.";
           case NOT_YOUR_TURN -> "Choose the creature whose turn it is.";

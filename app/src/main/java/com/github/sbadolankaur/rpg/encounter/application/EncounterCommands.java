@@ -13,11 +13,15 @@ import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
 import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore.Window;
 import com.github.sbadolankaur.rpg.content.ContentPacks;
 import com.github.sbadolankaur.rpg.encounter.application.CombatActions.Attack;
+import com.github.sbadolankaur.rpg.encounter.application.CombatActions.Check;
+import com.github.sbadolankaur.rpg.encounter.application.CombatActions.ManualMove;
 import com.github.sbadolankaur.rpg.encounter.application.CombatRoster.Creature;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Entry;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Table;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
+import com.github.sbadolankaur.rpg.encounter.persistence.AfflictionStore;
 import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
+import com.github.sbadolankaur.rpg.engine.affliction.Affliction;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
@@ -70,6 +74,7 @@ public class EncounterCommands {
   private final ReactionStore reactions;
   private final ContentPacks contentPacks;
   private final MeterRegistry metrics;
+  private final AfflictionStore afflictions;
 
   EncounterCommands(
       Campaigns campaigns,
@@ -83,7 +88,8 @@ public class EncounterCommands {
       EncounterDice random,
       ReactionStore reactions,
       ContentPacks contentPacks,
-      MeterRegistry metrics) {
+      MeterRegistry metrics,
+      AfflictionStore afflictions) {
     this.campaigns = campaigns;
     this.campaignCommands = campaignCommands;
     this.settings = settings;
@@ -96,6 +102,7 @@ public class EncounterCommands {
     this.reactions = reactions;
     this.contentPacks = contentPacks;
     this.metrics = metrics;
+    this.afflictions = afflictions;
   }
 
   public Reply create(UUID campaign, UUID actor, Envelope envelope, String name) {
@@ -155,16 +162,26 @@ public class EncounterCommands {
             settings.effective(campaign, actor),
             roster.content(campaign, actor),
             store.entries(encounter));
-    if (request instanceof Attack attack) {
+    boolean endTurn = "end-turn".equals(command);
+    boolean deathSave = "death-saves".equals(command);
+    if (request instanceof Attack
+        || request instanceof ManualMove
+        || request instanceof Check
+        || endTurn
+        || deathSave) {
       var pinned =
-          new RecordedAttack(
-              attack,
+          new RecordedAction(
+              request instanceof Attack attack ? attack : null,
+              request instanceof ManualMove move ? move : null,
+              request instanceof Check check ? check : null,
+              endTurn ? (UUID) request : null,
+              deathSave ? (UUID) request : null,
               json.valueToTree(context.effective.values()),
               context.content.packHashes(),
               ReactionReplay.Continuation.empty(),
               0,
               0);
-      return resolveAttack(context, envelope, hash, pinned, null, null);
+      return resolveReactionAction(context, envelope, hash, pinned, null, null);
     }
     if (!"overrides".equals(command)
         || !(request instanceof CombatOverrides.Correction correction)
@@ -305,7 +322,7 @@ public class EncounterCommands {
         || prompt.followUp() != followUp
         || !prompt.permits(answer.optionKey()))
       throw new CampaignException(Code.REACTION_OPTION_INVALID);
-    var saved = json.treeToValue(window.continuation(), RecordedAttack.class);
+    var saved = json.treeToValue(window.continuation(), RecordedAction.class);
     var context =
         new Context(
             table,
@@ -330,7 +347,7 @@ public class EncounterCommands {
                 prompt.decider(),
                 decision.get("choice"),
                 actor));
-    return resolveAttack(context, envelope, hash, saved, window, answer.optionKey());
+    return resolveReactionAction(context, envelope, hash, saved, window, answer.optionKey());
   }
 
   private static Reply replay(EncounterStore.Replay saved, UUID actor, byte[] hash) {
@@ -339,11 +356,11 @@ public class EncounterCommands {
     return new Reply(saved.version(), saved.result(), true);
   }
 
-  private Reply resolveAttack(
+  private Reply resolveReactionAction(
       Context context,
       Envelope envelope,
       byte[] hash,
-      RecordedAttack saved,
+      RecordedAction saved,
       Window window,
       String option) {
     Table table = context.table;
@@ -354,13 +371,13 @@ public class EncounterCommands {
     context.resuming = window != null;
     var outcome =
         ReactionReplay.run(
-            "attack",
+            saved.name(),
             continuation,
             random,
             engine -> {
               context.replay = engine;
               CombatEffects.expire(context, null, ConditionInstance.Boundary.CLOCK);
-              CombatActions.resolveAttack(context, saved.action());
+              saved.resolve(context);
               CombatEffects.expire(context, null, ConditionInstance.Boundary.CLOCK);
               return context;
             });
@@ -394,8 +411,12 @@ public class EncounterCommands {
     UUID id = window == null ? ServerIds.at(now.toInstant()) : window.id();
     int audited = (int) context.events.stream().filter(PendingEvent::auditedDuringPause).count();
     var record =
-        new RecordedAttack(
+        new RecordedAction(
             saved.action(),
+            saved.move(),
+            saved.check(),
+            saved.endTurn(),
+            saved.deathSave(),
             saved.settings(),
             saved.packHashes(),
             outcome.continuation(),
@@ -486,13 +507,32 @@ public class EncounterCommands {
                 .record(Duration.between(window.createdAt(), OffsetDateTime.now(ZoneOffset.UTC))));
   }
 
-  private record RecordedAttack(
+  private record RecordedAction(
       Attack action,
+      ManualMove move,
+      Check check,
+      UUID endTurn,
+      UUID deathSave,
       JsonNode settings,
       List<String> packHashes,
       ReactionReplay.Continuation replay,
       int auditedEvents,
-      int auditedWarnings) {}
+      int auditedWarnings) {
+    String name() {
+      if (action != null) return "attack";
+      if (move != null) return "move";
+      if (check != null) return check.save() ? "save" : "check";
+      return endTurn != null ? "end-turn" : "death-save";
+    }
+
+    void resolve(Context context) {
+      if (action != null) CombatActions.resolveAttack(context, action);
+      else if (move != null) CombatActions.resolveMove(context, move);
+      else if (check != null) CombatActions.resolveCheck(context, check);
+      else if (endTurn != null) Encounters.resolveEndTurn(context, endTurn);
+      else Encounters.resolveExplicitDeathSave(context, deathSave);
+    }
+  }
 
   public record ReactionView(UUID id, long version, Prompt prompt) {
     static ReactionView of(Window window) {
@@ -543,6 +583,7 @@ public class EncounterCommands {
     final Map<UUID, Entry> entries = new LinkedHashMap<>();
     private final Map<UUID, Creature> profiles = new HashMap<>();
     private final Map<UUID, Vitals> pendingVitals = new HashMap<>();
+    private final Map<UUID, Map<Integer, Integer>> pendingSlots = new HashMap<>();
     private final List<Runnable> writes = new ArrayList<>();
     private boolean stage;
     private boolean resuming;
@@ -591,6 +632,7 @@ public class EncounterCommands {
       writes.forEach(Runnable::run);
       writes.clear();
       pendingVitals.clear();
+      pendingSlots.clear();
       profiles.clear();
       stage = false;
     }
@@ -613,6 +655,13 @@ public class EncounterCommands {
               ? entry.npcVitals()
               : pendingVitals.getOrDefault(id, profile.vitals());
       return profile.withState(entry, vitals);
+    }
+
+    String creatureType(Creature creature) {
+      String monster = creature.entry().monster();
+      return monster == null
+          ? "humanoid"
+          : String.valueOf(content.find("monster", monster).orElseThrow().fields().get("type"));
     }
 
     Creature acting(UUID id) {
@@ -641,7 +690,9 @@ public class EncounterCommands {
           creature.owner(),
           creature.vitals(),
           creature.resources(),
-          equipment(creature));
+          equipment(creature),
+          spellSlots(creature),
+          afflictions(id));
     }
 
     void disableUndo() {
@@ -746,7 +797,9 @@ public class EncounterCommands {
       } else if (before.health().state() != State.ALIVE) {
         conditions.remove(CombatConditions.UNCONSCIOUS);
       }
-      var vitals = new Vitals(next, recoveryAt, conditions, before.effects(), exhaustion);
+      var vitals =
+          new Vitals(
+              next, recoveryAt, conditions, before.effects(), exhaustion, before.inspiration());
       vitals(current, vitals);
       return vitals;
     }
@@ -776,6 +829,17 @@ public class EncounterCommands {
               table.round()));
     }
 
+    void reveal(UUID decider, UUID recipient, ReactionReplay.Disclosure disclosure) {
+      events.add(
+          new PendingEvent(
+              "ReactionRollRevealed",
+              recipient == null ? "DM" : "PLAYERS",
+              recipient,
+              Map.of("deciderId", decider, "disclosure", disclosure),
+              seconds,
+              table.round()));
+    }
+
     void result(String key, Object value) {
       result.put(key, value);
     }
@@ -788,6 +852,32 @@ public class EncounterCommands {
       remember(creature.entry().id());
       write(() -> roster.restoreEquipment(creature, slots));
       profiles.remove(creature.entry().id());
+    }
+
+    Map<UUID, Affliction> afflictions(UUID combatant) {
+      return afflictions.forCombatant(combatant);
+    }
+
+    void affliction(UUID combatant, Affliction affliction) {
+      remember(combatant);
+      afflictions.update(combatant, affliction);
+    }
+
+    Map<Integer, Integer> spellSlots(Creature creature) {
+      var staged = pendingSlots.get(creature.entry().id());
+      return staged == null ? roster.spentSlots(creature) : staged;
+    }
+
+    void spellSlot(Creature creature, int level, int used) {
+      UUID id = creature.entry().id();
+      remember(id);
+      if (stage) {
+        var slots = new HashMap<>(spellSlots(creature));
+        if (used == 0) slots.remove(level);
+        else slots.put(level, used);
+        pendingSlots.put(id, Map.copyOf(slots));
+      }
+      write(() -> roster.spellSlot(creature, level, used));
     }
 
     void resource(Creature creature, String key, int used) {

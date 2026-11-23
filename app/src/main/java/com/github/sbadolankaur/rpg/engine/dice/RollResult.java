@@ -11,6 +11,14 @@ public record RollResult(List<RollTerm> terms, int total, Integer naturalD20, Ro
     Objects.requireNonNull(mode, "mode");
   }
 
+  /** Adds the terms of an effect rolled against the same d20 test. */
+  public RollResult withBonus(RollResult bonus) {
+    if (bonus.naturalD20() != null) throw new IllegalArgumentException("Expected a bonus roll");
+    var combined = new ArrayList<>(terms);
+    combined.addAll(bonus.terms());
+    return new RollResult(combined, Math.addExact(total, bonus.total()), naturalD20, mode);
+  }
+
   /** Replaces exactly one d20-test die. The replacement is final, as specified by D-8. */
   public RollResult replaceD20(int dieIndex, RandomSource source) {
     int d20TermIndex = -1;

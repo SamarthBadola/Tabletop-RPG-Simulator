@@ -26,6 +26,7 @@ import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AdvantageSources;
 import com.github.sbadolankaur.rpg.engine.kernel.CheckRules;
 import com.github.sbadolankaur.rpg.engine.kernel.D20Test;
+import com.github.sbadolankaur.rpg.engine.kernel.ProficiencyBonus;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Offer;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Option;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Point;
@@ -63,13 +64,22 @@ public class CombatActions {
 
   static void resolveAttack(Context context, Attack request) {
     var attacker = context.canAct(request.actor());
-    var target = target(context, request.target());
-    if (request.actor().equals(request.target())) throw new CampaignException(Code.INVALID_TARGET);
     var weapon =
         attacker.attacks().stream()
             .filter(option -> option.key().equals(request.key()))
             .findFirst()
             .orElseThrow(EncounterCommands::invalid);
+    resolveAttack(context, request, attacker, weapon, false);
+  }
+
+  private static void resolveAttack(
+      Context context,
+      Attack request,
+      Creature attacker,
+      CombatRoster.AttackOption weapon,
+      boolean opportunity) {
+    var target = target(context, request.target());
+    if (request.actor().equals(request.target())) throw new CampaignException(Code.INVALID_TARGET);
     if (request.distance() < 0 || request.distance() > weapon.longRange())
       throw new CampaignException(Code.TARGET_OUT_OF_RANGE);
     if (request.cover() == Cover.TOTAL) throw new CampaignException(Code.TOTAL_COVER);
@@ -77,12 +87,14 @@ public class CombatActions {
     if (sourced(attacker, "srd-5.1:charmed", target.entry().id()))
       throw new CampaignException(Code.INVALID_TARGET);
     if (!Encounters.ties(context.entries.values()).isEmpty()) throw invalid();
-    spend(
-        context,
-        budget ->
-            weapon.offHand()
-                ? budget.offHand()
-                : budget.attack(attacker.attacksPerAction(), weapon.light()));
+    if (!opportunity) {
+      spend(
+          context,
+          budget ->
+              weapon.offHand()
+                  ? budget.offHand()
+                  : budget.attack(attacker.attacksPerAction(), weapon.light()));
+    }
 
     boolean seeTarget =
         CombatConditions.canSee(
@@ -133,11 +145,14 @@ public class CombatActions {
     if (Exhaustion.disadvantagesAttacksAndSaves(attacker.vitals().exhaustion()))
       penalties.add("Exhaustion");
     var preflight = new ArrayList<String>();
-    if (weapon.damage().stream().anyMatch(dice -> dice.notation().contains("d")))
-      preflight.add("criticalDiceMode");
+    if (hasDamageDice(weapon)) preflight.add("criticalDiceMode");
+    if (attacker.vitals().inspiration() != null) preflight.add("rollDecisionInfo");
+    var slots = DivineSmite.available(context, attacker);
+    if (!slots.isEmpty() || request.smiteSlotLevel() != null) preflight.add(DivineSmite.SETTING);
     if (target.vitals().health().current() == 0 && target.vitals().health().temporary() > 0)
       preflight.add("temporaryHpAbsorbsDeathSaveFailure");
     context.preflight(preflight);
+    String smiteTiming = DivineSmite.validate(context, weapon, request.smiteSlotLevel(), slots);
     String criticalMode = context.setting("criticalDiceMode", String.class);
     boolean absorb =
         target.vitals().health().current() == 0
@@ -155,13 +170,28 @@ public class CombatActions {
             mode,
             context.random());
     context.dice("Attack", request.actor(), attack.roll());
+    if (attacker.vitals().inspiration() != null) {
+      boolean criticalOnHit =
+          CombatConditions.automaticCritical(target.conditions(), request.distance());
+      var inspired =
+          CombatFeatures.inspireRoll(
+              context,
+              attacker,
+              attack.roll(),
+              Point.AFTER_ATTACK_ROLL,
+              !request.targetAbsent() && attack.hit());
+      attack =
+          CombatRolls.attackOutcome(inspired, attack.target(), weapon.criticalOn(), criticalOnHit);
+    }
     if (request.targetAbsent())
       attack = new CombatRolls.Attack(attack.roll(), attack.target(), false, false);
     context.result("attack", attack);
-    if (attacker.entry().tactics().hidden() || attacker.entry().tactics().stealth() != null) {
-      Tactics flags = attacker.entry().tactics();
+    var currentAttacker = context.creature(attacker.entry().id());
+    if (currentAttacker.entry().tactics().hidden()
+        || currentAttacker.entry().tactics().stealth() != null) {
+      Tactics flags = currentAttacker.entry().tactics();
       context.update(
-          attacker
+          currentAttacker
               .entry()
               .tactics(
                   flags.flags(
@@ -184,6 +214,15 @@ public class CombatActions {
     context.result("hit", hit);
     if (hit) {
       var damage = new LinkedHashMap<String, Integer>();
+      var smite =
+          DivineSmite.onConfirmedHit(
+              context,
+              currentAttacker,
+              target,
+              weapon,
+              request.smiteSlotLevel(),
+              smiteTiming,
+              slots);
       for (var part : weapon.damage()) {
         var roll =
             CombatRolls.damage(
@@ -194,12 +233,20 @@ public class CombatActions {
         context.dice("Weapon damage", request.actor(), roll);
         damage.merge(part.type(), roll.total(), Math::addExact);
       }
+      if (smite != null) {
+        var roll =
+            CombatRolls.damage(
+                smite, attack.critical(), CriticalDiceMode.valueOf(criticalMode), context.random());
+        context.dice("Divine Smite", request.actor(), roll);
+        damage.merge("radiant", roll.total(), Math::addExact);
+      }
       var applied = new LinkedHashMap<String, Integer>();
       int total = 0;
       for (var value : damage.entrySet()) {
         String type = value.getKey();
+        boolean magical = weapon.magical() || smite != null && "radiant".equals(type);
         boolean resistant =
-            defense(target, "resistance", type, weapon.magical())
+            defense(target, "resistance", type, magical)
                 || target.conditions().contains("srd-5.1:petrified");
         int amount =
             CombatHealth.damageAmount(
@@ -207,8 +254,8 @@ public class CombatActions {
                 0,
                 false,
                 resistant,
-                defense(target, "vulnerability", type, weapon.magical()),
-                defense(target, "immunity", type, weapon.magical()));
+                defense(target, "vulnerability", type, magical),
+                defense(target, "immunity", type, magical));
         applied.put(type, amount);
         total = Math.addExact(total, amount);
       }
@@ -259,6 +306,196 @@ public class CombatActions {
             hit,
             "critical",
             hit && attack.critical()));
+  }
+
+  public Reply featureUse(
+      UUID campaign, UUID id, UUID actor, Envelope envelope, CombatFeatures.Use form) {
+    return commands.run(
+        campaign,
+        id,
+        actor,
+        envelope,
+        "feature-uses",
+        form,
+        true,
+        context -> CombatFeatures.use(context, form));
+  }
+
+  public Reply manualMove(UUID campaign, UUID id, UUID actor, Envelope envelope, ManualMove move) {
+    return commands.run(
+        campaign,
+        id,
+        actor,
+        envelope,
+        "manual-moves",
+        move,
+        true,
+        context -> resolveMove(context, move));
+  }
+
+  // Step 14 supplies reach exits from the map through this same movement resolver.
+  static void resolveMove(Context context, ManualMove move) {
+    var mover = context.acting(move.actorId());
+    if (mover.entry().tactics().surprised()) throw new CampaignException(Code.NO_ACTIONS_LEFT);
+    if (!Encounters.ties(context.entries.values()).isEmpty()) throw invalid();
+    for (UUID id : move.leavesReachOf()) {
+      if (!context.entries.containsKey(id) || id.equals(move.actorId())) throw invalid();
+    }
+    int cost =
+        TurnBudget.movementCost(
+            move.distanceFeet(), false, mover.conditions().contains(CombatConditions.PRONE), false);
+    if (cost > context.table.budget().movementRemaining(mover.speed()))
+      throw new CampaignException(Code.NO_ACTIONS_LEFT);
+
+    if (!context.table.budget().disengaged() && !move.leavesReachOf().isEmpty()) {
+      var settings = new ArrayList<String>();
+      if (move.leavesReachOf().stream()
+          .map(context::creature)
+          .flatMap(creature -> opportunityWeapons(creature, mover).stream())
+          .anyMatch(CombatActions::hasDamageDice)) settings.add("criticalDiceMode");
+      if (move.leavesReachOf().stream()
+          .map(context::creature)
+          .anyMatch(
+              reactor ->
+                  reactor.vitals().inspiration() != null
+                      && !opportunityWeapons(reactor, mover).isEmpty()))
+        settings.add("rollDecisionInfo");
+      if (move.leavesReachOf().stream()
+          .map(context::creature)
+          .anyMatch(
+              reactor ->
+                  !opportunityWeapons(reactor, mover).isEmpty()
+                      && !DivineSmite.available(context, reactor).isEmpty()))
+        settings.add(DivineSmite.SETTING);
+      context.preflight(settings);
+      context
+          .reactions()
+          .window(
+              Point.ON_MOVE_STEP,
+              () -> opportunityOffers(context, move, cost),
+              null,
+              (decider, key) -> opportunityAttack(context, move.actorId(), decider, key));
+    }
+
+    var after = context.creature(move.actorId());
+    boolean applied = mayFinishMove(context, after, cost);
+    if (applied) spend(context, budget -> budget.move(cost, after.speed()));
+    var movement =
+        Map.of(
+            "actorId",
+            move.actorId(),
+            "distanceFeet",
+            applied ? move.distanceFeet() : 0,
+            "movementSpent",
+            applied ? cost : 0);
+    context.dm(applied ? "MovementResolved" : "MovementInterrupted", movement);
+    context.result("actorId", move.actorId());
+    context.result("action", "manual-move");
+    context.result("outcome", applied ? "moved" : "interrupted");
+    context.result("movement", movement);
+  }
+
+  private static boolean mayFinishMove(Context context, Creature mover, int cost) {
+    return mover.vitals().health().current() > 0
+        && cost <= context.table.budget().movementRemaining(mover.speed());
+  }
+
+  private static List<Offer> opportunityOffers(Context context, ManualMove move, int cost) {
+    var mover = context.creature(move.actorId());
+    if (!mayFinishMove(context, mover, cost)) return List.of();
+    return move.leavesReachOf().stream()
+        .map(context::creature)
+        .flatMap(
+            reactor ->
+                opportunityWeapons(reactor, mover).stream()
+                    .map(
+                        weapon ->
+                            new Offer(
+                                Step.DEFENDING_RESULT,
+                                reactor.entry().id(),
+                                reactor.entry().initiative(),
+                                0,
+                                new Option(
+                                    "opportunity:" + weapon.key(),
+                                    "Opportunity attack: " + weapon.label(),
+                                    true,
+                                    null,
+                                    0))))
+        .toList();
+  }
+
+  private static List<CombatRoster.AttackOption> opportunityWeapons(
+      Creature reactor, Creature mover) {
+    if (!Encounters.present(reactor.entry())
+        || !canReact(reactor)
+        || sourced(reactor, "srd-5.1:charmed", mover.entry().id())
+        || !CombatConditions.canSee(
+            reactor.conditions(),
+            mover.conditions(),
+            mover.entry().tactics().hiddenFrom(reactor.entry().id()))) return List.of();
+    var weapons =
+        reactor.attacks().stream()
+            .filter(weapon -> !weapon.ranged() && !weapon.offHand())
+            .filter(weapon -> reactor.entry().character() != null || !weapon.magical())
+            .toList();
+    if (reactor.entry().character() == null || !weapons.isEmpty()) return weapons;
+    int strength = reactor.abilities().get(Ability.STR);
+    int level = reactor.classLevels().values().stream().mapToInt(Integer::intValue).sum();
+    int damage = Math.max(0, 1 + strength);
+    var unarmed =
+        new CombatRoster.AttackOption(
+            "unarmed",
+            "Unarmed strike",
+            strength + ProficiencyBonus.forLevel(level),
+            20,
+            false,
+            5,
+            5,
+            false,
+            false,
+            false,
+            List.of(new CombatRoster.DamageDice(Integer.toString(damage), "bludgeoning")));
+    return List.of(unarmed);
+  }
+
+  private static void opportunityAttack(
+      Context context, UUID mover, UUID reactorId, String option) {
+    var reactor = context.creature(reactorId);
+    var weapon =
+        opportunityWeapons(reactor, context.creature(mover)).stream()
+            .filter(attack -> option.equals("opportunity:" + attack.key()))
+            .findFirst()
+            .orElseThrow();
+    context.update(reactor.entry().tactics(reactor.entry().tactics().spendReaction()));
+    context.dm("ReactionUsed", Map.of("deciderId", reactorId, "optionKey", option));
+    var attack =
+        new Attack(
+            reactorId,
+            mover,
+            weapon.key(),
+            weapon.longRange(),
+            Cover.NONE,
+            RollMode.NORMAL,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            List.of(),
+            null);
+    context
+        .reactions()
+        .nested(
+            "opportunity-attack",
+            () -> {
+              resolveAttack(context, attack, context.creature(reactorId), weapon, true);
+              return null;
+            });
+  }
+
+  private static boolean hasDamageDice(CombatRoster.AttackOption weapon) {
+    return weapon.damage().stream().anyMatch(dice -> dice.notation().contains("d"));
   }
 
   private static void protection(
@@ -602,114 +839,122 @@ public class CombatActions {
         form.save() ? "saving-throws" : "ability-checks",
         form,
         true,
-        context -> {
-          context.acting(form.actor());
-          if (form.ability() == null
-              || form.combatants().isEmpty()
-              || form.combatants().size() > 30
-              || new HashSet<>(form.combatants()).size() != form.combatants().size()
-              || (form.dc() == null && form.save())
-              || (form.dc() != null && (form.dc() < 1 || form.dc() > 40))) throw invalid();
-          if (!form.combatants().containsAll(form.cover().keySet())
-              || !form.cover().isEmpty() && (!form.save() || form.ability() != Ability.DEX))
-            throw invalid();
-          if (form.cover().containsValue(Cover.TOTAL))
-            throw new CampaignException(Code.TOTAL_COVER);
-          if (form.searchTarget() != null) {
-            if (form.save()
-                || form.ability() != Ability.WIS
-                || !"perception".equals(form.skill())
-                || !form.combatants().equals(List.of(form.actor()))
-                || form.dc() != null) throw invalid();
-            var subject = target(context, form.searchTarget());
-            if (!subject.entry().tactics().hiddenFrom(form.actor())
-                || subject.entry().tactics().stealth() == null) throw invalid();
-            spendAfterActor(context, form.actor());
-          }
-          if (form.dc() != null
-              && form.combatants().stream()
-                  .map(context::creature)
-                  .anyMatch(
-                      subject ->
-                          !form.save()
-                              ? !CombatConditions.forcedCheckFailure(
-                                  subject.conditions(),
-                                  form.requiresSight(),
-                                  form.requiresHearing())
-                              : !CombatConditions.forcedSaveFailure(
-                                  subject.conditions(), form.ability())))
-            context.preflight(List.of("autoOutcomeOnNat20Checks"));
-          var outcome = new ArrayList<Map<String, Object>>();
-          for (UUID subject : form.combatants()) {
-            var creature = target(context, subject);
-            boolean forced =
-                form.save()
-                    ? CombatConditions.forcedSaveFailure(creature.conditions(), form.ability())
-                    : CombatConditions.forcedCheckFailure(
-                        creature.conditions(), form.requiresSight(), form.requiresHearing());
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("combatantId", subject);
-            result.put("automaticFailure", forced);
-            if (!forced) {
-              int bonus =
-                  form.save()
-                      ? creature.saves().get(form.ability())
-                      : form.skill() == null
-                          ? creature.abilities().get(form.ability())
-                          : creature
-                              .skills()
-                              .getOrDefault(form.skill(), creature.abilities().get(form.ability()));
-              boolean dodge =
-                  form.save()
-                      && form.ability() == Ability.DEX
-                      && creature.entry().tactics().dodging()
-                      && creature.speed() > 0
-                      && !creature.incapacitated();
-              boolean restraint =
-                  form.save()
-                      && form.ability() == Ability.DEX
-                      && creature.conditions().contains("srd-5.1:restrained");
-              var authored =
-                  CombatEffects.rollSources(context, creature, "save", "holder", null, null);
-              var saveAdvantages = new ArrayList<>(authored.advantages());
-              var savePenalties = new ArrayList<>(authored.disadvantages());
-              if (dodge) saveAdvantages.add("Dodge");
-              if (restraint) savePenalties.add("Restrained");
-              if (Exhaustion.disadvantagesAttacksAndSaves(creature.vitals().exhaustion()))
-                savePenalties.add("Exhaustion");
-              var sources =
-                  form.save()
-                      ? new AdvantageSources(saveAdvantages, savePenalties)
-                      : assistedCheck(context, creature, form.skill(), form.fearSourceVisible());
-              Cover cover = form.cover().getOrDefault(subject, Cover.NONE);
-              var roll = CombatRolls.coveredSave(bonus, cover, sources.mode(), context.random());
-              if (form.searchTarget() != null)
-                result.put(
-                    "detected",
-                    CombatStealth.search(
-                        context,
-                        context.creature(form.searchTarget()),
-                        creature,
-                        roll.total(),
-                        form.noticedOnTie()));
-              context.dice(form.save() ? "Saving throw" : "Ability check", subject, roll);
-              result.put("roll", roll);
-              if (form.dc() != null)
-                result.put(
-                    "success",
-                    D20Test.resolve(
-                            roll,
-                            form.dc(),
-                            form.save() ? D20Test.Kind.SAVING_THROW : D20Test.Kind.ABILITY_CHECK,
-                            D20Test.NaturalMode.valueOf(
-                                context.setting("autoOutcomeOnNat20Checks", String.class)))
-                        .success());
-            } else result.put("success", false);
-            outcome.add(result);
-          }
-          context.result("outcomes", outcome);
-          context.dm("TestResolved", Map.of("outcomes", outcome));
-        });
+        context -> resolveCheck(context, form));
+  }
+
+  static void resolveCheck(Context context, Check form) {
+    context.acting(form.actor());
+    if (form.ability() == null
+        || form.combatants().isEmpty()
+        || form.combatants().size() > 30
+        || new HashSet<>(form.combatants()).size() != form.combatants().size()
+        || (form.dc() == null && form.save())
+        || (form.dc() != null && (form.dc() < 1 || form.dc() > 40))) throw invalid();
+    if (!form.combatants().containsAll(form.cover().keySet())
+        || !form.cover().isEmpty() && (!form.save() || form.ability() != Ability.DEX))
+      throw invalid();
+    if (form.cover().containsValue(Cover.TOTAL)) throw new CampaignException(Code.TOTAL_COVER);
+    if (form.searchTarget() != null) {
+      if (form.save()
+          || form.ability() != Ability.WIS
+          || !"perception".equals(form.skill())
+          || !form.combatants().equals(List.of(form.actor()))
+          || form.dc() != null) throw invalid();
+      var subject = target(context, form.searchTarget());
+      if (!subject.entry().tactics().hiddenFrom(form.actor())
+          || subject.entry().tactics().stealth() == null) throw invalid();
+      spendAfterActor(context, form.actor());
+    }
+    var rolling =
+        form.combatants().stream()
+            .map(id -> target(context, id))
+            .filter(subject -> !forcedFailure(form, subject))
+            .toList();
+    var decisions = new ArrayList<String>();
+    if (form.dc() != null && !rolling.isEmpty()) decisions.add("autoOutcomeOnNat20Checks");
+    if (rolling.stream().anyMatch(subject -> subject.vitals().inspiration() != null))
+      decisions.add("rollDecisionInfo");
+    context.preflight(decisions);
+    var naturalMode =
+        decisions.contains("autoOutcomeOnNat20Checks")
+            ? D20Test.NaturalMode.valueOf(context.setting("autoOutcomeOnNat20Checks", String.class))
+            : null;
+    var kind = form.save() ? D20Test.Kind.SAVING_THROW : D20Test.Kind.ABILITY_CHECK;
+    var outcome = new ArrayList<Map<String, Object>>();
+    for (UUID subject : form.combatants()) {
+      var creature = target(context, subject);
+      boolean forced = forcedFailure(form, creature);
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("combatantId", subject);
+      result.put("automaticFailure", forced);
+      if (!forced) {
+        int bonus =
+            form.save()
+                ? creature.saves().get(form.ability())
+                : form.skill() == null
+                    ? creature.abilities().get(form.ability())
+                    : creature
+                        .skills()
+                        .getOrDefault(form.skill(), creature.abilities().get(form.ability()));
+        boolean dodge =
+            form.save()
+                && form.ability() == Ability.DEX
+                && creature.entry().tactics().dodging()
+                && creature.speed() > 0
+                && !creature.incapacitated();
+        boolean restraint =
+            form.save()
+                && form.ability() == Ability.DEX
+                && creature.conditions().contains("srd-5.1:restrained");
+        var authored = CombatEffects.rollSources(context, creature, "save", "holder", null, null);
+        var saveAdvantages = new ArrayList<>(authored.advantages());
+        var savePenalties = new ArrayList<>(authored.disadvantages());
+        if (dodge) saveAdvantages.add("Dodge");
+        if (restraint) savePenalties.add("Restrained");
+        if (Exhaustion.disadvantagesAttacksAndSaves(creature.vitals().exhaustion()))
+          savePenalties.add("Exhaustion");
+        var sources =
+            form.save()
+                ? new AdvantageSources(saveAdvantages, savePenalties)
+                : assistedCheck(context, creature, form.skill(), form.fearSourceVisible());
+        Cover cover = form.cover().getOrDefault(subject, Cover.NONE);
+        var roll = CombatRolls.coveredSave(bonus, cover, sources.mode(), context.random());
+        context.dice(form.save() ? "Saving throw" : "Ability check", subject, roll);
+        Boolean success =
+            form.dc() == null
+                ? null
+                : D20Test.resolve(roll, form.dc(), kind, naturalMode).success();
+        roll =
+            CombatFeatures.inspireRoll(
+                context,
+                creature,
+                roll,
+                form.save() ? Point.AFTER_SAVE_ROLL : Point.AFTER_CHECK_ROLL,
+                success);
+        if (form.searchTarget() != null)
+          result.put(
+              "detected",
+              CombatStealth.search(
+                  context,
+                  context.creature(form.searchTarget()),
+                  creature,
+                  roll.total(),
+                  form.noticedOnTie()));
+        result.put("roll", roll);
+        if (form.dc() != null)
+          result.put("success", D20Test.resolve(roll, form.dc(), kind, naturalMode).success());
+      } else result.put("success", false);
+      outcome.add(result);
+    }
+    context.result("outcomes", outcome);
+    context.dm("TestResolved", Map.of("outcomes", outcome));
+  }
+
+  private static boolean forcedFailure(Check form, Creature creature) {
+    return form.save()
+        ? CombatConditions.forcedSaveFailure(creature.conditions(), form.ability())
+        : CombatConditions.forcedCheckFailure(
+            creature.conditions(), form.requiresSight(), form.requiresHearing());
   }
 
   public Reply firstAid(UUID campaign, UUID id, UUID actor, Envelope envelope, Help form) {
@@ -802,7 +1047,7 @@ public class CombatActions {
         .anyMatch(defense -> defense.kind().equals(kind) && defense.applies(type, magical));
   }
 
-  private static void spend(Context context, UnaryOperator<TurnBudget> spend) {
+  static void spend(Context context, UnaryOperator<TurnBudget> spend) {
     var table = context.table;
     try {
       context.table =
@@ -849,12 +1094,22 @@ public class CombatActions {
       boolean nearbyHostile,
       boolean fearSourceVisible,
       boolean targetAbsent,
-      @JsonInclude(JsonInclude.Include.NON_EMPTY) List<UUID> protectingAllyIds) {
+      @JsonInclude(JsonInclude.Include.NON_EMPTY) List<UUID> protectingAllyIds,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Integer smiteSlotLevel) {
     public Attack {
+      if (smiteSlotLevel != null && (smiteSlotLevel < 1 || smiteSlotLevel > 9)) throw invalid();
       protectingAllyIds =
           protectingAllyIds == null
               ? List.of()
               : protectingAllyIds.stream().distinct().sorted().toList();
+    }
+  }
+
+  public record ManualMove(UUID actorId, int distanceFeet, List<UUID> leavesReachOf) {
+    public ManualMove {
+      if (actorId == null || distanceFeet < 1 || distanceFeet > 1000 || leavesReachOf.size() > 30)
+        throw invalid();
+      leavesReachOf = leavesReachOf.stream().distinct().sorted().toList();
     }
   }
 

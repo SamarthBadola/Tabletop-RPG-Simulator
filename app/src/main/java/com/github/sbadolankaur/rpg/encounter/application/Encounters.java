@@ -14,6 +14,8 @@ import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Phase;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Table;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Tactics;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
+import com.github.sbadolankaur.rpg.encounter.persistence.AfflictionStore;
+import com.github.sbadolankaur.rpg.encounter.persistence.AfflictionStore.CureChoice;
 import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
@@ -24,6 +26,7 @@ import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance.Boundary;
 import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.combat.TurnBudget;
 import com.github.sbadolankaur.rpg.engine.dice.RollMode;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Point;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,18 +55,21 @@ public class Encounters {
   private final EncounterCommands commands;
   private final EncounterStore store;
   private final CombatRoster roster;
+  private final AfflictionStore afflictions;
 
   Encounters(
       Campaigns campaigns,
       Characters characters,
       EncounterCommands commands,
       EncounterStore store,
-      CombatRoster roster) {
+      CombatRoster roster,
+      AfflictionStore afflictions) {
     this.campaigns = campaigns;
     this.characters = characters;
     this.commands = commands;
     this.store = store;
     this.roster = roster;
+    this.afflictions = afflictions;
   }
 
   public List<Table> list(UUID campaign, UUID actor) {
@@ -100,7 +106,8 @@ public class Encounters {
                       creature.attacks().stream()
                           .map(option -> new Choice(option.key(), option.label()))
                           .toList(),
-                      creature.resources());
+                      creature.resources(),
+                      creature.features());
                 })
             .toList();
     var players =
@@ -128,7 +135,13 @@ public class Encounters {
         store.latestReversible(id).map(EncounterStore.Event::id).orElse(null),
         CombatStealth.suggestions(entries),
         conditionNames(content),
-        table.phase() == Phase.FINISHED ? store.latestRecap(id).orElse(null) : null);
+        table.phase() == Phase.FINISHED ? store.latestRecap(id).orElse(null) : null,
+        rows.stream()
+                .filter(row -> row.id().equals(table.acting()))
+                .anyMatch(row -> row.features().contains(CombatFeatures.LAY_ON_HANDS))
+            ? afflictions.activeCures(id).stream()
+                .collect(Collectors.groupingBy(CureChoice::target))
+            : Map.of());
   }
 
   public List<PlayerEvent> visibleEvents(UUID campaign, UUID id, UUID reader) {
@@ -420,19 +433,21 @@ public class Encounters {
         "end-turn",
         combatant,
         true,
-        context -> {
-          var entry = context.acting(combatant).entry();
-          if (!ties(context.entries.values()).isEmpty()) throw EncounterCommands.invalid();
-          var current = context.creature(combatant);
-          if (entry.tactics().deathSaveDue() && current.vitals().health().state() == State.DYING) {
-            resolveDeathSave(context, current);
-          }
-          var updated = context.entries.get(combatant);
-          context.update(updated.tactics(updated.tactics().end().deathSave(false)));
-          CombatEffects.expire(context, combatant, Boundary.END);
-          context.dm("TurnEnded", Map.of("combatantId", combatant));
-          nextTurn(context);
-        });
+        context -> resolveEndTurn(context, combatant));
+  }
+
+  static void resolveEndTurn(Context context, UUID combatant) {
+    var entry = context.acting(combatant).entry();
+    if (!ties(context.entries.values()).isEmpty()) throw EncounterCommands.invalid();
+    var current = context.creature(combatant);
+    if (entry.tactics().deathSaveDue() && current.vitals().health().state() == State.DYING) {
+      resolveDeathSave(context, current);
+    }
+    var updated = context.entries.get(combatant);
+    context.update(updated.tactics(updated.tactics().end().deathSave(false)));
+    CombatEffects.expire(context, combatant, Boundary.END);
+    context.dm("TurnEnded", Map.of("combatantId", combatant));
+    nextTurn(context);
   }
 
   public Reply deathSave(UUID cp, UUID id, UUID actor, Envelope envelope, UUID combatant) {
@@ -444,13 +459,14 @@ public class Encounters {
         "death-saves",
         combatant,
         true,
-        context -> {
-          var current = context.acting(combatant);
-          if (!current.entry().tactics().deathSaveDue()
-              || current.vitals().health().state() != State.DYING)
-            throw EncounterCommands.invalid();
-          resolveDeathSave(context, current);
-        });
+        context -> resolveExplicitDeathSave(context, combatant));
+  }
+
+  static void resolveExplicitDeathSave(Context context, UUID combatant) {
+    var current = context.acting(combatant);
+    if (!current.entry().tactics().deathSaveDue()
+        || current.vitals().health().state() != State.DYING) throw EncounterCommands.invalid();
+    resolveDeathSave(context, current);
   }
 
   public Reply finish(UUID cp, UUID id, UUID actor, Envelope envelope) {
@@ -547,8 +563,18 @@ public class Encounters {
         Exhaustion.disadvantagesAttacksAndSaves(creature.vitals().exhaustion())
             ? RollMode.DISADVANTAGE
             : RollMode.NORMAL;
+    if (creature.vitals().inspiration() != null) context.preflight(List.of("rollDecisionInfo"));
     var roll = CombatRolls.d20("Death save", 0, mode, context.random());
-    context.dice("DeathSave", creature.entry().id(), roll);
+    UUID id = creature.entry().id();
+    context.dice("DeathSave", id, roll);
+    roll =
+        CombatFeatures.inspireRoll(
+            context,
+            creature,
+            roll,
+            Point.AFTER_SAVE_ROLL,
+            roll.naturalD20() != 1 && (roll.naturalD20() == 20 || roll.total() >= 10));
+    creature = context.creature(id);
     context.update(creature.entry().tactics(creature.entry().tactics().deathSave(false)));
     var after =
         context.health(
@@ -608,7 +634,8 @@ public class Encounters {
       UUID reversible,
       Set<UUID> surpriseSuggestions,
       Map<String, String> conditionNames,
-      Recap recap) {}
+      Recap recap,
+      Map<UUID, List<CureChoice>> cureChoices) {}
 
   public record Recap(int rounds, List<String> fallen, Map<String, Integer> resourcesSpent) {}
 
@@ -624,7 +651,8 @@ public class Encounters {
       boolean deathSaveDue,
       List<String> conditions,
       List<Choice> attacks,
-      Map<String, Integer> resources) {}
+      Map<String, Integer> resources,
+      Set<String> features) {}
 
   public record PlayerEvent(String type, String text, long gameSeconds, int round) {}
 }

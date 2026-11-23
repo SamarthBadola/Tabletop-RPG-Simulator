@@ -1,6 +1,7 @@
 package com.github.sbadolankaur.rpg.character.persistence;
 
 import com.github.sbadolankaur.rpg.engine.character.AbilityGeneration;
+import com.github.sbadolankaur.rpg.engine.combat.BardicInspiration;
 import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import java.sql.ResultSet;
@@ -307,7 +308,7 @@ public class CharacterStore {
     return jdbc.sql(
             """
         SELECT p.owner_id, p.death_successes, p.death_failures, p.stable_recovery_at,
-            p.exhaustion, p.condition_effects::text, g.game_seconds
+            p.exhaustion, p.condition_effects::text, g.game_seconds, p.bardic_inspiration::text
         FROM player_character p JOIN game_clock g ON g.campaign_id = p.campaign_id WHERE p.id = ?
         """)
         .param(id)
@@ -321,7 +322,10 @@ public class CharacterStore {
                     row.getInt(5),
                     json.readValue(
                         row.getString(6), new TypeReference<List<ConditionInstance>>() {}),
-                    row.getLong(7)))
+                    row.getLong(7),
+                    row.getString(8) == null
+                        ? null
+                        : json.readValue(row.getString(8), BardicInspiration.class)))
         .single();
   }
 
@@ -333,11 +337,13 @@ public class CharacterStore {
       int failures,
       Long recoveryAt,
       int exhaustion,
-      List<ConditionInstance> effects) {
+      List<ConditionInstance> effects,
+      BardicInspiration inspiration) {
     jdbc.sql(
             """
         UPDATE player_character SET hp_current=?, hp_temp=?, death_successes=?, death_failures=?,
-          stable_recovery_at=?, exhaustion=?, condition_effects=CAST(? AS jsonb) WHERE id=?
+          stable_recovery_at=?, exhaustion=?, condition_effects=CAST(? AS jsonb),
+          bardic_inspiration=CAST(? AS jsonb) WHERE id=?
         """)
         .params(
             hp,
@@ -347,6 +353,7 @@ public class CharacterStore {
             recoveryAt,
             exhaustion,
             json.writeValueAsString(effects),
+            inspiration == null ? null : json.writeValueAsString(inspiration),
             id)
         .update();
   }
@@ -394,7 +401,8 @@ public class CharacterStore {
       Long recoveryAt,
       int exhaustion,
       List<ConditionInstance> effects,
-      long gameSeconds) {}
+      long gameSeconds,
+      BardicInspiration inspiration) {}
 
   public void equip(UUID id, Map<UUID, String> slots) {
     jdbc.sql("UPDATE inventory_item SET equipment_slot = NULL WHERE player_character_id = ?")
@@ -427,6 +435,26 @@ public class CharacterStore {
             ? "INSERT INTO pc_condition VALUES (?, ?) ON CONFLICT DO NOTHING"
             : "DELETE FROM pc_condition WHERE player_character_id = ? AND condition_key = ?";
     jdbc.sql(statement).params(id, key).update();
+  }
+
+  public Map<Integer, Integer> spentSlots(UUID id) {
+    var slots = new java.util.TreeMap<Integer, Integer>();
+    jdbc.sql("SELECT slot_level, used FROM pc_slot WHERE player_character_id = ? AND used > 0")
+        .param(id)
+        .query((row, index) -> Map.entry(row.getInt(1), row.getInt(2)))
+        .list()
+        .forEach(slot -> slots.put(slot.getKey(), slot.getValue()));
+    return Map.copyOf(slots);
+  }
+
+  public void spellSlot(UUID id, int level, int used) {
+    jdbc.sql(
+            """
+        INSERT INTO pc_slot (player_character_id, slot_level, used) VALUES (?, ?, ?)
+        ON CONFLICT (player_character_id, slot_level) DO UPDATE SET used = EXCLUDED.used
+        """)
+        .params(id, level, used)
+        .update();
   }
 
   public void resource(UUID id, String key, int used) {

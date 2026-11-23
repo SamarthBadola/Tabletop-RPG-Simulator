@@ -41,6 +41,34 @@ class PackConformanceTest {
   }
 
   @Test
+  void poisonAfflictionsRequireASaveAndLeavePoisonDefinitionsIntact() throws Exception {
+    var files = PackInput.readFolder(Path.of("src/test/resources/content-fixtures/sample-v1"));
+    String path = "afflictions/affliction.json";
+    var changed = new HashMap<>(files);
+    var affliction = (ObjectNode) PackJson.MAPPER.readTree(files.get(path));
+    affliction.put("afflictionKind", "POISON");
+    changed.put(path, PackJson.MAPPER.writeValueAsBytes(affliction));
+    var pack = loader.load(changed, false, List.of());
+    assertThat(
+            pack.definitions().stream()
+                .filter(definition -> definition.kind().equals("affliction"))
+                .findFirst()
+                .orElseThrow()
+                .fields())
+        .containsEntry("afflictionKind", "POISON");
+    assertThat(
+            pack.definitions().stream()
+                .filter(definition -> definition.kind().equals("poison"))
+                .findFirst()
+                .orElseThrow()
+                .fields())
+        .containsEntry("delivery", "contact");
+    affliction.remove("save");
+    changed.put(path, PackJson.MAPPER.writeValueAsBytes(affliction));
+    expectRule(changed, "CS-ENV-001");
+  }
+
+  @Test
   void rejectsBadReferencesAndFormulasBeforeHashing() throws Exception {
     var files =
         new HashMap<>(

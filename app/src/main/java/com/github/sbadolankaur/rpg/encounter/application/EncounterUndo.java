@@ -6,6 +6,7 @@ import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.Conte
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Entry;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Table;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
+import com.github.sbadolankaur.rpg.engine.affliction.Affliction;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,12 +46,27 @@ record EncounterUndo(
       if (before == null) continue;
       if (change.after() == null) context.add(before.entry());
       else context.update(before.entry());
-      if (before.entry().character() == null || change.after() == null) continue;
+      if (change.after() == null) continue;
       var after = change.after();
+      before
+          .afflictions()
+          .forEach(
+              (id, affliction) -> {
+                if (!affliction.equals(after.afflictions().get(id)))
+                  context.affliction(change.id(), affliction);
+              });
+      if (before.entry().character() == null) continue;
       if (!before.vitals().equals(after.vitals()))
         context.vitals(context.creature(change.id()), before.vitals());
       if (!before.equipment().equals(after.equipment()))
         context.restoreEquipment(context.creature(change.id()), before.equipment());
+      var levels = new java.util.TreeSet<>(before.slots().keySet());
+      levels.addAll(after.slots().keySet());
+      for (int level : levels) {
+        int used = before.slots().getOrDefault(level, 0);
+        if (used != after.slots().getOrDefault(level, 0))
+          context.spellSlot(context.creature(change.id()), level, used);
+      }
       before
           .resources()
           .forEach(
@@ -99,6 +115,8 @@ record EncounterUndo(
                   && !first.vitals().health().equals(second.vitals().health()));
       if (first.owner() != null
           && (!first.resources().equals(second.resources())
+              || !first.slots().equals(second.slots())
+              || !first.afflictions().equals(second.afflictions())
               || !first.equipment().equals(second.equipment())
               || first.vitals().exhaustion() != second.vitals().exhaustion())) {
         privateChanges.put(first.owner(), first.name());
@@ -129,5 +147,12 @@ record EncounterUndo(
       UUID owner,
       Vitals vitals,
       Map<String, Integer> resources,
-      Map<UUID, String> equipment) {}
+      Map<UUID, String> equipment,
+      Map<Integer, Integer> slots,
+      Map<UUID, Affliction> afflictions) {
+    Snapshot {
+      slots = slots == null ? Map.of() : Map.copyOf(slots);
+      afflictions = afflictions == null ? Map.of() : Map.copyOf(afflictions);
+    }
+  }
 }
