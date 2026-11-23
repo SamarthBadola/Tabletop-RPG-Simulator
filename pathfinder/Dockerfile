@@ -7,7 +7,7 @@
 # Settings (all optional): PORT, BIND, WORKERS, MAX_QUEUE, PATHFINDER_TOKEN, LOG_LEVEL.
 
 # ---- build stage: compilers live here and never reach the final image --------
-FROM gcc:13-bookworm@sha256:8c0fe724784c6d617cb582f79ddaf5dd2233aaba2fb7a14e0b9d03348fea8088 AS build
+FROM gcc:15-bookworm@sha256:9ca91b05c7b07d2979f16413e8b2cd6ec8a7c80ffca4121ccab0aeba33f90460 AS build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends cmake python3 \
     && rm -rf /var/lib/apt/lists/*
