@@ -116,7 +116,8 @@
           "items": {
             "enum": [
               "asi",
-              "subclass"
+              "subclass",
+              "fighting_style"
             ]
           },
           "minItems": 0,

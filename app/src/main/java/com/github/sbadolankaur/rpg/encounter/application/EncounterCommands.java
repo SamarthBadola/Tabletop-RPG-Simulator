@@ -165,11 +165,15 @@ public class EncounterCommands {
             store.entries(encounter));
     boolean endTurn = "end-turn".equals(command);
     boolean deathSave = "death-saves".equals(command);
+    boolean turnUnholy =
+        request instanceof CombatFeatures.Use use
+            && CombatFeatures.TURN_THE_UNHOLY.equals(use.featureKey());
     if (request instanceof Attack
         || request instanceof ManualMove
         || request instanceof Check
         || endTurn
-        || deathSave) {
+        || deathSave
+        || turnUnholy) {
       var pinned =
           new RecordedAction(
               request instanceof Attack attack ? attack : null,
@@ -177,6 +181,7 @@ public class EncounterCommands {
               request instanceof Check check ? check : null,
               endTurn ? (UUID) request : null,
               deathSave ? (UUID) request : null,
+              turnUnholy ? (CombatFeatures.Use) request : null,
               json.valueToTree(context.effective.values()),
               context.content.packHashes(),
               ReactionReplay.Continuation.empty(),
@@ -292,7 +297,7 @@ public class EncounterCommands {
     var window =
         reactions
             .findEncounterWindow(campaign, windowId)
-            .orElseThrow(() -> new CampaignException(Code.REACTION_NOT_AVAILABLE));
+            .orElseThrow(() -> new CampaignException(Code.REACTION_OPTION_INVALID));
     var table = require(campaign, window.encounter(), true);
     var previous = store.action(table.id(), envelope.actionId());
     if (previous.isPresent()) return replay(previous.get(), actor, hash);
@@ -418,6 +423,7 @@ public class EncounterCommands {
             saved.check(),
             saved.endTurn(),
             saved.deathSave(),
+            saved.feature(),
             saved.settings(),
             saved.packHashes(),
             outcome.continuation(),
@@ -514,6 +520,7 @@ public class EncounterCommands {
       Check check,
       UUID endTurn,
       UUID deathSave,
+      CombatFeatures.Use feature,
       JsonNode settings,
       List<String> packHashes,
       ReactionReplay.Continuation replay,
@@ -523,6 +530,7 @@ public class EncounterCommands {
       if (action != null) return "attack";
       if (move != null) return "move";
       if (check != null) return check.save() ? "save" : "check";
+      if (feature != null) return "turn-unholy";
       return endTurn != null ? "end-turn" : "death-save";
     }
 
@@ -530,6 +538,7 @@ public class EncounterCommands {
       if (action != null) CombatActions.resolveAttack(context, action);
       else if (move != null) CombatActions.resolveMove(context, move);
       else if (check != null) CombatActions.resolveCheck(context, check);
+      else if (feature != null) CombatFeatures.use(context, feature);
       else if (endTurn != null) Encounters.resolveEndTurn(context, endTurn);
       else Encounters.resolveExplicitDeathSave(context, deathSave);
     }
@@ -585,6 +594,7 @@ public class EncounterCommands {
     private final Map<UUID, Creature> profiles = new HashMap<>();
     private final Map<UUID, Vitals> pendingVitals = new HashMap<>();
     private final Map<UUID, Map<Integer, Integer>> pendingSlots = new HashMap<>();
+    private final Map<UUID, Map<String, Integer>> pendingResources = new HashMap<>();
     private final List<Runnable> writes = new ArrayList<>();
     private boolean stage;
     private boolean resuming;
@@ -621,7 +631,8 @@ public class EncounterCommands {
     }
 
     void preflight(List<String> keys) {
-      if (!resuming) settings.requireDecisions(table.campaign(), actor, keys);
+      if (!resuming && (replay == null || replay.canAskSettings()))
+        settings.requireDecisions(table.campaign(), actor, keys);
     }
 
     private void write(Runnable operation) {
@@ -634,6 +645,7 @@ public class EncounterCommands {
       writes.clear();
       pendingVitals.clear();
       pendingSlots.clear();
+      pendingResources.clear();
       profiles.clear();
       stage = false;
     }
@@ -655,7 +667,8 @@ public class EncounterCommands {
           entry.character() == null
               ? entry.npcVitals()
               : pendingVitals.getOrDefault(id, profile.vitals());
-      return profile.withState(entry, vitals);
+      return profile.withState(
+          entry, vitals, pendingResources.getOrDefault(id, profile.resources()));
     }
 
     String creatureType(Creature creature) {
@@ -672,8 +685,14 @@ public class EncounterCommands {
     }
 
     Creature canAct(UUID id) {
+      return canAct(id, false);
+    }
+
+    Creature canAct(UUID id, boolean turnedMayAct) {
       var creature = acting(id);
-      if (creature.incapacitated() || creature.entry().tactics().surprised())
+      if (creature.incapacitated()
+          || creature.entry().tactics().surprised()
+          || !turnedMayAct && creature.conditions().contains("srd-5.1:turned"))
         throw new CampaignException(Code.NO_ACTIONS_LEFT);
       return creature;
     }
@@ -881,10 +900,19 @@ public class EncounterCommands {
       write(() -> roster.spellSlot(creature, level, used));
     }
 
+    boolean alwaysPass(Creature creature, String feature) {
+      return roster.alwaysPassReaction(creature, feature);
+    }
+
     void resource(Creature creature, String key, int used) {
-      remember(creature.entry().id());
+      UUID id = creature.entry().id();
+      remember(id);
+      if (stage) {
+        var next = new HashMap<>(creature.resources());
+        next.put(key, used);
+        pendingResources.put(id, Map.copyOf(next));
+      } else profiles.remove(id);
       write(() -> roster.setResource(creature, key, used));
-      profiles.remove(creature.entry().id());
     }
 
     void dice(String purpose, UUID creature, RollResult roll) {

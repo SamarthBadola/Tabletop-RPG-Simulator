@@ -27,6 +27,10 @@ public final class ReplayingRandomSource implements RandomSource {
     return draw.value();
   }
 
+  public boolean hasRolled() {
+    return !draws.isEmpty();
+  }
+
   public List<Draw> draws() {
     if (draws.size() < previous.size())
       throw new IllegalStateException("The action did not replay all its recorded dice");

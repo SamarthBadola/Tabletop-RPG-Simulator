@@ -78,6 +78,7 @@ class ApplicationFlowIT {
   @Autowired private PasswordEncoder passwordEncoder;
 
   @Autowired private ContentPacks contentPacks;
+  @Autowired private com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore reactions;
 
   @Autowired private com.github.sbadolankaur.rpg.content.PackLoader packLoader;
   @Autowired private com.github.sbadolankaur.rpg.campaign.application.CampaignPlay play;
@@ -262,7 +263,7 @@ class ApplicationFlowIT {
                     .with(csrf())
                     .header("HX-Request", "true")
                     .param("action", "upgrade")
-                    .param("targetVersion", "0.2.0"))
+                    .param("targetVersion", "0.3.0"))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Confirm upgrade")))
             .andReturn();
@@ -272,20 +273,20 @@ class ApplicationFlowIT {
     mockMvc
         .perform(
             action(apply, "upgrade-player", campaign, player)
-                .param("targetVersion", "0.2.0")
+                .param("targetVersion", "0.3.0")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isForbidden());
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.2.0")
+                .param("targetVersion", "0.3.0")
                 .param("reviewHash", "expired-review"))
         .andExpect(status().isConflict());
     assertThat(contentPacks.open(campaign).find("class", "srd-5.1:fighter")).isEmpty();
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.2.0")
+                .param("targetVersion", "0.3.0")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isSeeOther())
         .andExpect(redirectedUrl(packs));
@@ -1124,6 +1125,341 @@ class ApplicationFlowIT {
   }
 
   @Test
+  void bundledClassesCreateAndReachTheirApprovedLevelThreeFeatures() throws Exception {
+    UUID dm = characterAccount("class-dm", true);
+    UUID rogueOwner = characterAccount("class-rogue", false);
+    UUID bardOwner = characterAccount("class-bard", false);
+    UUID paladinOwner = characterAccount("class-paladin", false);
+    UUID campaign = campaigns.create(dm, "Class rules").id();
+    joinFixture(campaign, rogueOwner, bardOwner, paladinOwner);
+    String base = "/campaigns/" + campaign + "/characters";
+
+    UUID rogue =
+        createClassCharacter(
+            base,
+            campaign,
+            rogueOwner,
+            "class-rogue",
+            "rogue",
+            new String[] {"athletics", "perception", "stealth", "investigation"},
+            "athletics",
+            "thieves_tools");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pc_proficiency WHERE player_character_id = ? AND kind = 'expertise'",
+                Long.class,
+                rogue))
+        .isEqualTo(2);
+    mockMvc
+        .perform(get(base + "/" + rogue).with(user("class-rogue")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Sneak Attack")));
+
+    UUID bard =
+        createClassCharacter(
+            base,
+            campaign,
+            bardOwner,
+            "class-bard",
+            "bard",
+            new String[] {"athletics", "perception", "performance"});
+    var bardSheet = base + "/" + bard;
+    grantClassLevel(bardSheet, campaign, dm);
+    mockMvc
+        .perform(
+            action(bardSheet + "/level-ups", "class-bard", campaign, bardOwner)
+                .param("step", "review")
+                .param("hitPointMethod", "average"))
+        .andExpect(status().isSeeOther());
+    grantClassLevel(bardSheet, campaign, dm);
+    mockMvc
+        .perform(
+            action(bardSheet + "/level-ups", "class-bard", campaign, bardOwner)
+                .param("step", "review")
+                .param("hitPointMethod", "average")
+                .param("subclassKey", "srd-5.1:college-of-lore")
+                .param("bonusSkills", "stealth", "persuasion", "arcana")
+                .param("expertiseChoices", "stealth", "performance"))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pc_proficiency WHERE player_character_id = ? AND source = 'srd-5.1:college-of-lore'",
+                Long.class,
+                bard))
+        .isEqualTo(3);
+    mockMvc
+        .perform(get(bardSheet).with(user("class-bard")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Cutting Words")));
+
+    UUID paladin =
+        createClassCharacter(
+            base,
+            campaign,
+            paladinOwner,
+            "class-paladin",
+            "paladin",
+            new String[] {"athletics", "intimidation"});
+    var paladinSheet = base + "/" + paladin;
+    grantClassLevel(paladinSheet, campaign, dm);
+    mockMvc
+        .perform(
+            action(paladinSheet + "/level-ups", "class-paladin", campaign, paladinOwner)
+                .param("step", "review")
+                .param("hitPointMethod", "average")
+                .param("fightingStyleKey", "srd-5.1:protection"))
+        .andExpect(status().isSeeOther());
+    grantClassLevel(paladinSheet, campaign, dm);
+    mockMvc
+        .perform(
+            action(paladinSheet + "/level-ups", "class-paladin", campaign, paladinOwner)
+                .param("step", "review")
+                .param("hitPointMethod", "average")
+                .param("subclassKey", "srd-5.1:oath-of-devotion"))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT fighting_style_key FROM player_character WHERE id = ?",
+                String.class,
+                paladin))
+        .isEqualTo("srd-5.1:protection");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pc_resource WHERE player_character_id = ? AND resource_key = 'srd-5.1:channel-divinity-uses'",
+                Long.class,
+                paladin))
+        .isOne();
+  }
+
+  private UUID createClassCharacter(
+      String url,
+      UUID campaign,
+      UUID actor,
+      String username,
+      String className,
+      String[] skills,
+      String... expertise)
+      throws Exception {
+    var request =
+        action(url, username, campaign, actor)
+            .param("step", "review")
+            .param("speciesKey", "srd-5.1:human")
+            .param("classKey", "srd-5.1:" + className)
+            .param("abilityMethod", "STANDARD_ARRAY")
+            .param("abilityScores", "14", "13", "15", "8", "12", "10")
+            .param("skillChoices", skills)
+            .param("languageChoices", "elvish")
+            .param("equipmentChoices", "srd-5.1:starting-gold")
+            .param("name", className);
+    if (expertise.length > 0) request.param("expertiseChoices", expertise);
+    String redirect =
+        mockMvc
+            .perform(request)
+            .andExpect(status().isSeeOther())
+            .andReturn()
+            .getResponse()
+            .getRedirectedUrl();
+    return UUID.fromString(redirect.substring(redirect.lastIndexOf('/') + 1));
+  }
+
+  private void grantClassLevel(String sheet, UUID campaign, UUID dm) throws Exception {
+    mockMvc
+        .perform(action(sheet + "/level-grants", "class-dm", campaign, dm))
+        .andExpect(status().isSeeOther());
+  }
+
+  @Test
+  void cunningActionAndFastHandsSpendTheBonusActionWithoutUsingTheMainAction() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "rogue", 3, null, 0);
+    jdbcTemplate.update(
+        "UPDATE pc_class SET subclass_key = 'srd-5.1:thief' WHERE player_character_id = ?",
+        bout.left());
+    forceCombatDice(18, 12);
+    submitBout(bout, "/start");
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/dashes", bout.id())
+                .param("actorId", bout.first().toString())
+                .param("bonusAction", "true"))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject("SELECT budget->>'actions' FROM encounter", Integer.class))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject("SELECT budget->>'dashes' FROM encounter", Integer.class))
+        .isEqualTo(1);
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/object-uses", bout.id())
+                .param("actorId", bout.first().toString())
+                .param("bonusAction", "true")
+                .param("note", "Open a chest")
+                .accept("application/problem+json"))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.code").value("NO_ACTIONS_LEFT"));
+    for (var actor : java.util.List.of(bout.first(), bout.second())) {
+      mockMvc
+          .perform(
+              combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", actor.toString()))
+          .andExpect(status().isSeeOther());
+    }
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/object-uses", bout.id())
+                .param("actorId", bout.first().toString())
+                .param("bonusAction", "true")
+                .param("note", "Open a chest"))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject("SELECT budget->>'actions' FROM encounter", Integer.class))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT budget->>'interactionAvailable' FROM encounter", Boolean.class))
+        .isTrue();
+  }
+
+  @Test
+  void divineSenseSpendsAnActionAndOneUseBeforeTheDmNarrates() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "paladin", 1, "divine-sense-uses", 0);
+    forceCombatDice(18, 12);
+    submitBout(bout, "/start");
+    String route = bout.url() + "/feature-uses";
+    mockMvc
+        .perform(
+            combatAction(route, bout.id())
+                .param("actorId", bout.first().toString())
+                .param("featureKey", "srd-5.1:divine-sense")
+                .param("targetId", bout.second().toString())
+                .accept("application/problem+json"))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.details.field").value("targetId"));
+    mockMvc
+        .perform(
+            combatAction(route, bout.id())
+                .param("actorId", bout.first().toString())
+                .param("featureKey", "srd-5.1:divine-sense"))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject("SELECT budget->>'actions' FROM encounter", Integer.class))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT used FROM pc_resource WHERE player_character_id = ? AND resource_key = 'srd-5.1:divine-sense-uses'
+        """,
+                Integer.class,
+                bout.left()))
+        .isOne();
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT audience FROM combat_event WHERE type = 'DivineSenseUsed'", String.class))
+        .containsExactly("DM");
+  }
+
+  @Test
+  void devotionTurnsAnUndeadThroughTheSavingThrowPipeline() throws Exception {
+    var bout = combatFixture(false);
+    devotion(bout);
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/combatants", bout.id())
+                .param("monsterKey", "srd-5.1:undead-target"))
+        .andExpect(status().isSeeOther());
+    UUID undead =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE monster_key = 'srd-5.1:undead-target'", UUID.class);
+    forceCombatDice(18, 12, 7, 2);
+    submitBout(bout, "/start");
+    String action = bout.url() + "/feature-uses";
+    mockMvc
+        .perform(
+            combatAction(action, bout.id())
+                .param("actorId", bout.first().toString())
+                .param("featureKey", "srd-5.1:turn-the-unholy")
+                .param("targetIds", bout.second().toString())
+                .accept("application/problem+json"))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.details.field").value("targetIds"));
+    mockMvc
+        .perform(
+            combatAction(action, bout.id())
+                .param("actorId", bout.first().toString())
+                .param("featureKey", "srd-5.1:turn-the-unholy")
+                .param("targetIds", undead.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT (npc_vitals->'effects')::text FROM combatant WHERE id = ?",
+                String.class,
+                undead))
+        .contains("srd-5.1:turned");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT used FROM pc_resource WHERE player_character_id = ? AND resource_key = 'srd-5.1:channel-divinity-uses'
+        """,
+                Integer.class,
+                bout.left()))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void sacredWeaponBoostsTheHeldAttackAndUsesChannelDivinity() throws Exception {
+    var bout = combatFixture(false);
+    devotion(bout);
+    equipLongsword(bout.left());
+    forceCombatDice(18, 12, 15, 5);
+    submitBout(bout, "/start");
+    settings.decide(
+        bout.campaign(),
+        bout.dm(),
+        combatCampaignEnvelope(bout.campaign(), bout.dm()),
+        "divineSmiteTiming",
+        "BEFORE_ATTACK");
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/feature-uses", bout.id())
+                .param("actorId", bout.first().toString())
+                .param("featureKey", "srd-5.1:sacred-weapon"))
+        .andExpect(status().isSeeOther());
+    for (var actor : java.util.List.of(bout.first(), bout.second())) {
+      mockMvc
+          .perform(
+              combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", actor.toString()))
+          .andExpect(status().isSeeOther());
+    }
+    var hit =
+        result(
+            mockMvc
+                .perform(
+                    combatStrike(
+                        bout.url(),
+                        commands.newActionId(),
+                        combatVersion(bout.id()),
+                        bout.first(),
+                        bout.second(),
+                        "srd-5.1:longsword"))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(hit.path("attack").path("roll").path("total").asInt()).isEqualTo(20);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload->>'magical' FROM combat_event WHERE type = 'DamageTaken'",
+                Boolean.class))
+        .isTrue();
+  }
+
+  private void devotion(CombatFixture bout) throws Exception {
+    stepEightClass(bout, "paladin", 3, "channel-divinity-uses", 0);
+    jdbcTemplate.update(
+        "UPDATE pc_class SET subclass_key = 'srd-5.1:oath-of-devotion' WHERE player_character_id = ?",
+        bout.left());
+  }
+
+  @Test
   void opportunityAttackStopsMovementWhenItDropsTheMover() throws Exception {
     var bout = combatFixture(false);
     jdbcTemplate.update("UPDATE player_character SET hp_current = 1 WHERE id = ?", bout.left());
@@ -1470,6 +1806,61 @@ class ApplicationFlowIT {
   }
 
   @Test
+  void bardicInspirationTurnsAFailedDeathSaveIntoASuccessOnReplay() throws Exception {
+    var bout = combatFixture(false);
+    forceCombatDice(18, 12, 7, 4);
+    submitBout(bout, "/start");
+    mockMvc
+        .perform(
+            combatCorrection(
+                bout.url(), bout.id(), bout.second(), 0, "players", "Set up a dying combatant"))
+        .andExpect(status().isSeeOther());
+    jdbcTemplate.update(
+        """
+        UPDATE player_character SET bardic_inspiration = '{"dieFaces":6,"endsAt":600}'::jsonb
+        WHERE id = (SELECT character_id FROM combatant WHERE id = ?)
+        """,
+        bout.second());
+    endBoutTurn(bout, bout.first());
+    var waiting =
+        result(
+            mockMvc
+                .perform(
+                    combatAction(bout.url() + "/death-saves", bout.id())
+                        .header("HX-Request", "true")
+                        .param("actorId", bout.second().toString()))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(waiting.path("reaction").path("prompt").path("point").asString())
+        .isEqualTo("AFTER_SAVE_ROLL");
+
+    answerFeatureReaction(bout, waiting, bout.second(), "bardic-inspiration");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT death_successes FROM player_character WHERE id =
+            (SELECT character_id FROM combatant WHERE id = ?)
+        """,
+                Integer.class,
+                bout.second()))
+        .isOne();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM player_character WHERE bardic_inspiration IS NOT NULL",
+                Long.class))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT payload->'roll'->>'total' FROM combat_event
+        WHERE type = 'DiceRolled' AND payload->>'purpose' IN ('DeathSave', 'Bardic Inspiration')
+        ORDER BY seq
+        """,
+                String.class))
+        .containsExactly("7", "4");
+  }
+
+  @Test
   void defaultSmiteOffersAfterAHitAndUsesTheRecordedAttackRoll() throws Exception {
     var bout = combatFixture(false);
     stepEightClass(bout, "paladin", 2, "lay-on-hands-pool", 0);
@@ -1499,6 +1890,224 @@ class ApplicationFlowIT {
             jdbcTemplate.queryForObject(
                 "SELECT used FROM pc_slot WHERE slot_level = 1", Integer.class))
         .isEqualTo(1);
+  }
+
+  @Test
+  void smiteAndUncannyDodgeAreRecordedOnceInAfterHitOrder() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "paladin", 2, "lay-on-hands-pool", 0);
+    var rogue =
+        jdbcTemplate.queryForObject(
+            "SELECT character_id FROM combatant WHERE id = ?", UUID.class, bout.second());
+    defineStepEightClass(rogue, "rogue", 5, null, 0);
+    equipLongsword(bout.left());
+    forceCombatDice(18, 12, 19, 6, 3, 4);
+    submitBout(bout, "/start");
+
+    var smite = beginSmite(bout, commands.newActionId());
+    var dodge = answerFeatureReaction(bout, smite, bout.first(), "1");
+    assertThat(dodge.path("reaction").path("prompt").path("options").get(0).path("key").asString())
+        .isEqualTo("uncanny-dodge");
+    var hit = answerFeatureReaction(bout, dodge, bout.second(), "uncanny-dodge");
+    assertThat(hit.path("damage").path("slashing").asInt()).isEqualTo(4);
+    assertThat(hit.path("damage").path("radiant").asInt()).isEqualTo(3);
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT payload->>'choice' FROM combat_event WHERE type = 'ReactionAnswered' ORDER BY seq
+        """,
+                String.class))
+        .containsExactly("1", "uncanny-dodge");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT (tactics->>'reactionAvailable')::boolean FROM combatant WHERE id = ?
+        """,
+                Boolean.class,
+                bout.second()))
+        .isFalse();
+    assertThat(jdbcTemplate.queryForObject("SELECT used FROM pc_slot", Integer.class)).isOne();
+  }
+
+  @Test
+  void pendingSmiteUsesItsOriginalSettingAndWeaponDefinition() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "paladin", 2, "lay-on-hands-pool", 0);
+    equipLongsword(bout.left());
+    forceCombatDice(18, 12, 19, 2, 3, 4, 19, 2);
+    submitBout(bout, "/start");
+    var waiting = beginSmite(bout, commands.newActionId());
+
+    settings.decide(
+        bout.campaign(),
+        bout.dm(),
+        combatCampaignEnvelope(bout.campaign(), bout.dm()),
+        "divineSmiteTiming",
+        "BEFORE_ATTACK");
+    var upgraded = BundledPacksFixture.piercingLongsword();
+    contentPacks.seed(upgraded);
+    jdbcTemplate.update(
+        """
+        UPDATE campaign_pack SET pack_id = (SELECT id FROM content_pack WHERE hash = ?)
+        WHERE campaign_id = ? AND pack_key = 'srd-5.1'
+        """,
+        upgraded.hash(),
+        bout.campaign());
+
+    var originalHit = answerFeatureReaction(bout, waiting, bout.first(), "1");
+    assertThat(originalHit.path("damage").path("slashing").asInt()).isPositive();
+    assertThat(originalHit.path("damage").path("piercing").isMissingNode()).isTrue();
+    assertThat(originalHit.path("damage").path("radiant").asInt()).isEqualTo(7);
+
+    endBoutTurn(bout, bout.first());
+    endBoutTurn(bout, bout.second());
+    var nextHit = beginSmite(bout, commands.newActionId());
+    assertThat(nextHit.path("damage").path("piercing").asInt()).isPositive();
+    assertThat(nextHit.path("damage").path("radiant").isMissingNode()).isTrue();
+    assertThat(nextHit.path("awaitingReaction").isMissingNode()).isTrue();
+  }
+
+  @Test
+  void cancellingAfterTheAttackKeepsDiceAndRejectsALateAnswer() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "paladin", 2, "lay-on-hands-pool", 0);
+    equipLongsword(bout.left());
+    forceCombatDice(18, 12, 20);
+    submitBout(bout, "/start");
+    UUID attack = commands.newActionId();
+    var waiting = beginSmite(bout, attack);
+    UUID cancel = commands.newActionId();
+    long version = combatVersion(bout.id());
+    String route = reactionRoute(bout, waiting);
+    var first =
+        result(
+            mockMvc
+                .perform(cancelReaction(route, cancel, version))
+                .andExpect(status().isOk())
+                .andReturn());
+    var repeated =
+        result(
+            mockMvc
+                .perform(cancelReaction(route, cancel, version))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(first.path("outcome").asString()).isEqualTo("cancelled");
+    assertThat(repeated.path("outcome").asString()).isEqualTo("cancelled");
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT (payload->'roll'->>'naturalD20')::int FROM combat_event
+        WHERE action_id = ? AND type = 'DiceRolled'
+        """,
+                Integer.class,
+                attack))
+        .containsExactly(20);
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT type FROM combat_event WHERE action_id = ?", String.class, cancel))
+        .containsExactly("ActionCancelled");
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pc_slot", Long.class)).isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM combat_event WHERE type = 'DamageTaken'", Long.class))
+        .isZero();
+    mockMvc
+        .perform(chooseSmite(bout, route, commands.newActionId(), combatVersion(bout.id())))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.code").value("REACTION_OPTION_INVALID"));
+  }
+
+  @Test
+  void simultaneousAnswersForTheSameReactionHaveOneWinnerAndAStoredReceipt() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "paladin", 2, "lay-on-hands-pool", 0);
+    equipLongsword(bout.left());
+    forceCombatDice(18, 12, 19, 2, 3, 4);
+    submitBout(bout, "/start");
+    var waiting = beginSmite(bout, commands.newActionId());
+    String route = reactionRoute(bout, waiting);
+    long version = combatVersion(bout.id());
+    UUID firstId = commands.newActionId();
+    UUID secondId = commands.newActionId();
+
+    var responses =
+        combatRace(
+            chooseSmite(bout, route, firstId, version),
+            chooseSmite(bout, route, secondId, version));
+    int firstStatus = responses.getFirst().getResponse().getStatus();
+    int secondStatus = responses.getLast().getResponse().getStatus();
+    assertThat(java.util.List.of(firstStatus, secondStatus)).containsExactlyInAnyOrder(200, 422);
+    var rejected = firstStatus == 422 ? responses.getFirst() : responses.getLast();
+    jsonPath("$.code").value("REACTION_OPTION_INVALID").match(rejected);
+    UUID winner = firstStatus == 200 ? firstId : secondId;
+    assertThat(
+            result(
+                    mockMvc
+                        .perform(chooseSmite(bout, route, winner, version))
+                        .andExpect(status().isOk())
+                        .andReturn())
+                .path("damage")
+                .path("radiant")
+                .asInt())
+        .isEqualTo(7);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM combat_event WHERE type = 'ReactionAnswered'", Long.class))
+        .isOne();
+    assertThat(jdbcTemplate.queryForObject("SELECT used FROM pc_slot", Integer.class)).isOne();
+  }
+
+  private void endBoutTurn(CombatFixture bout, UUID actor) throws Exception {
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", actor.toString()))
+        .andExpect(status().isSeeOther());
+  }
+
+  private tools.jackson.databind.JsonNode beginSmite(CombatFixture bout, UUID action)
+      throws Exception {
+    return result(
+        mockMvc
+            .perform(
+                combatStrike(
+                    bout.url(),
+                    action,
+                    combatVersion(bout.id()),
+                    bout.first(),
+                    bout.second(),
+                    "srd-5.1:longsword"))
+            .andExpect(status().isOk())
+            .andReturn());
+  }
+
+  private static String reactionRoute(CombatFixture bout, tools.jackson.databind.JsonNode waiting) {
+    return "/campaigns/"
+        + bout.campaign()
+        + "/reactions/"
+        + waiting.path("awaitingReaction").asString();
+  }
+
+  private MockHttpServletRequestBuilder chooseSmite(
+      CombatFixture bout, String route, UUID action, long version) {
+    return reactionRequest(route + "/answers", action, version)
+        .param("deciderId", bout.first().toString())
+        .param("choice", "use")
+        .param("optionKey", "1");
+  }
+
+  private MockHttpServletRequestBuilder cancelReaction(String route, UUID action, long version) {
+    return reactionRequest(route + "/cancellations", action, version)
+        .param("reason", "Target selected in error");
+  }
+
+  private MockHttpServletRequestBuilder reactionRequest(String route, UUID action, long version) {
+    return post(route)
+        .with(user("combat-dm"))
+        .with(csrf())
+        .header("HX-Request", "true")
+        .accept("application/problem+json")
+        .param("actionId", action.toString())
+        .param("expectedVersion", Long.toString(version));
   }
 
   private tools.jackson.databind.JsonNode answerFeatureReaction(
@@ -1571,20 +2180,27 @@ class ApplicationFlowIT {
         """,
         pack.hash(),
         bout.campaign());
+    defineStepEightClass(bout.left(), className, level, pool, used);
+  }
+
+  private void defineStepEightClass(
+      UUID character, String className, int level, String pool, int used) {
     String classKey = "srd-5.1:" + className;
-    jdbcTemplate.update("UPDATE player_character SET hp_current = 6 WHERE id = ?", bout.left());
-    jdbcTemplate.update("DELETE FROM pc_class_level WHERE player_character_id = ?", bout.left());
+    jdbcTemplate.update("UPDATE player_character SET hp_current = 6 WHERE id = ?", character);
+    jdbcTemplate.update("DELETE FROM pc_class_level WHERE player_character_id = ?", character);
     jdbcTemplate.update(
         "UPDATE pc_class SET class_key = ?, level = ? WHERE player_character_id = ?",
         classKey,
         level,
-        bout.left());
+        character);
     for (int i = 1; i <= level; i++) {
       jdbcTemplate.update(
-          "INSERT INTO pc_class_level VALUES (?, ?, ?, ?, 6)", bout.left(), classKey, i, i);
+          "INSERT INTO pc_class_level VALUES (?, ?, ?, ?, 6)", character, classKey, i, i);
     }
-    jdbcTemplate.update(
-        "INSERT INTO pc_resource VALUES (?, ?, ?)", bout.left(), "srd-5.1:" + pool, used);
+    if (pool != null) {
+      jdbcTemplate.update(
+          "INSERT INTO pc_resource VALUES (?, ?, ?)", character, "srd-5.1:" + pool, used);
+    }
   }
 
   private void equipLongsword(UUID character) {
@@ -1670,6 +2286,33 @@ class ApplicationFlowIT {
         .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
     mockMvc
         .perform(
+            combatCorrection(
+                bout.url(),
+                bout.id(),
+                bout.first(),
+                1,
+                "players",
+                "Attempt a change while pending"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
+    UUID owner =
+        jdbcTemplate.queryForObject(
+            "SELECT owner_id FROM player_character WHERE id = ?", UUID.class, bout.left());
+    mockMvc
+        .perform(
+            action(
+                    "/campaigns/" + bout.campaign() + "/characters/" + bout.left() + "/level-ups",
+                    "combat-one",
+                    bout.campaign(),
+                    owner)
+                .param("step", "review")
+                .param("hitPointMethod", "average")
+                .accept("application/problem+json"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
+    assertThat(reactions.protectsCharacter(bout.campaign(), bout.left())).isTrue();
+    mockMvc
+        .perform(
             combatStrike(
                     bout.url(), attackId, initialVersion, bout.first(), bout.second(), "unarmed")
                 .param("protectingAllyIds", protector.toString()))
@@ -1694,6 +2337,7 @@ class ApplicationFlowIT {
                 .andReturn());
     assertThat(outcome.path("hit").asBoolean()).isFalse();
     assertThat(outcome.path("attack").path("roll").path("naturalD20").asInt()).isEqualTo(2);
+    assertThat(reactions.protectsCharacter(bout.campaign(), bout.left())).isFalse();
     assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pending_reaction", Long.class))
         .isZero();
     assertThat(
@@ -2255,27 +2899,32 @@ class ApplicationFlowIT {
       throws Exception {
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.2.0'",
+                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
                 Integer.class))
         .isEqualTo(1);
     assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT key FROM content_definition WHERE kind = 'class'", String.class))
-        .isEqualTo("srd-5.1:fighter");
+            jdbcTemplate.queryForList(
+                """
+                SELECT d.key FROM content_definition d JOIN content_pack p ON p.id = d.pack_id
+                WHERE d.kind = 'class' AND p.pack_key = 'srd-5.1' AND p.version = '0.3.0'
+                """,
+                String.class))
+        .containsExactlyInAnyOrder(
+            "srd-5.1:bard", "srd-5.1:fighter", "srd-5.1:paladin", "srd-5.1:rogue");
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.2.0'",
+                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
                 String.class))
-        .isEqualTo("0.2.0");
+        .isEqualTo("0.3.0");
     String manifest =
         jdbcTemplate.queryForObject(
-            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.2.0'",
+            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
             String.class);
     String notice = contentPacks.notice();
     var changed =
         new ContentPack(
             "srd-5.1",
-            "0.2.0",
+            "0.3.0",
             "sha256:" + "1".repeat(64),
             "srd-5.1",
             "CC-BY-4.0",

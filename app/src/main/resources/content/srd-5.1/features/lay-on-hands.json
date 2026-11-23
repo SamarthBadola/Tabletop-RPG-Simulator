@@ -1,0 +1,17 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:lay-on-hands",
+  "name": "Lay on Hands",
+  "text": {
+    "file": "text/features/lay-on-hands.md"
+  },
+  "effects": [
+    {
+      "type": "spend_resource"
+    }
+  ],
+  "cost": {
+    "action": "action",
+    "resource": "srd-5.1:lay-on-hands-pool"
+  }
+}

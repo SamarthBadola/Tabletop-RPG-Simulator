@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:thieves-tools",
+  "name": "Thieves' tools",
+  "text": {
+    "file": "text/items/thieves-tools.md"
+  },
+  "cost": 2500,
+  "weight": 100,
+  "tier": 0,
+  "category": "tool"
+}

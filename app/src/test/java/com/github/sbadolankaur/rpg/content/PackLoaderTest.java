@@ -18,7 +18,7 @@ class PackLoaderTest {
       throws Exception {
     var files = new HashMap<>(PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1")));
     var pack = loader.load(files, true, List.of());
-    assertThat(pack.version()).isEqualTo("0.2.0");
+    assertThat(pack.version()).isEqualTo("0.3.0");
     assertThat(pack.definitions())
         .anySatisfy(
             def -> {
@@ -36,6 +36,26 @@ class PackLoaderTest {
                 assertThat(error.findings())
                     .extracting(ContentFinding::rule)
                     .contains("CS-KEY-004"));
+  }
+
+  @Test
+  void bundledStepEightPackHasPlayableClassesAndTheirLevelThreeSubclasses() throws Exception {
+    ContentPack pack;
+    try {
+      pack = loader.load(BundledContent.resources(), true, List.of());
+    } catch (ContentInvalid invalid) {
+      throw new AssertionError(invalid.findings().toString(), invalid);
+    }
+    assertThat(pack.version()).isEqualTo("0.3.0");
+    var keys = pack.definitions().stream().map(definition -> definition.key()).toList();
+    assertThat(keys)
+        .contains(
+            "srd-5.1:rogue",
+            "srd-5.1:thief",
+            "srd-5.1:paladin",
+            "srd-5.1:oath-of-devotion",
+            "srd-5.1:bard",
+            "srd-5.1:college-of-lore");
   }
 
   @Test

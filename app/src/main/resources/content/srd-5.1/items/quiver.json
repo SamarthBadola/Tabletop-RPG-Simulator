@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:quiver",
+  "name": "Quiver",
+  "text": {
+    "file": "text/items/quiver.md"
+  },
+  "cost": 100,
+  "weight": 100,
+  "tier": 0,
+  "category": "gear"
+}

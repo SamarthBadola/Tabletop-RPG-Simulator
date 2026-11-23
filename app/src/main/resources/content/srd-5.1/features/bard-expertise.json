@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:bard-expertise",
+  "name": "Expertise",
+  "text": {
+    "file": "text/features/bard-expertise.md"
+  },
+  "effects": [
+    {
+      "type": "proficiency_fraction"
+    }
+  ]
+}

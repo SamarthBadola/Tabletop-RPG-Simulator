@@ -64,6 +64,10 @@ public final class ReactionReplay {
     return random;
   }
 
+  public boolean canAskSettings() {
+    return !random.hasRolled();
+  }
+
   public <T> T nested(String action, Supplier<T> resolve) {
     frames.add(Objects.requireNonNull(action));
     try {
@@ -81,6 +85,14 @@ public final class ReactionReplay {
       Point point,
       Supplier<List<Offer>> eligible,
       Disclosure disclosure,
+      BiConsumer<UUID, String> use) {
+    windowWithDisclosure(point, eligible, () -> disclosure, use);
+  }
+
+  public void windowWithDisclosure(
+      Point point,
+      Supplier<List<Offer>> eligible,
+      Supplier<Disclosure> disclosure,
       BiConsumer<UUID, String> use) {
     if (frames.size() > MAX_DEPTH) {
       if (!eligible.get().isEmpty()) depthLimits.add(point);
@@ -101,7 +113,7 @@ public final class ReactionReplay {
                 .filter(offer -> offer.decider().equals(decider))
                 .map(Offer::option)
                 .toList();
-        String chosen = choose(point, step, decider, options, disclosure);
+        String chosen = choose(point, step, decider, options, disclosure.get());
         answered.add(decider);
         if (chosen != null) use.accept(decider, chosen);
       }

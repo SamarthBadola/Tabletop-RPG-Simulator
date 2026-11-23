@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:song-of-rest",
+  "name": "Song of Rest",
+  "text": {
+    "file": "text/features/song-of-rest.md"
+  },
+  "effects": [
+    {
+      "type": "rest_option"
+    }
+  ]
+}

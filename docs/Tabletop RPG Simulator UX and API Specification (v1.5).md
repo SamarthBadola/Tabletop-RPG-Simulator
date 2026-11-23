@@ -1036,19 +1036,20 @@ One route is added to 5.4. The DM needs the opportunity-attack list before confi
 | moves | destination (cell, required). The server finds the path and the engine checks it again (Architecture 4.3). On a mapped encounter it computes reach exits from the grid and passes them to the same movement resolver as manual-moves. |
 | manual-moves | distanceFeet (int, 1 to 1000); leavesReachOf (uuid, multi-valued, zero to 30). DM only. Rejected on encounters with a map. An empty list still records movement. The engine determines reaction eligibility and opens any RS-ATK-008 window before applying movement under E-158. |
 | feature-uses | featureKey (key); the inputs required by the selected feature below. A player may propose this for a creature they own where proposals are supported. |
-| dashes, dodges, disengages, hides | None |
+| dashes, disengages, hides | bonusAction (boolean, optional, default false). When true, the actor must have Cunning Action. |
+| dodges | None |
 | helps | targetId (uuid); helpKind (choice: attack, ability-check) |
 | readies | trigger (text, required, 1 to 200); actionKind (choice: attack, spell, move, other) |
-| object-uses | itemKey (key, optional); note (text, optional, at most 200) |
+| object-uses | itemKey (key, optional); note (text, optional, at most 200); bonusAction (boolean, optional, default false). When true, the actor must have Fast Hands. |
 | grapples | targetId (uuid) |
 | shoves | targetId (uuid); shoveKind (choice: prone, push) |
 | saving-throws | ability (choice: strength, dexterity, constitution, intelligence, wisdom, charisma); dc (int, 1 to 40); targetIds (uuid, multi-valued, at most 30); reason (text, optional, at most 120) |
-| ability-checks | ability (choice as above); skillKey (key, optional); dc (int, 1 to 40, optional); subjectIds (uuid, multi-valued, at most 30) |
+| ability-checks | ability (choice as above); skillKey (key, optional); dc (int, 1 to 40, optional); subjectIds (uuid, multi-valued, at most 30); bonusAction (boolean, optional, default false). When true, Fast Hands lets the acting creature make its own Sleight of Hand check. |
 | death-saves | None |
 
-For feature-uses, Bardic Inspiration requires targetId (uuid, another creature). The DM adjudicates range and hearing. Action Surge takes no additional fields. Lay on Hands requires targetId (uuid of self or a creature within touch range) and healPoints (nonnegative int), and accepts cureIds (uuid, multi-valued, zero to 20). The grid determines touch range on mapped encounters. The DM adjudicates it without a map. A cure id must name an active DISEASE or POISON on the target (Ruleset 9.3 and 13.8). Undead and constructs are invalid targets. The cost is healPoints plus five for each cure id and must be between one and the remaining pool. Missing, invalid or unexpected feature inputs return FEATURE\_INPUT\_INVALID with the field in details. FEATURE\_NOT\_AVAILABLE means the actor lacks the active feature and FEATURE\_USES\_EXHAUSTED means its pool is spent. Action economy uses the common combat errors.
+For feature-uses, Bardic Inspiration requires targetId (uuid, another creature). The DM adjudicates range and hearing. Action Surge, Divine Sense and Sacred Weapon take no additional fields. Divine Sense spends an action and one use. Before map support, the DM determines and narrates what the paladin senses under Ruleset 9.3. Turn the Unholy takes targetIds (uuid, multi-valued, at most 30), selected by the DM under Ruleset 9.3. Lay on Hands requires targetId (uuid of self or a creature within touch range) and healPoints (nonnegative int), and accepts cureIds (uuid, multi-valued, zero to 20). The grid determines touch range on mapped encounters. The DM adjudicates it without a map. A cure id must name an active DISEASE or POISON on the target (Ruleset 9.3 and 13.8). Undead and constructs are invalid targets. The cost is healPoints plus five for each cure id and must be between one and the remaining pool. Missing, invalid or unexpected feature inputs return FEATURE\_INPUT\_INVALID with the field in details. FEATURE\_NOT\_AVAILABLE means the actor lacks the active feature and FEATURE\_USES\_EXHAUSTED means its pool is spent. Action economy uses the common combat errors.
 
-In a scene, saving-throws and ability-checks go to \~/scenes/{sceneId}/{command} with the same fields, no actorId, and the campaign's key and version.
+In a scene, saving-throws and ability-checks go to \~/scenes/{sceneId}/{command} with the same roll fields, the campaign's key and version, and no actorId or bonusAction.
 
 **Regions.** A region is the response schema of a fragment. Fields marked DM are left out of a player's region, not hidden in it (SEC-012, UX-010).
 

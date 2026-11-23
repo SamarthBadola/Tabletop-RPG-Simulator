@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:bagpipes",
+  "name": "Bagpipes",
+  "text": {
+    "file": "text/items/bagpipes.md"
+  },
+  "cost": 3000,
+  "weight": 600,
+  "tier": 0,
+  "category": "tool"
+}

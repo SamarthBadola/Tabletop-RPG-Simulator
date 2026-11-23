@@ -1,0 +1,16 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:sneak-attack",
+  "name": "Sneak Attack",
+  "text": {
+    "file": "text/features/sneak-attack.md"
+  },
+  "effects": [
+    {
+      "type": "add_damage_dice"
+    }
+  ],
+  "trigger": {
+    "point": "AFTER_HIT"
+  }
+}

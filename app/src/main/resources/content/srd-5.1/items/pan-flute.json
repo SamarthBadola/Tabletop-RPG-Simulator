@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:pan-flute",
+  "name": "Pan flute",
+  "text": {
+    "file": "text/items/pan-flute.md"
+  },
+  "cost": 1200,
+  "weight": 200,
+  "tier": 0,
+  "category": "tool"
+}

@@ -1,0 +1,161 @@
+{
+  "kind": "class",
+  "key": "srd-5.1:rogue",
+  "name": "Rogue",
+  "text": {
+    "file": "text/classes/rogue.md"
+  },
+  "hitDie": 8,
+  "savingThrows": [
+    "dex",
+    "int"
+  ],
+  "proficiencies": {
+    "armor": [
+      "light"
+    ],
+    "weapons": [
+      "simple",
+      "hand_crossbow",
+      "longsword",
+      "rapier",
+      "shortsword"
+    ],
+    "tools": [
+      "thieves_tools"
+    ],
+    "skillChoice": {
+      "count": 4,
+      "from": [
+        "acrobatics",
+        "athletics",
+        "deception",
+        "insight",
+        "intimidation",
+        "investigation",
+        "perception",
+        "performance",
+        "persuasion",
+        "sleight_of_hand",
+        "stealth"
+      ]
+    }
+  },
+  "startingEquipment": [
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:shortbow",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:quiver",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:arrows",
+            "count": 20
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:burglars-pack",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:dungeoneers-pack",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:explorers-pack",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "fixed": [
+        {
+          "item": "srd-5.1:leather-armor",
+          "count": 1
+        },
+        {
+          "item": "srd-5.1:dagger",
+          "count": 2
+        },
+        {
+          "item": "srd-5.1:thieves-tools",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "startingGold": {
+    "dice": "4d4",
+    "multiplier": 10
+  },
+  "levels": [
+    {
+      "level": 1,
+      "features": [
+        "srd-5.1:rogue-expertise",
+        "srd-5.1:sneak-attack"
+      ]
+    },
+    {
+      "level": 2,
+      "features": [
+        "srd-5.1:cunning-action"
+      ]
+    },
+    {
+      "level": 3,
+      "grants": [
+        "subclass"
+      ]
+    },
+    {
+      "level": 4,
+      "grants": [
+        "asi"
+      ]
+    },
+    {
+      "level": 5,
+      "features": [
+        "srd-5.1:uncanny-dodge"
+      ]
+    }
+  ]
+}

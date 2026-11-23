@@ -1,0 +1,17 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:turn-the-unholy",
+  "name": "Turn the Unholy",
+  "text": {
+    "file": "text/features/turn-the-unholy.md"
+  },
+  "effects": [
+    {
+      "type": "turned"
+    }
+  ],
+  "cost": {
+    "action": "action",
+    "resource": "srd-5.1:channel-divinity-uses"
+  }
+}

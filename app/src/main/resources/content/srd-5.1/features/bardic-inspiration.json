@@ -1,0 +1,20 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:bardic-inspiration",
+  "name": "Bardic Inspiration",
+  "text": {
+    "file": "text/features/bardic-inspiration.md"
+  },
+  "effects": [
+    {
+      "type": "roll_bonus_die"
+    }
+  ],
+  "cost": {
+    "action": "bonus_action",
+    "resource": "srd-5.1:bardic-inspiration-uses"
+  },
+  "trigger": {
+    "point": "AFTER_ATTACK_ROLL"
+  }
+}

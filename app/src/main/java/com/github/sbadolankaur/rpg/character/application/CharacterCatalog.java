@@ -82,7 +82,7 @@ public final class CharacterCatalog {
 
   List<Choice> features(List<ClassLevel> classes, String style, String background) {
     var keys = new LinkedHashSet<String>();
-    keys.add(style);
+    if (style != null && !style.isBlank()) keys.add(style);
     if (background != null) keys.addAll(require("background", background).strings("features"));
     for (var level : classes) {
       collectFeatures(keys, require("class", level.key()), level.level());
@@ -93,7 +93,18 @@ public final class CharacterCatalog {
   }
 
   List<String> resources(String classKey, int level) {
-    return level(classKey, level).strings("features").stream()
+    return resources(classKey, level, null);
+  }
+
+  List<String> resources(String classKey, int level, String subclass) {
+    var features = new java.util.ArrayList<>(level(classKey, level).strings("features"));
+    if (subclass != null) {
+      require("subclass", subclass).rows("levels").stream()
+          .filter(row -> row.number("level") == level)
+          .flatMap(row -> row.strings("features").stream())
+          .forEach(features::add);
+    }
+    return features.stream()
         .map(key -> require("feature", key).object("cost").text("resource"))
         .filter(key -> !key.isEmpty())
         .toList();

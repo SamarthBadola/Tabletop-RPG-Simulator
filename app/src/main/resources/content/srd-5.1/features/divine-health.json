@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:divine-health",
+  "name": "Divine Health",
+  "text": {
+    "file": "text/features/divine-health.md"
+  },
+  "effects": [
+    {
+      "type": "condition_immunity"
+    }
+  ]
+}

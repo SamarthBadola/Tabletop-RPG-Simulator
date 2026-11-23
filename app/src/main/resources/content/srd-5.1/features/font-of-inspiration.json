@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:font-of-inspiration",
+  "name": "Font of Inspiration",
+  "text": {
+    "file": "text/features/font-of-inspiration.md"
+  },
+  "effects": [
+    {
+      "type": "rest_option"
+    }
+  ]
+}

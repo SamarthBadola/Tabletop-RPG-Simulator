@@ -1,0 +1,17 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:sacred-weapon",
+  "name": "Sacred Weapon",
+  "text": {
+    "file": "text/features/sacred-weapon.md"
+  },
+  "effects": [
+    {
+      "type": "spend_resource"
+    }
+  ],
+  "cost": {
+    "action": "action",
+    "resource": "srd-5.1:channel-divinity-uses"
+  }
+}

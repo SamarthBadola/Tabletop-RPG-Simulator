@@ -1,0 +1,19 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:uncanny-dodge",
+  "name": "Uncanny Dodge",
+  "text": {
+    "file": "text/features/uncanny-dodge.md"
+  },
+  "effects": [
+    {
+      "type": "reduce_damage"
+    }
+  ],
+  "cost": {
+    "action": "reaction"
+  },
+  "trigger": {
+    "point": "AFTER_HIT"
+  }
+}

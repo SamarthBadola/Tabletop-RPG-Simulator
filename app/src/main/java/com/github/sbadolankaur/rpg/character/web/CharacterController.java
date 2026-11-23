@@ -123,7 +123,8 @@ class CharacterController {
               List.of(),
               List.of(),
               List.of(),
-              null);
+              null,
+              List.of());
       view = characters.wizard(id, actor, form);
     }
     model.addAttribute("wizard", view);
@@ -210,7 +211,7 @@ class CharacterController {
         actor,
         characterId,
         "class",
-        new Advancement(null, null, null, Map.of(), null, false),
+        new Advancement(null, null, null, Map.of(), null, false, null, List.of(), List.of()),
         model);
   }
 
@@ -347,7 +348,8 @@ class CharacterController {
           many("skillReplacements"),
           many("languageChoices"),
           many("equipmentChoices"),
-          optional("name"));
+          optional("name"),
+          many("expertiseChoices"));
     }
 
     Advancement advancement() {
@@ -366,7 +368,10 @@ class CharacterController {
           optional("hitPointMethod"),
           Map.copyOf(changes),
           optional("featKey"),
-          flag("acknowledgeLoss"));
+          flag("acknowledgeLoss"),
+          optional("fightingStyleKey"),
+          many("expertiseChoices"),
+          many("bonusSkills"));
     }
 
     Edit edit() {

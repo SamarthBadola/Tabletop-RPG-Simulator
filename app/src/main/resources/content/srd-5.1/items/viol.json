@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:viol",
+  "name": "Viol",
+  "text": {
+    "file": "text/items/viol.md"
+  },
+  "cost": 3000,
+  "weight": 100,
+  "tier": 0,
+  "category": "tool"
+}

@@ -305,6 +305,393 @@
       "flatStart": 882,
       "flatEnd": 1299,
       "sha256": "96097c9347d1a30fce1e28d270c99d370845bf52af7c8d4609eeeab584b19ed2"
+    },
+    {
+      "key": "srd-5.1:dagger",
+      "textFile": "text/items/dagger.md",
+      "sha256": "f610cc3611aaf0cf08875d3f47204f6070a45d9f74ac3a8ac38740519552fa89",
+      "pdfPage": 66,
+      "flatStart": 71,
+      "flatEnd": 138
+    },
+    {
+      "key": "srd-5.1:javelin",
+      "textFile": "text/items/javelin.md",
+      "sha256": "b23ac3f6ef7e63a4936163f3c874c549797ae65538d29140a747ee664ab6ba38",
+      "pdfPage": 66,
+      "flatStart": 250,
+      "flatEnd": 303
+    },
+    {
+      "key": "srd-5.1:mace",
+      "textFile": "text/items/mace.md",
+      "sha256": "209fdf476490b6fc16cdfb075b2d6f28d7ac5faf08b372a4ade7d2c5404cd731",
+      "pdfPage": 66,
+      "flatStart": 372,
+      "flatEnd": 405
+    },
+    {
+      "key": "srd-5.1:shortbow",
+      "textFile": "text/items/shortbow.md",
+      "sha256": "48bff841089ecd2c7e46596197ef72e024929c0c9e3e408662536c6fa71bba6f",
+      "pdfPage": 66,
+      "flatStart": 740,
+      "flatEnd": 813
+    },
+    {
+      "key": "srd-5.1:burglars-pack",
+      "textFile": "text/items/burglars-pack.md",
+      "sha256": "6e848632dcf187b3dedc38e8202a66661c16ecfb73440318686d8fb22ac9d5d2",
+      "pdfPage": 70,
+      "flatStart": 665,
+      "flatEnd": 959
+    },
+    {
+      "key": "srd-5.1:diplomats-pack",
+      "textFile": "text/items/diplomats-pack.md",
+      "sha256": "ca1da3f088de57e890ebdceffcfb35004aad7e6e4d4a3bfeb048049ee28a9651",
+      "pdfPage": 70,
+      "flatStart": 960,
+      "flatEnd": 1170
+    },
+    {
+      "key": "srd-5.1:entertainers-pack",
+      "textFile": "text/items/entertainers-pack.md",
+      "sha256": "74114428ef7d62cdf673d24ab607a87ced82de927ca88689a91a466e67e345a8",
+      "pdfPage": 70,
+      "flatStart": 1382,
+      "flatEnd": 1516
+    },
+    {
+      "key": "srd-5.1:priests-pack",
+      "textFile": "text/items/priests-pack.md",
+      "sha256": "813368381750b4330fdc0ff48090467a8b9cff4ec60667b98317b9fe0ae5d390",
+      "pdfPage": 70,
+      "flatStart": 1717,
+      "flatEnd": 1887
+    },
+    {
+      "key": "srd-5.1:bagpipes",
+      "textFile": "text/items/bagpipes.md",
+      "sha256": "1f36f4c2a947d21d7ad249eccd6b40119d4469edfba0c6e0d6d38b1826de4c67",
+      "pdfPage": 70,
+      "flatStart": 3348,
+      "flatEnd": 3368
+    },
+    {
+      "key": "srd-5.1:drum",
+      "textFile": "text/items/drum.md",
+      "sha256": "75c4fd20ca73113caded612b6d6508b6dba6113c5790e4a696a41a8bac4f2c3c",
+      "pdfPage": 70,
+      "flatStart": 3369,
+      "flatEnd": 3384
+    },
+    {
+      "key": "srd-5.1:dulcimer",
+      "textFile": "text/items/dulcimer.md",
+      "sha256": "77ad36778a21ab7e090c5077d083d2ca2ecd4bb5a58e0b41af11e40159e7c11f",
+      "pdfPage": 70,
+      "flatStart": 3385,
+      "flatEnd": 3406
+    },
+    {
+      "key": "srd-5.1:flute",
+      "textFile": "text/items/flute.md",
+      "sha256": "69151462f3179caafe840620ea4e0f3ee170ebbfc8cf3f8602609391b39aa283",
+      "pdfPage": 70,
+      "flatStart": 3407,
+      "flatEnd": 3423
+    },
+    {
+      "key": "srd-5.1:lute",
+      "textFile": "text/items/lute.md",
+      "sha256": "54b717d1cc30dc73b337933314473760f180e71e6ca35ffd1cee16516f0ad6b4",
+      "pdfPage": 70,
+      "flatStart": 3424,
+      "flatEnd": 3440
+    },
+    {
+      "key": "srd-5.1:lyre",
+      "textFile": "text/items/lyre.md",
+      "sha256": "d11777dc6d067ecf5f7e09a8c640da1e1b8c076d9d2ae41c4039438630d75e5e",
+      "pdfPage": 70,
+      "flatStart": 3441,
+      "flatEnd": 3457
+    },
+    {
+      "key": "srd-5.1:horn",
+      "textFile": "text/items/horn.md",
+      "sha256": "634a50badac667089ae633a113c388bc6aa823f91c46626c1212b0993ff62091",
+      "pdfPage": 70,
+      "flatStart": 3458,
+      "flatEnd": 3473
+    },
+    {
+      "key": "srd-5.1:pan-flute",
+      "textFile": "text/items/pan-flute.md",
+      "sha256": "7a631fa0a6e9ea8c60f09cfe047b247cb463f2c1a54949af5ae78d40145e1050",
+      "pdfPage": 70,
+      "flatStart": 3474,
+      "flatEnd": 3495
+    },
+    {
+      "key": "srd-5.1:shawm",
+      "textFile": "text/items/shawm.md",
+      "sha256": "5af195f69109657230543cd76a60f77d31b5414b9d5169eb31e76e440d971724",
+      "pdfPage": 70,
+      "flatStart": 3496,
+      "flatEnd": 3512
+    },
+    {
+      "key": "srd-5.1:viol",
+      "textFile": "text/items/viol.md",
+      "sha256": "736f30bb81dde49751f8e0dd3789bb745b0f7af82b0bd8088fb7132cb5630179",
+      "pdfPage": 70,
+      "flatStart": 3513,
+      "flatEnd": 3529
+    },
+    {
+      "key": "srd-5.1:thieves-tools",
+      "textFile": "text/items/thieves-tools.md",
+      "sha256": "812147e31d0e8a6d1534627b38a55420e20efe1b70bce9502049fe083ff07006",
+      "pdfPage": 70,
+      "flatStart": 3587,
+      "flatEnd": 3613
+    },
+    {
+      "key": "srd-5.1:quiver",
+      "textFile": "text/items/quiver.md",
+      "sha256": "85e7cc25e1555e9beecaaff1575d40f9b7e2f16c7e992bb7e60c230665fd4463",
+      "pdfPage": 69,
+      "flatStart": 1927,
+      "flatEnd": 1944
+    },
+    {
+      "key": "srd-5.1:bardic-inspiration",
+      "textFile": "text/features/bardic-inspiration.md",
+      "sha256": "c93791ce5a34e57cd45879f32d842664a84cf5aa593e7162fb6622d59a7a9384",
+      "pdfPage": 12,
+      "flatStart": 2034,
+      "flatEnd": 3048
+    },
+    {
+      "key": "srd-5.1:jack-of-all-trades",
+      "textFile": "text/features/jack-of-all-trades.md",
+      "sha256": "82349cc7801693c79ea9596a232604e623a40ff28d24e4f2160f7242ff7d5c9c",
+      "pdfPage": 12,
+      "flatStart": 3049,
+      "flatEnd": 3228
+    },
+    {
+      "key": "srd-5.1:song-of-rest",
+      "textFile": "text/features/song-of-rest.md",
+      "sha256": "c70bf1ce1f04a73284e2fbad2af1c5a908d8d15f4c3f558eaab1a1906d11639b",
+      "pdfPage": 12,
+      "flatStart": 3229,
+      "flatEnd": 3710
+    },
+    {
+      "key": "srd-5.1:bard-expertise",
+      "textFile": "text/features/bard-expertise.md",
+      "sha256": "6d91bbfa65a2ad394ad1fe5cb8f11a3ad3ea3294a8f5679ff203cd961e2db0c7",
+      "pdfPage": 13,
+      "flatStart": 33,
+      "flatEnd": 291
+    },
+    {
+      "key": "srd-5.1:font-of-inspiration",
+      "textFile": "text/features/font-of-inspiration.md",
+      "sha256": "0c207e9edbb509d6f5949753f858fa342de433044b761f65cb2f3f58f20cb0b6",
+      "pdfPage": 13,
+      "flatStart": 582,
+      "flatEnd": 734
+    },
+    {
+      "key": "srd-5.1:cutting-words",
+      "textFile": "text/features/cutting-words.md",
+      "sha256": "56f32502159f4b7764ba0cf7d20fbf1e9ea4b7937388bf29a2950b93b4185303",
+      "pdfPage": 13,
+      "flatStart": 3036,
+      "flatEnd": 3741
+    },
+    {
+      "key": "srd-5.1:bonus-proficiencies",
+      "textFile": "text/features/bonus-proficiencies.md",
+      "sha256": "3bf67562934205d502bf614d348269c5e392ab9e3f34607a305662126d8b33b5",
+      "pdfPage": 13,
+      "flatStart": 2913,
+      "flatEnd": 3035
+    },
+    {
+      "key": "srd-5.1:divine-sense",
+      "textFile": "text/features/divine-sense.md",
+      "sha256": "f6f0339282456ad8ed5b1ef15f87c6a1fb93061a135fca8119a4b784c8dc277a",
+      "pdfPage": 30,
+      "flatStart": 1669,
+      "flatEnd": 2467
+    },
+    {
+      "key": "srd-5.1:lay-on-hands",
+      "textFile": "text/features/lay-on-hands.md",
+      "sha256": "2662d04214ca53986d2a448cc85adc8b360da7ab1541537559f002d662c1b9ba",
+      "pdfPage": 31,
+      "flatStart": 33,
+      "flatEnd": 760
+    },
+    {
+      "key": "srd-5.1:divine-smite",
+      "textFile": "text/features/divine-smite.md",
+      "sha256": "a4d5b1fad7028169b0a7fd8b6635a23072c97849ecac0ebb5db0bcc2918d7f0b",
+      "segments": [
+        {
+          "pdfPage": 31,
+          "flatStart": 3623,
+          "flatEnd": 3899
+        },
+        {
+          "pdfPage": 32,
+          "flatStart": 33,
+          "flatEnd": 137
+        }
+      ]
+    },
+    {
+      "key": "srd-5.1:divine-health",
+      "textFile": "text/features/divine-health.md",
+      "sha256": "3102e2322ff6dab86365c8ed92a65569100ad2f7aeb2476d54d4d80b811b24bd",
+      "pdfPage": 32,
+      "flatStart": 138,
+      "flatEnd": 231
+    },
+    {
+      "key": "srd-5.1:sacred-weapon",
+      "textFile": "text/features/sacred-weapon.md",
+      "sha256": "391f8c8ec0f5c8b44c6250388a8a6d17f5f55efe0ad7e670a03e9b833d0c8213",
+      "pdfPage": 33,
+      "flatStart": 1630,
+      "flatEnd": 2202
+    },
+    {
+      "key": "srd-5.1:turn-the-unholy",
+      "textFile": "text/features/turn-the-unholy.md",
+      "sha256": "82847577ede9c6b9cb70d170ea7c5b700c57a06ec3e15e8e41a420fce9dedba6",
+      "pdfPage": 33,
+      "flatStart": 2203,
+      "flatEnd": 2887
+    },
+    {
+      "key": "srd-5.1:rogue-expertise",
+      "textFile": "text/features/rogue-expertise.md",
+      "sha256": "f86d1b77aa68bf6f89baf68a1846f9b6e1f72fe42cd74ae25e5a46a4f3f84165",
+      "pdfPage": 39,
+      "flatStart": 1650,
+      "flatEnd": 2018
+    },
+    {
+      "key": "srd-5.1:sneak-attack",
+      "textFile": "text/features/sneak-attack.md",
+      "sha256": "99823eb955cdc2e9443e67069b65586e3e55f58a41cbaff50c5f64fece852be1",
+      "pdfPage": 39,
+      "flatStart": 2019,
+      "flatEnd": 2611
+    },
+    {
+      "key": "srd-5.1:cunning-action",
+      "textFile": "text/features/cunning-action.md",
+      "sha256": "3da5766b0ecd19f95b522c58f0e93a27020b1d5432b42eaafa9c3ad9882cf9ab",
+      "pdfPage": 40,
+      "flatStart": 233,
+      "flatEnd": 472
+    },
+    {
+      "key": "srd-5.1:uncanny-dodge",
+      "textFile": "text/features/uncanny-dodge.md",
+      "sha256": "6e064b0ff0308819fc2c53c288f53201df3e8f9285e5f3a6bd708f09318125f2",
+      "pdfPage": 40,
+      "flatStart": 998,
+      "flatEnd": 1161
+    },
+    {
+      "key": "srd-5.1:fast-hands",
+      "textFile": "text/features/fast-hands.md",
+      "sha256": "8eb2663b56d7216026ba0154829473289ff978215556693cce60fa134d6ffab9",
+      "segments": [
+        {
+          "pdfPage": 40,
+          "flatStart": 3428,
+          "flatEnd": 3541
+        },
+        {
+          "pdfPage": 41,
+          "flatStart": 33,
+          "flatEnd": 148
+        }
+      ]
+    },
+    {
+      "key": "srd-5.1:second-story-work",
+      "textFile": "text/features/second-story-work.md",
+      "sha256": "3979b8c12e471e6056fe27476757748ca7044db2f849f205622d26270553dae6",
+      "pdfPage": 41,
+      "flatStart": 149,
+      "flatEnd": 436
+    },
+    {
+      "key": "srd-5.1:bard",
+      "textFile": "text/classes/bard.md",
+      "sha256": "107897788f1a7c6962823fad8bd0e35b34cb5cfdb6d195f1cf96880983964e69",
+      "pdfPage": 11,
+      "flatStart": 53,
+      "flatEnd": 803
+    },
+    {
+      "key": "srd-5.1:paladin",
+      "textFile": "text/classes/paladin.md",
+      "sha256": "d296b54011e04ee21cedc71076decc62d09713100d2313b3b942feea037727da",
+      "pdfPage": 30,
+      "flatStart": 56,
+      "flatEnd": 825
+    },
+    {
+      "key": "srd-5.1:rogue",
+      "textFile": "text/classes/rogue.md",
+      "sha256": "e8cb07597633f48c0705cabf059d4c383d38af184e2fe5f83d09accbad99f58d",
+      "pdfPage": 39,
+      "flatStart": 54,
+      "flatEnd": 958
+    },
+    {
+      "key": "srd-5.1:thief",
+      "textFile": "text/subclasses/thief.md",
+      "sha256": "6ba28af2371a32ada0b005d40ed1b21652e22834fc27b80c8c1153b2d4fcd9c7",
+      "pdfPage": 40,
+      "flatStart": 2982,
+      "flatEnd": 3427
+    },
+    {
+      "key": "srd-5.1:college-of-lore",
+      "textFile": "text/subclasses/college-of-lore.md",
+      "sha256": "e6be9eb3f87f3e5029fed20358456c2bb6fdcdeb8e53c6f78130428170b89fa2",
+      "pdfPage": 13,
+      "flatStart": 1850,
+      "flatEnd": 2912
+    },
+    {
+      "key": "srd-5.1:oath-of-devotion",
+      "textFile": "text/subclasses/oath-of-devotion.md",
+      "sha256": "6c06689556d19799dd8776b6550a379cb97c888b6644dda88acd30b0b9e6689e",
+      "segments": [
+        {
+          "pdfPage": 32,
+          "flatStart": 3587,
+          "flatEnd": 3761
+        },
+        {
+          "pdfPage": 33,
+          "flatStart": 33,
+          "flatEnd": 551
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,12 @@
+{
+  "kind": "resource",
+  "key": "srd-5.1:divine-sense-uses",
+  "name": "Divine Sense",
+  "max": "max(0, 1 + mod:cha)",
+  "recharge": [
+    {
+      "on": "LONG_REST",
+      "restore": "all"
+    }
+  ]
+}

@@ -297,7 +297,8 @@ class EncounterController {
                 form.flag("fearSourceVisible"),
                 form.flag("targetAbsent"),
                 form.ids("protectingAllyIds"),
-                form.integer("smiteSlotLevel")));
+                form.integer("smiteSlotLevel"),
+                form.optionalFlag("enemyNearTarget")));
     return updated(campaign, id, actor, request, model, result, "workspace");
   }
 
@@ -317,6 +318,7 @@ class EncounterController {
         switch (featureKey) {
           case CombatFeatures.BARDIC_INSPIRATION -> Set.of("targetId");
           case CombatFeatures.LAY_ON_HANDS -> Set.of("targetId", "healPoints", "cureIds");
+          case CombatFeatures.TURN_THE_UNHOLY -> Set.of("targetIds");
           default -> Set.<String>of();
         };
     var common = Set.of("_csrf", "actionId", "expectedVersion", "actorId", "featureKey");
@@ -337,7 +339,16 @@ class EncounterController {
         throw CombatFeatures.invalidInput("cureIds");
       }
     }
-    var use = new CombatFeatures.Use(acting, featureKey, targetId, healPoints, cureIds);
+    var targetIds = List.<UUID>of();
+    if (names.contains("targetIds")) {
+      try {
+        targetIds = form.ids("targetIds");
+      } catch (CampaignException bad) {
+        throw CombatFeatures.invalidInput("targetIds");
+      }
+      if (targetIds.isEmpty()) throw CombatFeatures.invalidInput("targetIds");
+    }
+    var use = new CombatFeatures.Use(acting, featureKey, targetId, healPoints, cureIds, targetIds);
     return updated(
         campaign,
         id,
@@ -436,7 +447,10 @@ class EncounterController {
             actor,
             form.envelope(),
             new CombatActions.Hide(
-                form.uuid("actorId"), form.ids("obscuredFromIds"), form.ids("opponentIds"))),
+                form.uuid("actorId"),
+                form.ids("obscuredFromIds"),
+                form.ids("opponentIds"),
+                form.optionalFlag("bonusAction"))),
         "workspace");
   }
 
@@ -503,7 +517,14 @@ class EncounterController {
         actor,
         request,
         model,
-        combat.simple(campaign, id, actor, form.envelope(), form.uuid("actorId"), action),
+        combat.simple(
+            campaign,
+            id,
+            actor,
+            form.envelope(),
+            form.uuid("actorId"),
+            action,
+            form.flag("bonusAction")),
         "workspace");
   }
 
@@ -575,7 +596,8 @@ class EncounterController {
             new CombatActions.ObjectUse(
                 form.uuid("actorId"),
                 java.util.Objects.toString(form.optional("note"), ""),
-                form.flag("usesAction")));
+                form.flag("usesAction"),
+                form.optionalFlag("bonusAction")));
     return updated(campaign, id, actor, request, model, result, "workspace");
   }
 
@@ -754,7 +776,8 @@ class EncounterController {
                 form.optional("noticedOnTie") == null ? null : form.flag("noticedOnTie"),
                 form.flag("requiresSight"),
                 form.flag("requiresHearing"),
-                form.flag("fearSourceVisible")));
+                form.flag("fearSourceVisible"),
+                form.optionalFlag("bonusAction")));
     return updated(campaign, id, actor, request, model, result, "workspace");
   }
 
@@ -968,6 +991,16 @@ class EncounterController {
         if (value != Cover.NONE && cover.putIfAbsent(target, value) != null) throw invalid();
       }
       return cover;
+    }
+
+    Boolean optionalFlag(String key) {
+      String value = optional(key);
+      if (value == null) return null;
+      return switch (value) {
+        case "true", "on" -> true;
+        case "false" -> false;
+        default -> throw new CampaignException(new CampaignException.FieldError(key, "INCORRECT"));
+      };
     }
 
     boolean flag(String key) {

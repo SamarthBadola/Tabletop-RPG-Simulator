@@ -197,6 +197,25 @@ public class CharacterStore {
     jdbc.sql("INSERT INTO pc_hit_dice(player_character_id,die_size) VALUES (?, ?)")
         .params(id, hitDie)
         .update();
+    addProficiencies(id, proficiencies);
+    inventory.forEach(
+        item ->
+            jdbc.sql(
+                    """
+            INSERT INTO inventory_item(id,player_character_id,item_key,quantity) VALUES (?, ?, ?, ?)
+            """)
+                .params(item.id(), id, item.key(), item.quantity())
+                .update());
+    addResources(id, resources);
+  }
+
+  public void fightingStyle(UUID id, String key) {
+    jdbc.sql("UPDATE player_character SET fighting_style_key = ? WHERE id = ?")
+        .params(key, id)
+        .update();
+  }
+
+  public void addProficiencies(UUID id, List<Proficiency> proficiencies) {
     for (var proficiency : proficiencies)
       jdbc.sql(
               """
@@ -204,15 +223,6 @@ public class CharacterStore {
         """)
           .params(id, proficiency.kind(), proficiency.key(), proficiency.source())
           .update();
-    inventory.forEach(
-        item ->
-            jdbc.sql(
-                    """
-        INSERT INTO inventory_item(id,player_character_id,item_key,quantity) VALUES (?, ?, ?, ?)
-        """)
-                .params(item.id(), id, item.key(), item.quantity())
-                .update());
-    addResources(id, resources);
   }
 
   public Optional<Rolled> rolled(UUID campaign, UUID actor) {
@@ -435,6 +445,16 @@ public class CharacterStore {
             ? "INSERT INTO pc_condition VALUES (?, ?) ON CONFLICT DO NOTHING"
             : "DELETE FROM pc_condition WHERE player_character_id = ? AND condition_key = ?";
     jdbc.sql(statement).params(id, key).update();
+  }
+
+  public boolean alwaysPassReaction(UUID id, String feature) {
+    return jdbc.sql(
+            """
+        SELECT EXISTS(SELECT 1 FROM character_reaction_preference WHERE character_id = ? AND feature_key = ?)
+        """)
+        .params(id, feature)
+        .query(Boolean.class)
+        .single();
   }
 
   public void setBardicInspiration(UUID id, BardicInspiration inspiration) {

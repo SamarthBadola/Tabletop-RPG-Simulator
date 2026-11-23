@@ -16,8 +16,10 @@ import com.github.sbadolankaur.rpg.campaign.persistence.CommandStore;
 import com.github.sbadolankaur.rpg.campaign.persistence.PlayStore;
 import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
 import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore.Window;
+import com.github.sbadolankaur.rpg.character.application.CharacterSheets.View;
 import com.github.sbadolankaur.rpg.character.application.Characters;
 import com.github.sbadolankaur.rpg.character.persistence.CharacterStore;
+import com.github.sbadolankaur.rpg.character.persistence.CharacterStore.CombatMetadata;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.AnswerKind;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.ReactionAnswer;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.ReactionView;
@@ -34,6 +36,7 @@ import com.github.sbadolankaur.rpg.engine.kernel.D20Test;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Continuation;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Disclosure;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Offer;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Point;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Step;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
@@ -45,6 +48,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -122,18 +126,35 @@ public class SceneRolls {
               request.subjectIds().stream()
                   .map(id -> subject(campaign, actor, id, request, clock.gameSeconds()))
                   .toList();
+          var bards =
+              request.save()
+                  ? List.<Bard>of()
+                  : characters.list(campaign, actor).stream()
+                      .filter(
+                          sheet ->
+                              sheet.features().stream()
+                                  .anyMatch(feature -> CuttingWords.FEATURE.equals(feature.key())))
+                      .map(sheet -> bard(sheet, clock.gameSeconds()))
+                      .filter(java.util.Objects::nonNull)
+                      .filter(bard -> subjects.stream().anyMatch(subject -> canCut(bard, subject)))
+                      .toList();
+          var frozen = new java.util.LinkedHashSet<>(request.subjectIds());
+          bards.forEach(bard -> frozen.add(bard.id()));
+          if (frozen.stream().anyMatch(id -> reactions.protectsCharacter(campaign, id)))
+            throw new CampaignException(Code.REACTION_PENDING);
           var keys = new ArrayList<String>();
           if (request.dc() != null && subjects.stream().anyMatch(subject -> !subject.forced()))
             keys.add("autoOutcomeOnNat20Checks");
           if (subjects.stream()
-              .anyMatch(subject -> !subject.forced() && subject.inspiration() != null))
-            keys.add("rollDecisionInfo");
+                  .anyMatch(subject -> !subject.forced() && subject.inspiration() != null)
+              || !bards.isEmpty()) keys.add("rollDecisionInfo");
           settings.requireDecisions(campaign, actor, keys);
           var effective = settings.effective(campaign, actor);
           var read = new LinkedHashMap<String, String>();
           keys.forEach(key -> read.put(key, effective.get(key, String.class)));
           var saved =
-              new Saved(request, request.subjectIds(), subjects, read, Continuation.empty(), 0);
+              new Saved(
+                  request, List.copyOf(frozen), subjects, read, Continuation.empty(), 0, bards);
           return resolve(campaign, scene, envelope, clock, saved, null, null);
         });
   }
@@ -167,7 +188,7 @@ public class SceneRolls {
             var window =
                 reactions
                     .findSceneWindow(campaign, windowId)
-                    .orElseThrow(() -> new CampaignException(Code.REACTION_NOT_AVAILABLE));
+                    .orElseThrow(() -> new CampaignException(Code.REACTION_OPTION_INVALID));
             if (answer.kind() == AnswerKind.CANCEL) {
               if (answer.reason() != null
                   && answer.reason().codePointCount(0, answer.reason().length()) > 200)
@@ -221,11 +242,7 @@ public class SceneRolls {
   private Subject subject(UUID campaign, UUID actor, UUID id, Test request, long seconds) {
     var sheet = characters.sheet(campaign, actor, id);
     var metadata = store.combatMetadata(id);
-    var conditions = new HashSet<>(sheet.baseConditionKeys());
-    for (var condition : metadata.effects()) {
-      if (!condition.end().expired(seconds, 0, null, ConditionInstance.Boundary.CLOCK))
-        conditions.add(condition.key());
-    }
+    var conditions = conditions(sheet, metadata, seconds);
     var ability = sheet.abilities().get(request.ability());
     boolean forced =
         request.save() && CombatConditions.forcedSaveFailure(conditions, request.ability());
@@ -242,10 +259,57 @@ public class SceneRolls {
             ? ability.save()
             : request.skill() == null
                 ? ability.modifier()
+                    + (sheet.features().stream()
+                            .anyMatch(feature -> "srd-5.1:jack-of-all-trades".equals(feature.key()))
+                        ? sheet.proficiency() / 2
+                        : 0)
                 : sheet.skills().getOrDefault(request.skill(), ability.modifier());
     var die = metadata.inspiration();
     return new Subject(
-        id, bonus, forced, disadvantage, die != null && die.active(seconds) ? die : null);
+        id,
+        bonus,
+        forced,
+        disadvantage,
+        die != null && die.active(seconds) ? die : null,
+        conditions);
+  }
+
+  private Bard bard(View sheet, long seconds) {
+    var uses =
+        sheet.resources().stream()
+            .filter(resource -> CuttingWords.POOL.equals(resource.key()))
+            .findFirst()
+            .orElse(null);
+    if (uses == null
+        || uses.used() >= uses.maximum()
+        || store.alwaysPassReaction(sheet.id(), CuttingWords.FEATURE)) return null;
+    var conditions = conditions(sheet, store.combatMetadata(sheet.id()), seconds);
+    if (CombatConditions.incapacitated(conditions) || conditions.contains("srd-5.1:turned"))
+      return null;
+    int level =
+        sheet.classes().stream()
+            .filter(classLine -> "srd-5.1:bard".equals(classLine.key()))
+            .findFirst()
+            .orElseThrow()
+            .level();
+    return new Bard(sheet.id(), level, uses.used(), conditions);
+  }
+
+  private static Set<String> conditions(View sheet, CombatMetadata metadata, long seconds) {
+    var conditions = new HashSet<>(sheet.baseConditionKeys());
+    for (var condition : metadata.effects()) {
+      if (!condition.end().expired(seconds, 0, null, ConditionInstance.Boundary.CLOCK))
+        conditions.add(condition.key());
+    }
+    if (sheet.currentHp() == 0) conditions.add(CombatConditions.UNCONSCIOUS);
+    return Set.copyOf(conditions);
+  }
+
+  private static boolean canCut(Bard bard, Subject subject) {
+    return !bard.id().equals(subject.id())
+        && !subject.forced()
+        && CuttingWords.susceptible(subject.conditions(), Set.of())
+        && CombatConditions.canSee(bard.conditions(), subject.conditions(), false);
   }
 
   private Change resolve(
@@ -280,6 +344,10 @@ public class SceneRolls {
     }
     if (outcome.pending() == null) {
       outcome.completed().consumed().forEach(id -> store.setBardicInspiration(id, null));
+      outcome
+          .completed()
+          .spent()
+          .forEach((id, used) -> store.resource(id, CuttingWords.POOL, used));
       if (previous != null) reactions.close(previous);
       payload.put("outcomes", outcome.completed().results());
       return Change.at(clock, "SceneTestResolved", Audience.DM, payload, payload)
@@ -295,7 +363,8 @@ public class SceneRolls {
             saved.subjects(),
             saved.settings(),
             outcome.continuation(),
-            audit.size());
+            audit.size(),
+            saved.bards());
     var window =
         new Window(
             id,
@@ -327,6 +396,7 @@ public class SceneRolls {
   private static Completed test(Saved saved, ReactionReplay replay, List<SceneEvent> audit) {
     var outcomes = new ArrayList<TestResult>();
     var consumed = new ArrayList<UUID>();
+    var spent = new LinkedHashMap<UUID, Integer>();
     for (var subject : saved.subjects()) {
       if (subject.forced()) {
         outcomes.add(new TestResult(subject.id(), null, true, false));
@@ -357,9 +427,41 @@ public class SceneRolls {
           consumed.add(subject.id());
         }
       }
+      if (!saved.test().save() && !saved.bards().isEmpty()) {
+        var current = new RollResult[] {roll};
+        var bards = saved.bards().stream().filter(bard -> canCut(bard, subject)).toList();
+        String mode = saved.settings().get("rollDecisionInfo");
+        replay.windowWithDisclosure(
+            Point.AFTER_CHECK_ROLL,
+            () ->
+                bards.stream()
+                    .filter(bard -> !spent.containsKey(bard.id()))
+                    .map(
+                        bard ->
+                            new Offer(Step.DEFENDING_RESULT, bard.id(), 0, 0, CuttingWords.OPTION))
+                    .toList(),
+            () -> Disclosure.forRoll(mode, current[0], result(saved, current[0])),
+            (id, option) -> {
+              var bard =
+                  bards.stream()
+                      .filter(candidate -> candidate.id().equals(id))
+                      .findFirst()
+                      .orElseThrow();
+              audit.add(
+                  new SceneEvent(
+                      "ReactionRollRevealed",
+                      id,
+                      Disclosure.forRoll(mode, current[0], result(saved, current[0]))));
+              var penalty = CuttingWords.die(replay.random(), bard.level());
+              audit.add(new SceneEvent("DiceRolled", id, penalty));
+              current[0] = current[0].withBonus(penalty);
+              spent.put(id, bard.used() + 1);
+            });
+        roll = current[0];
+      }
       outcomes.add(new TestResult(subject.id(), roll, false, result(saved, roll)));
     }
-    return new Completed(outcomes, consumed);
+    return new Completed(outcomes, consumed, spent);
   }
 
   private static Boolean result(Saved saved, RollResult roll) {
@@ -396,7 +498,18 @@ public class SceneRolls {
   private record SceneAnswer(UUID windowId, ReactionAnswer answer) {}
 
   private record Subject(
-      UUID id, int bonus, boolean forced, boolean disadvantage, BardicInspiration inspiration) {}
+      UUID id,
+      int bonus,
+      boolean forced,
+      boolean disadvantage,
+      BardicInspiration inspiration,
+      Set<String> conditions) {
+    Subject {
+      conditions = conditions == null ? Set.of() : Set.copyOf(conditions);
+    }
+  }
+
+  private record Bard(UUID id, int level, int used, Set<String> conditions) {}
 
   private record Saved(
       Test test,
@@ -404,12 +517,18 @@ public class SceneRolls {
       List<Subject> subjects,
       Map<String, String> settings,
       Continuation replay,
-      int audited) {}
+      int audited,
+      List<Bard> bards) {
+    Saved {
+      bards = bards == null ? List.of() : List.copyOf(bards);
+    }
+  }
 
   private record TestResult(
       UUID subjectId, RollResult roll, boolean automaticFailure, Boolean success) {}
 
-  private record Completed(List<TestResult> results, List<UUID> consumed) {}
+  private record Completed(
+      List<TestResult> results, List<UUID> consumed, Map<UUID, Integer> spent) {}
 
   private record SceneEvent(String type, UUID subjectId, Object data) {}
 }

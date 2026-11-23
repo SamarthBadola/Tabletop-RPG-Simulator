@@ -1,0 +1,18 @@
+{
+  "kind": "subclass",
+  "key": "srd-5.1:thief",
+  "name": "Thief",
+  "text": {
+    "file": "text/subclasses/thief.md"
+  },
+  "class": "srd-5.1:rogue",
+  "levels": [
+    {
+      "level": 3,
+      "features": [
+        "srd-5.1:fast-hands",
+        "srd-5.1:second-story-work"
+      ]
+    }
+  ]
+}

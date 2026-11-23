@@ -1,0 +1,17 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:divine-sense",
+  "name": "Divine Sense",
+  "text": {
+    "file": "text/features/divine-sense.md"
+  },
+  "effects": [
+    {
+      "type": "spend_resource"
+    }
+  ],
+  "cost": {
+    "action": "action",
+    "resource": "srd-5.1:divine-sense-uses"
+  }
+}

@@ -22,6 +22,9 @@ public final class CombatFeatures {
   public static final String ACTION_SURGE = "srd-5.1:action-surge";
   public static final String BARDIC_INSPIRATION = "srd-5.1:bardic-inspiration";
   public static final String LAY_ON_HANDS = "srd-5.1:lay-on-hands";
+  private static final String DIVINE_SENSE = "srd-5.1:divine-sense";
+  public static final String SACRED_WEAPON = "srd-5.1:sacred-weapon";
+  public static final String TURN_THE_UNHOLY = "srd-5.1:turn-the-unholy";
   static final Option INSPIRATION_OPTION =
       new Option("bardic-inspiration", "Use Bardic Inspiration", false, null, 0);
 
@@ -55,6 +58,19 @@ public final class CombatFeatures {
             yield 1;
           }
           case LAY_ON_HANDS -> layOnHands(context, form, remaining);
+          case DIVINE_SENSE -> {
+            CombatActions.spend(context, TurnBudget::action);
+            context.dm("DivineSenseUsed", Map.of("actorId", form.actorId()));
+            yield 1;
+          }
+          case SACRED_WEAPON -> {
+            OathFeatures.sacredWeapon(context, actor);
+            yield 1;
+          }
+          case TURN_THE_UNHOLY -> {
+            OathFeatures.turnUnholy(context, actor, form.targetIds());
+            yield 1;
+          }
           default -> throw new CampaignException(Code.FEATURE_NOT_AVAILABLE);
         };
     context.resource(actor, pool, used + spent);
@@ -168,11 +184,19 @@ public final class CombatFeatures {
   }
 
   public record Use(
-      UUID actorId, String featureKey, UUID targetId, Integer healPoints, List<UUID> cureIds) {
+      UUID actorId,
+      String featureKey,
+      UUID targetId,
+      Integer healPoints,
+      List<UUID> cureIds,
+      List<UUID> targetIds) {
     public Use {
       if (cureIds.size() > 20 || cureIds.stream().distinct().count() != cureIds.size())
         throw invalidInput("cureIds");
       cureIds = cureIds.stream().sorted().toList();
+      targetIds = targetIds == null ? List.of() : List.copyOf(targetIds);
+      if (targetIds.size() > 30 || targetIds.stream().distinct().count() != targetIds.size())
+        throw invalidInput("targetIds");
     }
   }
 }

@@ -106,6 +106,7 @@ final class CombatEffects {
         context.dm("BardicInspirationExpired", Map.of("combatantId", id));
         creature = context.creature(id);
       }
+      var current = creature;
       var effects =
           state.effects().stream()
               .filter(
@@ -113,7 +114,9 @@ final class CombatEffects {
                       !effect
                               .end()
                               .expired(context.seconds, context.table.round(), acting, boundary)
-                          && !endedGrapple(context, effect))
+                          && !endedGrapple(context, effect)
+                          && !(CombatFeatures.SACRED_WEAPON.equals(effect.key())
+                              && !OathFeatures.sacredActive(context, current)))
               .toList();
       if (!effects.equals(state.effects())) {
         context.vitals(creature, state.effects(effects));

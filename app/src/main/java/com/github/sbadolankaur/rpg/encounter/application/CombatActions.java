@@ -79,6 +79,7 @@ public class CombatActions {
       CombatRoster.AttackOption weapon,
       boolean opportunity) {
     var target = target(context, request.target());
+    RogueFeatures.validate(attacker, request.enemyNearTarget());
     if (request.actor().equals(request.target())) throw new CampaignException(Code.INVALID_TARGET);
     if (request.distance() < 0 || request.distance() > weapon.longRange())
       throw new CampaignException(Code.TARGET_OUT_OF_RANGE);
@@ -146,7 +147,9 @@ public class CombatActions {
       penalties.add("Exhaustion");
     var preflight = new ArrayList<String>();
     if (hasDamageDice(weapon)) preflight.add("criticalDiceMode");
-    if (attacker.vitals().inspiration() != null) preflight.add("rollDecisionInfo");
+    if (attacker.vitals().inspiration() != null
+        || !CuttingWords.offers(context, request.actor(), Step.DEFENDING_RESULT).isEmpty())
+      preflight.add("rollDecisionInfo");
     var slots = DivineSmite.available(context, attacker);
     if (!slots.isEmpty() || request.smiteSlotLevel() != null) preflight.add(DivineSmite.SETTING);
     if (target.vitals().health().current() == 0 && target.vitals().health().temporary() > 0)
@@ -160,9 +163,11 @@ public class CombatActions {
             && context.setting("temporaryHpAbsorbsDeathSaveFailure", Boolean.class);
     protection(context, request, target, penalties);
     RollMode mode = new AdvantageSources(advantages, penalties).mode();
+    boolean sacred = !weapon.offHand() && OathFeatures.sacredActive(context, attacker);
+    boolean magicalWeapon = weapon.magical() || sacred;
     var attack =
         CombatRolls.attack(
-            weapon.bonus(),
+            weapon.bonus() + (sacred ? Math.max(1, attacker.abilities().get(Ability.CHA)) : 0),
             target.armor(),
             request.cover(),
             weapon.criticalOn(),
@@ -183,6 +188,20 @@ public class CombatActions {
       attack =
           CombatRolls.attackOutcome(inspired, attack.target(), weapon.criticalOn(), criticalOnHit);
     }
+    int armor = attack.target();
+    boolean criticalOnHit =
+        CombatConditions.automaticCritical(target.conditions(), request.distance());
+    var reducedAttack =
+        CuttingWords.lowerRoll(
+            context,
+            request.actor(),
+            Point.AFTER_ATTACK_ROLL,
+            attack.roll(),
+            roll ->
+                !request.targetAbsent()
+                    && CombatRolls.attackOutcome(roll, armor, weapon.criticalOn(), criticalOnHit)
+                        .hit());
+    attack = CombatRolls.attackOutcome(reducedAttack, armor, weapon.criticalOn(), criticalOnHit);
     if (request.targetAbsent())
       attack = new CombatRolls.Attack(attack.roll(), attack.target(), false, false);
     context.result("attack", attack);
@@ -223,6 +242,11 @@ public class CombatActions {
               request.smiteSlotLevel(),
               smiteTiming,
               slots);
+      var sneak =
+          RogueFeatures.sneakAttack(
+              context, currentAttacker, weapon, mode, request.enemyNearTarget());
+      boolean halve = RogueFeatures.uncannyDodge(context, target, seenByTarget);
+      var defender = context.creature(request.target());
       for (var part : weapon.damage()) {
         var roll =
             CombatRolls.damage(
@@ -240,11 +264,19 @@ public class CombatActions {
         context.dice("Divine Smite", request.actor(), roll);
         damage.merge("radiant", roll.total(), Math::addExact);
       }
+      if (sneak != null) {
+        var roll =
+            CombatRolls.damage(
+                sneak, attack.critical(), CriticalDiceMode.valueOf(criticalMode), context.random());
+        context.dice("Sneak Attack", request.actor(), roll);
+        damage.merge(weapon.damage().getFirst().type(), roll.total(), Math::addExact);
+      }
+      CuttingWords.lowerDamage(context, request.actor(), damage);
       var applied = new LinkedHashMap<String, Integer>();
       int total = 0;
       for (var value : damage.entrySet()) {
         String type = value.getKey();
-        boolean magical = weapon.magical() || smite != null && "radiant".equals(type);
+        boolean magical = magicalWeapon || smite != null && "radiant".equals(type);
         boolean resistant =
             defense(target, "resistance", type, magical)
                 || target.conditions().contains("srd-5.1:petrified");
@@ -252,7 +284,7 @@ public class CombatActions {
             CombatHealth.damageAmount(
                 value.getValue(),
                 0,
-                false,
+                halve,
                 resistant,
                 defense(target, "vulnerability", type, magical),
                 defense(target, "immunity", type, magical));
@@ -264,14 +296,16 @@ public class CombatActions {
               .vitals()
               .health()
               .damage(total, attack.critical(), target.deathMode(), request.knockOut(), absorb);
-      context.health(target, after.health());
+      context.health(defender, after.health());
+      if (total > 0 && defender.conditions().contains("srd-5.1:turned"))
+        CombatEffects.remove(context, context.creature(request.target()), "srd-5.1:turned", null);
       context.dm(
           total > 0 ? "DamageTaken" : "DamageBlocked",
           Map.of(
               "targetId",
               request.target(),
               "magical",
-              weapon.magical(),
+              magicalWeapon,
               "damage",
               applied,
               "absorbed",
@@ -483,6 +517,7 @@ public class CombatActions {
             false,
             false,
             List.of(),
+            null,
             null);
     context
         .reactions()
@@ -543,12 +578,10 @@ public class CombatActions {
             });
   }
 
-  private static boolean canReact(Creature creature) {
+  static boolean canReact(Creature creature) {
     var tactics = creature.entry().tactics();
-    return tactics.reactionAvailable()
-        && !tactics.surprised()
-        && !creature.incapacitated()
-        && !creature.conditions().contains("srd-5.1:turned");
+    return CombatConditions.canReact(
+        creature.conditions(), tactics.reactionAvailable(), tactics.surprised());
   }
 
   public Reply hide(UUID campaign, UUID id, UUID actor, Envelope envelope, Hide form) {
@@ -561,9 +594,11 @@ public class CombatActions {
         form,
         true,
         context -> {
-          if (context.table.phase() == EncounterState.Phase.ACTIVE)
-            spendAfterActor(context, form.actor());
-          else if (context.table.phase() != EncounterState.Phase.SETUP) throw invalid();
+          if (context.table.phase() == EncounterState.Phase.ACTIVE) {
+            var creature = context.canAct(form.actor());
+            spendRogueAction(context, creature, form.bonusAction(), "srd-5.1:cunning-action");
+          } else if (context.table.phase() != EncounterState.Phase.SETUP
+              || Boolean.TRUE.equals(form.bonusAction())) throw invalid();
           CombatStealth.hide(
               context,
               target(context, form.actor()),
@@ -588,13 +623,25 @@ public class CombatActions {
         });
   }
 
+  private static void spendRogueAction(
+      Context context, Creature creature, Boolean bonus, String feature) {
+    if (Boolean.TRUE.equals(bonus)) {
+      if (!creature.features().contains(feature)) throw invalid();
+      spend(context, TurnBudget::bonusAction);
+    } else spend(context, TurnBudget::action);
+  }
+
   private static Creature spendAfterActor(Context context, UUID actor) {
     var creature = context.canAct(actor);
     spend(context, TurnBudget::action);
     return creature;
   }
 
-  public record Hide(UUID actor, List<UUID> obscuredFrom, List<UUID> opponents) {
+  public record Hide(
+      UUID actor,
+      List<UUID> obscuredFrom,
+      List<UUID> opponents,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Boolean bonusAction) {
     public Hide {
       obscuredFrom = List.copyOf(obscuredFrom);
       opponents = List.copyOf(opponents);
@@ -608,21 +655,30 @@ public class CombatActions {
   }
 
   public Reply simple(
-      UUID campaign, UUID id, UUID actor, Envelope envelope, UUID creature, Simple action) {
+      UUID campaign,
+      UUID id,
+      UUID actor,
+      Envelope envelope,
+      UUID creature,
+      Simple action,
+      boolean bonus) {
     return commands.run(
         campaign,
         id,
         actor,
         envelope,
         action.name(),
-        creature,
+        bonus ? Map.of("actor", creature, "bonusAction", true) : creature,
         true,
         context -> {
-          var acting = context.canAct(creature);
+          var acting = context.canAct(creature, action == Simple.DASH || action == Simple.DODGE);
+          if (bonus
+              && ((action != Simple.DASH && action != Simple.DISENGAGE)
+                  || !acting.features().contains("srd-5.1:cunning-action"))) throw invalid();
           var flags = acting.entry().tactics();
           switch (action) {
-            case DASH -> spend(context, TurnBudget::dash);
-            case DISENGAGE -> spend(context, TurnBudget::disengage);
+            case DASH -> spend(context, budget -> budget.dash(bonus));
+            case DISENGAGE -> spend(context, budget -> budget.disengage(bonus));
             case DODGE -> {
               spend(context, TurnBudget::action);
               context.update(
@@ -729,9 +785,11 @@ public class CombatActions {
         form,
         true,
         context -> {
-          context.canAct(form.actor());
+          var acting = context.canAct(form.actor());
           if (form.note() == null || form.note().length() > 200) throw invalid();
-          spend(context, budget -> budget.interact(form.usesAction()));
+          if (Boolean.TRUE.equals(form.bonusAction()))
+            spendRogueAction(context, acting, true, "srd-5.1:fast-hands");
+          else spend(context, budget -> budget.interact(form.usesAction()));
           context.dm("ObjectUsed", Map.of("combatantId", form.actor(), "note", form.note()));
         });
   }
@@ -765,7 +823,7 @@ public class CombatActions {
         form,
         true,
         context -> {
-          var first = context.canAct(form.actor());
+          var first = context.canAct(form.actor(), form.kind() == ContestKind.ESCAPE);
           var second = target(context, form.target());
           if (first.entry().id().equals(second.entry().id())) throw invalid();
           if (form.distance() < 0 || form.distance() > 5)
@@ -842,7 +900,7 @@ public class CombatActions {
         context -> resolveCheck(context, form));
   }
 
-  static void resolveCheck(Context context, Check form) {
+  static List<Map<String, Object>> resolveCheck(Context context, Check form) {
     context.acting(form.actor());
     if (form.ability() == null
         || form.combatants().isEmpty()
@@ -854,6 +912,12 @@ public class CombatActions {
         || !form.cover().isEmpty() && (!form.save() || form.ability() != Ability.DEX))
       throw invalid();
     if (form.cover().containsValue(Cover.TOTAL)) throw new CampaignException(Code.TOTAL_COVER);
+    if (Boolean.TRUE.equals(form.bonusAction())) {
+      if (form.save()
+          || !"sleight_of_hand".equals(form.skill())
+          || !form.combatants().equals(List.of(form.actor()))) throw invalid();
+      spendRogueAction(context, context.canAct(form.actor()), true, "srd-5.1:fast-hands");
+    }
     if (form.searchTarget() != null) {
       if (form.save()
           || form.ability() != Ability.WIS
@@ -872,8 +936,14 @@ public class CombatActions {
             .toList();
     var decisions = new ArrayList<String>();
     if (form.dc() != null && !rolling.isEmpty()) decisions.add("autoOutcomeOnNat20Checks");
-    if (rolling.stream().anyMatch(subject -> subject.vitals().inspiration() != null))
-      decisions.add("rollDecisionInfo");
+    if (rolling.stream()
+        .anyMatch(
+            subject ->
+                subject.vitals().inspiration() != null
+                    || !form.save()
+                        && !CuttingWords.offers(
+                                context, subject.entry().id(), Step.DEFENDING_RESULT)
+                            .isEmpty())) decisions.add("rollDecisionInfo");
     context.preflight(decisions);
     var naturalMode =
         decisions.contains("autoOutcomeOnNat20Checks")
@@ -892,7 +962,7 @@ public class CombatActions {
             form.save()
                 ? creature.saves().get(form.ability())
                 : form.skill() == null
-                    ? creature.abilities().get(form.ability())
+                    ? creature.abilityCheck(form.ability())
                     : creature
                         .skills()
                         .getOrDefault(form.skill(), creature.abilities().get(form.ability()));
@@ -931,6 +1001,18 @@ public class CombatActions {
                 roll,
                 form.save() ? Point.AFTER_SAVE_ROLL : Point.AFTER_CHECK_ROLL,
                 success);
+        if (!form.save()) {
+          roll =
+              CuttingWords.lowerRoll(
+                  context,
+                  subject,
+                  Point.AFTER_CHECK_ROLL,
+                  roll,
+                  candidate ->
+                      form.dc() == null
+                          ? null
+                          : D20Test.resolve(candidate, form.dc(), kind, naturalMode).success());
+        }
         if (form.searchTarget() != null)
           result.put(
               "detected",
@@ -948,6 +1030,7 @@ public class CombatActions {
     }
     context.result("outcomes", outcome);
     context.dm("TestResolved", Map.of("outcomes", outcome));
+    return List.copyOf(outcome);
   }
 
   private static boolean forcedFailure(Check form, Creature creature) {
@@ -1095,7 +1178,8 @@ public class CombatActions {
       boolean fearSourceVisible,
       boolean targetAbsent,
       @JsonInclude(JsonInclude.Include.NON_EMPTY) List<UUID> protectingAllyIds,
-      @JsonInclude(JsonInclude.Include.NON_NULL) Integer smiteSlotLevel) {
+      @JsonInclude(JsonInclude.Include.NON_NULL) Integer smiteSlotLevel,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Boolean enemyNearTarget) {
     public Attack {
       if (smiteSlotLevel != null && (smiteSlotLevel < 1 || smiteSlotLevel > 9)) throw invalid();
       protectingAllyIds =
@@ -1128,7 +1212,8 @@ public class CombatActions {
       Boolean noticedOnTie,
       boolean requiresSight,
       boolean requiresHearing,
-      boolean fearSourceVisible) {
+      boolean fearSourceVisible,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Boolean bonusAction) {
     public Check {
       combatants = List.copyOf(combatants);
       cover = java.util.Collections.unmodifiableMap(new java.util.TreeMap<>(cover));
@@ -1139,5 +1224,9 @@ public class CombatActions {
 
   public record Ready(UUID actor, String trigger, String action) {}
 
-  public record ObjectUse(UUID actor, String note, boolean usesAction) {}
+  public record ObjectUse(
+      UUID actor,
+      String note,
+      boolean usesAction,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Boolean bonusAction) {}
 }

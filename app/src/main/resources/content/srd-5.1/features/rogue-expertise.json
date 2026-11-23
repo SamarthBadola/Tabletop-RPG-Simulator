@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:rogue-expertise",
+  "name": "Expertise",
+  "text": {
+    "file": "text/features/rogue-expertise.md"
+  },
+  "effects": [
+    {
+      "type": "proficiency_fraction"
+    }
+  ]
+}

@@ -24,6 +24,8 @@
         <forbiddenapis.version>3.11</forbiddenapis.version>
         <pitest.version>1.30.2</pitest.version>
         <pitest-junit5-plugin.version>1.2.3</pitest-junit5-plugin.version>
+        <pitest.classes>com.github.sbadolankaur.rpg.engine.dice.*</pitest.classes>
+        <pitest.tests>com.github.sbadolankaur.rpg.engine.dice.*Test</pitest.tests>
         <bouncycastle.version>1.85.2</bouncycastle.version>
         <zxing.version>3.5.4</zxing.version>
         <json-schema-validator.version>3.0.9</json-schema-validator.version>
@@ -166,10 +168,10 @@
                 <version>${pitest.version}</version>
                 <configuration>
                     <targetClasses>
-                        <param>com.github.sbadolankaur.rpg.engine.dice.*</param>
+                        <param>${pitest.classes}</param>
                     </targetClasses>
                     <targetTests>
-                        <param>com.github.sbadolankaur.rpg.engine.dice.*Test</param>
+                        <param>${pitest.tests}</param>
                     </targetTests>
                     <mutationThreshold>80</mutationThreshold>
                     <threads>1</threads>

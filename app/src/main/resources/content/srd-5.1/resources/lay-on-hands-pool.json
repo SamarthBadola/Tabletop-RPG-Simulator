@@ -1,0 +1,12 @@
+{
+  "kind": "resource",
+  "key": "srd-5.1:lay-on-hands-pool",
+  "name": "Lay on Hands",
+  "max": "5 * level",
+  "recharge": [
+    {
+      "on": "LONG_REST",
+      "restore": "all"
+    }
+  ]
+}

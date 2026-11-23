@@ -1,0 +1,16 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:divine-smite",
+  "name": "Divine Smite",
+  "text": {
+    "file": "text/features/divine-smite.md"
+  },
+  "effects": [
+    {
+      "type": "add_damage_dice"
+    }
+  ],
+  "trigger": {
+    "point": "AFTER_HIT"
+  }
+}

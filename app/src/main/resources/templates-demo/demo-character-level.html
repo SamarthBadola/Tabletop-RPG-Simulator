@@ -10,7 +10,12 @@
         <input type="hidden" name="classKey" th:value="${plan.classKey}">
         <input type="hidden" name="actionId" th:value="${actionId}">
         <input type="hidden" name="expectedVersion" th:value="${expectedVersion}">
-        <input th:if="${levelStep != 'class'}" type="hidden" name="subclassKey" th:value="${form.subclassKey}">
+        <th:block th:if="${levelStep != 'class'}">
+            <input type="hidden" name="subclassKey" th:value="${form.subclassKey}">
+            <input type="hidden" name="fightingStyleKey" th:value="${form.fightingStyleKey}">
+            <input th:each="skill : ${form.expertiseChoices}" type="hidden" name="expertiseChoices" th:value="${skill}">
+            <input th:each="skill : ${form.bonusSkills}" type="hidden" name="bonusSkills" th:value="${skill}">
+        </th:block>
         <input th:if="${levelStep == 'ability-scores' or levelStep == 'review'}" type="hidden" name="hitPointMethod" th:value="${form.hitPointMethod}">
         <fieldset th:if="${levelStep == 'class'}">
             <legend>Class and features</legend>
@@ -18,6 +23,19 @@
             <label th:if="${plan.subclassRequired}">Subclass
                 <select name="subclassKey" required><option th:each="choice : ${plan.subclasses}" th:value="${choice.key}" th:text="${choice.label}"></option></select>
             </label>
+            <label th:unless="${plan.styles.isEmpty()}">Fighting Style
+                <select name="fightingStyleKey" required><option th:each="choice : ${plan.styles}" th:value="${choice.key}" th:text="${choice.label}"></option></select>
+            </label>
+            <fieldset th:if="${plan.expertiseRequired}"><legend>Expertise</legend>
+                <label th:each="skill : ${plan.trainedSkills}"><input type="checkbox" name="expertiseChoices" th:value="${skill}"><span th:text="${skill}"></span></label>
+            </fieldset>
+            <fieldset th:if="${plan.expertiseRequired and plan.subclassRequired}"><legend>College of Lore bonus proficiencies</legend>
+                <p>Choose three new skills. You can also select two of them for Expertise.</p>
+                <label th:each="skill : ${plan.newSkills}">
+                    <input type="checkbox" name="bonusSkills" th:value="${skill}"><span th:text="${skill}"></span>
+                    <input type="checkbox" name="expertiseChoices" th:value="${skill}">Expertise
+                </label>
+            </fieldset>
         </fieldset>
         <fieldset th:if="${levelStep == 'hit-points'}">
             <legend>Hit points</legend>

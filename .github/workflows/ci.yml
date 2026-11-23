@@ -184,6 +184,28 @@ jobs:
           ./mvnw -B -ntp spotless:check test forbiddenapis:check forbiddenapis:testCheck
           ./mvnw -B -ntp test forbiddenapis:testCheck -DargLine="-Duser.language=tr -Duser.country=TR -Duser.timezone=Pacific/Kiritimati -Ddice.localeJob=true"
 
+  reaction-conformance:
+    name: reaction-conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: app/pom.xml
+
+      - name: Run reaction conformance
+        working-directory: app
+        run: ./mvnw -B -ntp test '-Dtest=Reaction*Test'
+
   integration:
     name: integration
     needs: unit

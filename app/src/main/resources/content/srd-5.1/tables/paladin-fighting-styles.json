@@ -1,0 +1,30 @@
+{
+  "kind": "ruleTable",
+  "key": "srd-5.1:paladin-fighting-styles",
+  "name": "Paladin Fighting Styles",
+  "index": "name",
+  "columns": [
+    {
+      "name": "feature",
+      "type": "name"
+    }
+  ],
+  "rows": [
+    {
+      "name": "Defense",
+      "feature": "srd-5.1:defense"
+    },
+    {
+      "name": "Dueling",
+      "feature": "srd-5.1:dueling"
+    },
+    {
+      "name": "Great Weapon Fighting",
+      "feature": "srd-5.1:great-weapon-fighting"
+    },
+    {
+      "name": "Protection",
+      "feature": "srd-5.1:protection"
+    }
+  ]
+}

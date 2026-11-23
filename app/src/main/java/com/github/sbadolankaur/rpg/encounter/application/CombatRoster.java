@@ -375,6 +375,11 @@ class CombatRoster {
     }
   }
 
+  boolean alwaysPassReaction(Creature creature, String feature) {
+    var id = creature.entry().character();
+    return id != null && characterStore.alwaysPassReaction(id, feature);
+  }
+
   Map<Integer, Integer> spentSlots(Creature creature) {
     return creature.entry().character() == null
         ? Map.of()
@@ -448,7 +453,7 @@ class CombatRoster {
       return classLevels.getOrDefault(key, 0);
     }
 
-    Creature withState(Entry next, Vitals state) {
+    Creature withState(Entry next, Vitals state, Map<String, Integer> spent) {
       return new Creature(
           next,
           name,
@@ -466,7 +471,7 @@ class CombatRoster {
           passivePerceptionBonus,
           noisyArmor,
           attacks,
-          resources,
+          spent,
           defenses,
           immunities,
           deathMode,
@@ -481,6 +486,13 @@ class CombatRoster {
       vitals.effects().forEach(condition -> keys.add(condition.key()));
       if (vitals.health().state() != State.ALIVE) keys.add(CombatConditions.UNCONSCIOUS);
       return keys;
+    }
+
+    int abilityCheck(Ability ability) {
+      int value = abilities.get(ability);
+      if (!features.contains("srd-5.1:jack-of-all-trades")) return value;
+      int level = classLevels.values().stream().mapToInt(Integer::intValue).sum();
+      return value + com.github.sbadolankaur.rpg.engine.kernel.ProficiencyBonus.forLevel(level) / 2;
     }
 
     int speed() {
