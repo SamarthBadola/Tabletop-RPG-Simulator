@@ -55,6 +55,7 @@ class CampaignErrorAdvice {
               ENCOUNTER_ACTIVE,
               ENCOUNTER_STARTED,
               ENCOUNTER_VERSION_CONFLICT,
+              MANUAL_MOVE_NOT_ALLOWED,
               REACTION_PENDING,
               SETTING_DECISION_REQUIRED ->
               HttpStatus.CONFLICT;
@@ -90,6 +91,7 @@ class CampaignErrorAdvice {
           case PACK_REVIEW_STALE -> "Review the current pack changes again.";
           case CONTENT_INVALID -> "Resolve the issues shown in the content pack review.";
           case ENCOUNTER_VERSION_CONFLICT -> "This changed while you were looking at it.";
+          case MANUAL_MOVE_NOT_ALLOWED -> "Use the encounter map to move this creature.";
           case REACTION_PENDING ->
               "Resolve or cancel the pending reaction before taking another action.";
           case REACTION_OPTION_INVALID -> "Choose one of the offered reactions.";

@@ -133,6 +133,7 @@ final class ContentVocabulary {
             "condition_immunity",
             "turned",
             "grant_bonus_action_option",
+            "off_hand_ability_damage",
             "rest_option",
             "spend_resource")) {
       entries.put(

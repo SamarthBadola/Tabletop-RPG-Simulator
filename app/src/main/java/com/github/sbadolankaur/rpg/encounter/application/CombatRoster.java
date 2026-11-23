@@ -33,6 +33,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 @Component
 class CombatRoster {
+  private static final Set<String> OFF_HAND_DAMAGE_EFFECTS =
+      Set.of("off_hand_ability_damage", "two_weapon_fighting");
+
   private final Campaigns campaigns;
   private final Characters characters;
   private final CharacterStore characterStore;
@@ -204,10 +207,8 @@ class CombatRoster {
                                       .valueStream()
                                       .anyMatch(
                                           effect ->
-                                              effect
-                                                  .path("type")
-                                                  .asString()
-                                                  .equals("two_weapon_fighting"))));
+                                              OFF_HAND_DAMAGE_EFFECTS.contains(
+                                                  effect.path("type").asString()))));
       for (var item : sheet.inventory()) {
         if (!item.category().equals("weapon") || !"OFF_HAND".equals(item.slot())) continue;
         var data = weapon(content, item.key());

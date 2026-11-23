@@ -25,6 +25,16 @@ class PackLoaderTest {
               assertThat(def.key()).isEqualTo("srd-5.1:fighter");
               assertThat(def.fields()).containsKeys("startingEquipment", "startingGold");
             });
+    var stylePath = "features/two-weapon-fighting.json";
+    var style = new String(files.get(stylePath), StandardCharsets.UTF_8);
+    files.put(
+        stylePath,
+        style
+            .replace("two_weapon_fighting", "off_hand_ability_damage")
+            .getBytes(StandardCharsets.UTF_8));
+    assertThat(loader.load(files, true, List.of()).definitions())
+        .anyMatch(def -> def.key().equals("srd-5.1:two-weapon-fighting"));
+
     var fighter = new String(files.get("classes/fighter.json"), StandardCharsets.UTF_8);
     files.put(
         "classes/fighter.json",

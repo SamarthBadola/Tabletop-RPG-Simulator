@@ -67,6 +67,58 @@ class ReactionReplayTest {
   }
 
   @Test
+  void cuttingWordsSeesTheDamageKeptByTheSavageAttackerFollowUp() {
+    var first =
+        ReactionReplay.run(
+            "Attack", Continuation.empty(), new ForcedDice(2), this::damageWithCuttingWords);
+    var rerolled =
+        ReactionReplay.run(
+            "Attack",
+            first.continuation().answer(first.pending(), "reroll"),
+            new ForcedDice(6),
+            this::damageWithCuttingWords);
+    assertThat(rerolled.pending().step()).isEqualTo(Step.ACTING_DAMAGE);
+    assertThat(rerolled.pending().followUp()).isTrue();
+
+    var lowered =
+        ReactionReplay.run(
+            "Attack",
+            rerolled.continuation().answer(rerolled.pending(), "new"),
+            new ForcedDice(),
+            this::damageWithCuttingWords);
+    assertThat(lowered.pending().step()).isEqualTo(Step.DEFENDING_DAMAGE);
+    assertThat(lowered.pending().disclosure().total()).isEqualTo(6);
+
+    var cut =
+        ReactionReplay.run(
+            "Attack",
+            lowered.continuation().answer(lowered.pending(), "cutting-words"),
+            new ForcedDice(3),
+            this::damageWithCuttingWords);
+    var passed =
+        ReactionReplay.run(
+            "Attack",
+            lowered.continuation().answer(lowered.pending(), null),
+            new ForcedDice(),
+            this::damageWithCuttingWords);
+    assertThat(cut.completed()).isEqualTo(3);
+    assertThat(passed.completed()).isEqualTo(6);
+  }
+
+  private int damageWithCuttingWords(ReactionReplay replay) {
+    int selected = damage(replay);
+    var cuttingWords = new Option("cutting-words", "Cutting Words", true, "inspiration", 1);
+    var choice =
+        replay.choose(
+            Point.AFTER_DAMAGE_ROLL,
+            Step.DEFENDING_DAMAGE,
+            DEFENDER,
+            List.of(cuttingWords),
+            new ReactionReplay.Disclosure(null, selected, null));
+    return choice == null ? selected : Math.max(0, selected - (replay.random().nextInt(6) + 1));
+  }
+
+  @Test
   void anEmptyOfferDoesNotPauseAndNestedReactionsStopAfterSix() {
     var decisions = Continuation.empty();
     for (int depth = 1; depth <= 6; depth++) {

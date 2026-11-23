@@ -536,7 +536,7 @@ public class EncounterCommands {
 
     void resolve(Context context) {
       if (action != null) CombatActions.resolveAttack(context, action);
-      else if (move != null) CombatActions.resolveMove(context, move);
+      else if (move != null) CombatActions.resolveManualMove(context, move);
       else if (check != null) CombatActions.resolveCheck(context, check);
       else if (feature != null) CombatFeatures.use(context, feature);
       else if (endTurn != null) Encounters.resolveEndTurn(context, endTurn);
@@ -590,6 +590,8 @@ public class EncounterCommands {
     private final UUID actor;
     private final SettingsView effective;
     final ContentSet content;
+    // Step 14 will resolve the geometry from the encounter's map.
+    final EncounterGeometry geometry = EncounterGeometry.UNMAPPED;
     final Map<UUID, Entry> entries = new LinkedHashMap<>();
     private final Map<UUID, Creature> profiles = new HashMap<>();
     private final Map<UUID, Vitals> pendingVitals = new HashMap<>();

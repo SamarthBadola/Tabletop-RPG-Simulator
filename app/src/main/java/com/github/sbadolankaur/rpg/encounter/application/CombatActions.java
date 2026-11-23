@@ -79,7 +79,8 @@ public class CombatActions {
       CombatRoster.AttackOption weapon,
       boolean opportunity) {
     var target = target(context, request.target());
-    RogueFeatures.validate(attacker, request.enemyNearTarget());
+    context.geometry.validateEnemyNearTarget(
+        request.enemyNearTarget(), attacker.features().contains(RogueFeatures.SNEAK_ATTACK));
     if (request.actor().equals(request.target())) throw new CampaignException(Code.INVALID_TARGET);
     if (request.distance() < 0 || request.distance() > weapon.longRange())
       throw new CampaignException(Code.TARGET_OUT_OF_RANGE);
@@ -367,13 +368,19 @@ public class CombatActions {
         "manual-moves",
         move,
         true,
-        context -> resolveMove(context, move));
+        context -> resolveManualMove(context, move));
+  }
+
+  static void resolveManualMove(Context context, ManualMove move) {
+    context.geometry.requireManualMovement();
+    resolveMove(context, move);
   }
 
   // Step 14 supplies reach exits from the map through this same movement resolver.
   static void resolveMove(Context context, ManualMove move) {
     var mover = context.acting(move.actorId());
-    if (mover.entry().tactics().surprised()) throw new CampaignException(Code.NO_ACTIONS_LEFT);
+    if (mover.incapacitated() || mover.entry().tactics().surprised())
+      throw new CampaignException(Code.NO_ACTIONS_LEFT);
     if (!Encounters.ties(context.entries.values()).isEmpty()) throw invalid();
     for (UUID id : move.leavesReachOf()) {
       if (!context.entries.containsKey(id) || id.equals(move.actorId())) throw invalid();
@@ -384,7 +391,20 @@ public class CombatActions {
     if (cost > context.table.budget().movementRemaining(mover.speed()))
       throw new CampaignException(Code.NO_ACTIONS_LEFT);
 
-    if (!context.table.budget().disengaged() && !move.leavesReachOf().isEmpty()) {
+    boolean disengaged = context.table.budget().disengaged();
+    for (UUID id : move.leavesReachOf()) {
+      var reactor = context.creature(id);
+      String reason =
+          disengaged ? "The mover used Disengage." : opportunityRestriction(reactor, mover);
+      if (reason == null && opportunityWeapons(reactor, mover).isEmpty())
+        reason = "No eligible melee attack is available.";
+      if (reason != null)
+        context.dm(
+            "OpportunityAttackSkipped",
+            Map.of("reactorId", id, "reactor", reactor.name(), "reason", reason));
+    }
+
+    if (!disengaged && !move.leavesReachOf().isEmpty()) {
       var settings = new ArrayList<String>();
       if (move.leavesReachOf().stream()
           .map(context::creature)
@@ -434,6 +454,7 @@ public class CombatActions {
 
   private static boolean mayFinishMove(Context context, Creature mover, int cost) {
     return mover.vitals().health().current() > 0
+        && !mover.incapacitated()
         && cost <= context.table.budget().movementRemaining(mover.speed());
   }
 
@@ -461,15 +482,23 @@ public class CombatActions {
         .toList();
   }
 
+  private static String opportunityRestriction(Creature reactor, Creature mover) {
+    if (!Encounters.present(reactor.entry())) return "The creature is not in the encounter.";
+    if (!reactor.entry().tactics().reactionAvailable()) return "Reaction already used this round.";
+    if (!canReact(reactor)) return "The creature cannot react.";
+    if (sourced(reactor, "srd-5.1:charmed", mover.entry().id()))
+      return "The creature cannot attack the mover while charmed by it.";
+    if (!CombatConditions.canSee(
+        reactor.conditions(),
+        mover.conditions(),
+        mover.entry().tactics().hiddenFrom(reactor.entry().id())))
+      return "The creature cannot see the mover.";
+    return null;
+  }
+
   private static List<CombatRoster.AttackOption> opportunityWeapons(
       Creature reactor, Creature mover) {
-    if (!Encounters.present(reactor.entry())
-        || !canReact(reactor)
-        || sourced(reactor, "srd-5.1:charmed", mover.entry().id())
-        || !CombatConditions.canSee(
-            reactor.conditions(),
-            mover.conditions(),
-            mover.entry().tactics().hiddenFrom(reactor.entry().id()))) return List.of();
+    if (opportunityRestriction(reactor, mover) != null) return List.of();
     var weapons =
         reactor.attacks().stream()
             .filter(weapon -> !weapon.ranged() && !weapon.offHand())

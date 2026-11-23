@@ -19,6 +19,16 @@ public final class BundledPacksFixture {
     var undead =
         (ObjectNode) PackJson.MAPPER.readTree(monsters.get("monsters/training-creature.json"));
     undead.put("key", "srd-5.1:undead-target").put("name", "Undead fixture").put("type", "undead");
+    undead.putArray("conditionImmunities").add("srd-5.1:charmed");
+    // Only referenced by an immune creature. The fixture never applies the condition.
+    files.put(
+        "conditions/charmed.json",
+        """
+        {"kind":"condition","key":"srd-5.1:charmed","name":"Charm reference",
+         "text":"A condition reference for the immunity test.",
+         "parts":[{"type":"advantage_source","roll":"attack","mode":"disadvantage","direction":"holder"}]}
+        """
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
     files.put("monsters/undead-target.json", PackJson.MAPPER.writeValueAsBytes(undead));
     return new PackLoader().load(files, true, List.of());
   }

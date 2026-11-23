@@ -1,7 +1,5 @@
 package com.github.sbadolankaur.rpg.encounter.application;
 
-import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
-import com.github.sbadolankaur.rpg.campaign.application.CampaignException.FieldError;
 import com.github.sbadolankaur.rpg.encounter.application.CombatRoster.AttackOption;
 import com.github.sbadolankaur.rpg.encounter.application.CombatRoster.Creature;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.Context;
@@ -19,11 +17,6 @@ final class RogueFeatures {
   static final String UNCANNY_DODGE = "srd-5.1:uncanny-dodge";
 
   private RogueFeatures() {}
-
-  static void validate(Creature attacker, Boolean enemyNearTarget) {
-    if (enemyNearTarget != null && !attacker.features().contains(SNEAK_ATTACK))
-      throw new CampaignException(new FieldError("enemyNearTarget", "INCORRECT"));
-  }
 
   static RollPlan sneakAttack(
       Context context,

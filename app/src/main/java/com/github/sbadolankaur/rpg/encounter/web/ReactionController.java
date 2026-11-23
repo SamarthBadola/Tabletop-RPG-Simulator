@@ -79,6 +79,12 @@ class ReactionController {
   private static ReactionAnswer answer(Fields form) {
     String choice = form.optional("choice");
     String option = form.optional("optionKey");
+    String slotLevel = form.optional("slotLevel");
+    if (slotLevel != null) {
+      if (!slotLevel.matches("[1-9]") || option != null && !"divine-smite".equals(option))
+        throw new CampaignException(CampaignException.Code.REACTION_OPTION_INVALID);
+      option = slotLevel;
+    }
     if (("use".equals(choice) && option == null)
         || ("pass".equals(choice) && option != null)
         || !("use".equals(choice) || "pass".equals(choice))) {

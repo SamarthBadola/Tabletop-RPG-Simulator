@@ -138,6 +138,16 @@
         }
       }
     },
+    "effect-off_hand_ability_damage" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "off_hand_ability_damage"
+        }
+      }
+    },
     "effect-proficiency_fraction" : {
       "type" : "object",
       "additionalProperties" : false,
