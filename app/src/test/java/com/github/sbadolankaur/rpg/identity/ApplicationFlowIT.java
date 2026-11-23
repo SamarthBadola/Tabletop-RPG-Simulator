@@ -71,6 +71,13 @@ class ApplicationFlowIT {
 
   @Autowired private ContentPacks contentPacks;
 
+  @Autowired private com.github.sbadolankaur.rpg.content.PackLoader packLoader;
+  @Autowired private com.github.sbadolankaur.rpg.campaign.application.CampaignPlay play;
+  @Autowired private com.github.sbadolankaur.rpg.encounter.application.Encounters encounters;
+
+  @org.springframework.test.context.bean.override.mockito.MockitoBean
+  private com.github.sbadolankaur.rpg.encounter.application.EncounterDice combatDice;
+
   @Autowired private com.github.sbadolankaur.rpg.campaign.application.Campaigns campaigns;
   @Autowired private com.github.sbadolankaur.rpg.campaign.application.CampaignCommands commands;
   @Autowired private com.github.sbadolankaur.rpg.campaign.application.CampaignSettings settings;
@@ -405,6 +412,911 @@ class ApplicationFlowIT {
         .andExpect(content().string(org.hamcrest.Matchers.containsString("Grappler")));
     assertThat(jdbcTemplate.queryForObject("SELECT feat_key FROM pc_asi", String.class))
         .isEqualTo("srd-5.1:grappler");
+  }
+
+  @Test
+  void scriptedFightReplaysOriginalDiceAndKeepsDmAuditDetailsPrivate() throws Exception {
+    UUID dm = characterAccount("combat-dm", true);
+    UUID first = characterAccount("combat-first", false);
+    UUID second = characterAccount("combat-second", false);
+    UUID campaign = campaigns.create(dm, "Combat table").id();
+    joinFixture(campaign, first, second);
+    String collection = "/campaigns/" + campaign + "/encounters";
+    String characters = "/campaigns/" + campaign + "/characters";
+    UUID left = createCombatFighter(characters, campaign, first, "combat-first");
+    UUID right = createCombatFighter(characters, campaign, second, "combat-second");
+    var testPack =
+        packLoader.loadFolder(
+            java.nio.file.Path.of("src/test/resources/content-fixtures/step7-combat"),
+            java.util.List.of());
+    contentPacks.seed(testPack);
+    jdbcTemplate.update(
+        """
+        INSERT INTO campaign_pack(campaign_id, pack_id, pack_key, position)
+        SELECT ?, id, pack_key, 1 FROM content_pack WHERE hash = ?
+        """,
+        campaign,
+        testPack.hash());
+    settings.decide(
+        campaign, dm, combatCampaignEnvelope(campaign, dm), "criticalDiceMode", "REJECT");
+    play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+
+    mockMvc.perform(get(collection).with(user("combat-dm"))).andExpect(status().isOk());
+    var created =
+        mockMvc
+            .perform(action(collection, "combat-dm", campaign, dm).param("name", "Practice bout"))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    String url = created.getResponse().getRedirectedUrl();
+    UUID encounter = UUID.fromString(url.substring(url.lastIndexOf('/') + 1));
+    mockMvc
+        .perform(get(url).with(user("combat-dm")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Training creature")));
+    mockMvc.perform(get(url).with(user("combat-first"))).andExpect(status().isForbidden());
+    for (UUID character : java.util.List.of(left, right)) {
+      mockMvc
+          .perform(
+              combatAction(url + "/combatants", encounter)
+                  .param("characterId", character.toString()))
+          .andExpect(status().isSeeOther());
+    }
+    mockMvc
+        .perform(
+            combatAction(url + "/combatants", encounter)
+                .param("monsterKey", "step7-test:training-creature"))
+        .andExpect(status().isSeeOther());
+    UUID leftEntry =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE character_id = ?", UUID.class, left);
+    UUID rightEntry =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE character_id = ?", UUID.class, right);
+    UUID goblin =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE monster_key IS NOT NULL", UUID.class);
+    var faces = new java.util.ArrayDeque<>(java.util.List.of(18, 10, 13, 20, 20, 1, 4, 20));
+    org.mockito.Mockito.when(combatDice.nextInt(org.mockito.ArgumentMatchers.anyInt()))
+        .thenAnswer(
+            invocation -> {
+              int face = faces.removeFirst();
+              assertThat(face).isBetween(1, invocation.getArgument(0, Integer.class));
+              return face - 1;
+            });
+    mockMvc.perform(combatAction(url + "/start", encounter)).andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(leftEntry);
+    mockMvc
+        .perform(get(url).with(user("combat-dm")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Unarmed strike")));
+
+    mockMvc
+        .perform(
+            get(url + "/overrides/new")
+                .with(user("combat-dm"))
+                .header("HX-Request", "true")
+                .param("kind", "set-hit-points")
+                .param("combatantId", leftEntry.toString()))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("override-panel")));
+    mockMvc
+        .perform(
+            combatCorrection(url, encounter, leftEntry, 12, "quiet", "Private correction reason"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[0].field").value("visibility"));
+    mockMvc
+        .perform(
+            combatAction(url + "/overrides", encounter)
+                .header("HX-Request", "true")
+                .param("kind", "set-hit-points")
+                .param("combatantId", leftEntry.toString())
+                .param("reason", "Retain the proposed reason")
+                .param("amount", "12")
+                .param("visibility", "quiet"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.containsString(
+                        "A player can now see this value, so the correction will be shown to them.")))
+        .andExpect(
+            content().string(org.hamcrest.Matchers.containsString("Retain the proposed reason")));
+    mockMvc
+        .perform(
+            combatCorrection(url, encounter, leftEntry, 12, "players", "Private correction reason"))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(combatCorrection(url, encounter, goblin, 4, "quiet", "Hidden creature HP reason"))
+        .andExpect(status().isSeeOther());
+    assertThat(encounters.visibleEvents(campaign, encounter, first))
+        .hasSize(1)
+        .allSatisfy(
+            event ->
+                assertThat(event.text())
+                    .contains("12 of 13")
+                    .doesNotContain("Private correction reason"));
+    assertThat(encounters.visibleEvents(campaign, encounter, second))
+        .singleElement()
+        .satisfies(
+            event ->
+                assertThat(event.text())
+                    .contains("12 of 13")
+                    .doesNotContain("Private correction reason", "Hidden creature HP reason"));
+
+    UUID attackId = commands.newActionId();
+    long version = combatVersion(encounter);
+    var hit =
+        mockMvc
+            .perform(combatStrike(url, attackId, version, leftEntry, goblin, "unarmed"))
+            .andExpect(status().isOk())
+            .andReturn();
+    var replay =
+        mockMvc
+            .perform(combatStrike(url, attackId, version, leftEntry, goblin, "unarmed"))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertThat(replay.getModelAndView().getModel().get("replay")).isEqualTo(true);
+    assertThat(replay.getModelAndView().getModel().get("result"))
+        .isEqualTo(hit.getModelAndView().getModel().get("result"));
+    mockMvc
+        .perform(
+            combatStrike(url, commands.newActionId(), version, leftEntry, goblin, "unarmed")
+                .accept("application/problem+json"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("ENCOUNTER_VERSION_CONFLICT"));
+    mockMvc
+        .perform(
+            combatStrike(url, attackId, version, leftEntry, rightEntry, "unarmed")
+                .accept("application/problem+json"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_CONFLICT"));
+    mockMvc
+        .perform(combatAction(url + "/end-turn", encounter).param("actorId", leftEntry.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(goblin);
+    mockMvc
+        .perform(
+            combatStrike(
+                url,
+                commands.newActionId(),
+                combatVersion(encounter),
+                goblin,
+                leftEntry,
+                "step7-test:training-creature-attack-0"))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT count(*) FROM combat_event
+        WHERE audience = 'DM' AND type = 'DiceRolled'
+        AND payload @? '$.roll.terms[*] ? (@.critical_not_applied == true)'
+        """,
+                Integer.class))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT hp_current FROM player_character WHERE id = ?", Integer.class, left))
+        .isEqualTo(8);
+    UUID attackEvent =
+        jdbcTemplate.queryForObject(
+            """
+        SELECT id FROM combat_event WHERE encounter_id = ? AND type = 'AttackResolved' ORDER BY seq DESC LIMIT 1
+        """,
+            UUID.class,
+            encounter);
+    mockMvc
+        .perform(
+            combatAction(url + "/overrides", encounter)
+                .param("kind", "undo-last")
+                .param("entryId", attackEvent.toString())
+                .param("reason", "Corrected target"))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT hp_current FROM player_character WHERE id = ?", Integer.class, left))
+        .isEqualTo(12);
+    mockMvc
+        .perform(get(url + "/log").with(user("combat-dm")).header("HX-Request", "true"))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Undone")));
+    assertThat(encounters.visibleEvents(campaign, encounter, first).getFirst().text())
+        .contains("undid the last attack")
+        .doesNotContain("Corrected target");
+    mockMvc
+        .perform(combatAction(url + "/end-turn", encounter).param("actorId", goblin.toString()))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(
+            combatStrike(
+                url,
+                commands.newActionId(),
+                combatVersion(encounter),
+                rightEntry,
+                goblin,
+                "unarmed"))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT npc_vitals->'health'->>'state' FROM combatant WHERE id = ?",
+                String.class,
+                goblin))
+        .isEqualTo("DEAD");
+    mockMvc
+        .perform(
+            combatAction(url + "/overrides", encounter)
+                .param("kind", "add-condition")
+                .param("combatantId", rightEntry.toString())
+                .param("conditionKey", "srd-5.1:deafened")
+                .param("reason", "Condition remains after the fight"))
+        .andExpect(status().isSeeOther());
+    mockMvc.perform(combatAction(url + "/end", encounter)).andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT state FROM encounter", String.class))
+        .isEqualTo("FINISHED");
+    assertThat(faces).isEmpty();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT count(*) FROM pc_condition WHERE player_character_id = ? AND condition_key = 'srd-5.1:deafened'
+        """,
+                Integer.class,
+                right))
+        .isEqualTo(1);
+    assertThat(encounters.visibleEvents(campaign, encounter, first))
+        .allSatisfy(
+            event ->
+                assertThat(event.text())
+                    .doesNotContain("critical_not_applied", "Training creature", "reason"));
+  }
+
+  @Test
+  void initiativeTiesReinforcementsSurpriseAndDeathSavesRespectTurnOrder() throws Exception {
+    UUID dm = characterAccount("combat-dm", true);
+    UUID first = characterAccount("initiative-first", false);
+    UUID second = characterAccount("initiative-second", false);
+    UUID campaign = campaigns.create(dm, "Initiative table").id();
+    joinFixture(campaign, first, second);
+    String characters = "/campaigns/" + campaign + "/characters";
+    UUID left = createCombatFighter(characters, campaign, first, "initiative-first");
+    UUID right = createCombatFighter(characters, campaign, second, "initiative-second");
+    UUID arrival = createCombatFighter(characters, campaign, first, "initiative-first");
+    play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+    var created =
+        mockMvc
+            .perform(
+                action("/campaigns/" + campaign + "/encounters", "combat-dm", campaign, dm)
+                    .param("name", "Initiative practice"))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    String url = created.getResponse().getRedirectedUrl();
+    UUID encounter = UUID.fromString(url.substring(url.lastIndexOf('/') + 1));
+    for (UUID character : java.util.List.of(left, right)) {
+      mockMvc
+          .perform(
+              combatAction(url + "/combatants", encounter)
+                  .param("characterId", character.toString()))
+          .andExpect(status().isSeeOther());
+    }
+    UUID firstEntry =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE character_id = ?", UUID.class, left);
+    UUID secondEntry =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE character_id = ?", UUID.class, right);
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(9, 9, 16, 19);
+    mockMvc
+        .perform(
+            combatAction(url + "/start", encounter).param("surprisedIds", secondEntry.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT state FROM encounter", String.class))
+        .isEqualTo("INITIATIVE");
+    mockMvc
+        .perform(
+            combatAction(url + "/initiative-ties", encounter)
+                .param("order", firstEntry.toString(), secondEntry.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(firstEntry);
+
+    mockMvc
+        .perform(
+            combatAction(url + "/combatants", encounter)
+                .param("characterId", arrival.toString())
+                .param("fixedInitiative", "14")
+                .param("obscuredFromIds", secondEntry.toString()))
+        .andExpect(status().isSeeOther());
+    UUID lateEntry =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE character_id = ?", UUID.class, arrival);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT tactics->>'firstRound' FROM combatant WHERE id = ?",
+                String.class,
+                lateEntry))
+        .isEqualTo("2");
+    mockMvc
+        .perform(
+            combatCorrection(url, encounter, secondEntry, 0, "players", "Set up a dying combatant"))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(combatAction(url + "/end-turn", encounter).param("actorId", firstEntry.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(secondEntry);
+    mockMvc
+        .perform(
+            combatAction(url + "/death-saves", encounter).param("actorId", secondEntry.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT hp_current FROM player_character WHERE id = ?", Integer.class, right))
+        .isEqualTo(1);
+    mockMvc
+        .perform(
+            combatAction(url + "/dashes", encounter)
+                .param("actorId", secondEntry.toString())
+                .accept("application/problem+json"))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.code").value("NO_ACTIONS_LEFT"));
+    mockMvc
+        .perform(
+            combatAction(url + "/end-turn", encounter).param("actorId", secondEntry.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(lateEntry);
+    assertThat(commands.readClock(campaign, dm).gameSeconds()).isEqualTo(6);
+    UUID lastEvent =
+        jdbcTemplate.queryForObject(
+            """
+        SELECT id FROM combat_event WHERE encounter_id = ? AND audience = 'DM' ORDER BY seq DESC LIMIT 1
+        """,
+            UUID.class,
+            encounter);
+    mockMvc
+        .perform(
+            combatAction(url + "/overrides", encounter)
+                .param("kind", "undo-last")
+                .param("entryId", lastEvent.toString())
+                .param("reason", "Restore the previous turn"))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(secondEntry);
+    assertThat(commands.readClock(campaign, dm).gameSeconds()).isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT tactics->'stealth'->'hiddenFrom' FROM combatant WHERE id = ?",
+                String.class,
+                lateEntry))
+        .contains(secondEntry.toString());
+    org.mockito.Mockito.verify(combatDice, org.mockito.Mockito.times(4)).nextInt(20);
+  }
+
+  @Test
+  void combatConditionsKeepSourcesExpireAndSurviveUndo() throws Exception {
+    var bout = combatFixture(false);
+    forceCombatDice(18, 11, 8, 18, 5);
+    submitBout(bout, "/start");
+    var first = bout.first();
+    var second = bout.second();
+    var poison = "srd-5.1:poisoned";
+
+    mockMvc
+        .perform(
+            conditionCorrection(bout, first, poison, second, "add-condition")
+                .param("durationKind", "until-turn-end")
+                .param("durationCreatureId", first.toString()))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(
+            conditionCorrection(bout, first, poison, first, "add-condition")
+                .param("durationKind", "clock")
+                .param("durationAmount", "12"))
+        .andExpect(status().isSeeOther());
+    assertThat(conditionEffects(bout.left())).contains("UNTIL_TURN_END", "CLOCK");
+
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/overrides", bout.id())
+                .param("kind", "set-exhaustion")
+                .param("combatantId", first.toString())
+                .param("amount", "4")
+                .param("reason", "Apply four levels"))
+        .andExpect(status().isSeeOther());
+    var owner =
+        encounters
+            .view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50)
+            .combatants()
+            .getFirst();
+    assertThat(owner.health().current()).isEqualTo(6);
+    assertThat(owner.health().maximum()).isEqualTo(6);
+    assertThat(owner.speed()).isEqualTo(15);
+
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/saving-throws", bout.id())
+                .param("actorId", first.toString())
+                .param("targetIds", second.toString())
+                .param("ability", "dexterity")
+                .param("dc", "12")
+                .param("cover[" + second + "]", "total")
+                .accept("application/problem+json"))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(jsonPath("$.code").value("TOTAL_COVER"));
+    var coverSaves =
+        result(
+                mockMvc
+                    .perform(
+                        combatAction(bout.url() + "/saving-throws", bout.id())
+                            .header("HX-Request", "true")
+                            .param("actorId", first.toString())
+                            .param("ability", "dexterity")
+                            .param("dc", "12")
+                            .param("targetIds", first.toString(), second.toString())
+                            .param("cover[" + first + "]", "half")
+                            .param("cover[" + second + "]", "three-quarters"))
+                    .andExpect(status().isOk())
+                    .andReturn())
+            .path("outcomes");
+    assertThat(coverSaves.get(0).path("roll").path("naturalD20").asInt()).isEqualTo(8);
+    assertThat(coverSaves.get(0).path("roll").path("total").asInt()).isEqualTo(12);
+    assertThat(coverSaves.get(1).path("roll").path("total").asInt()).isEqualTo(12);
+    assertThat(coverSaves.get(0).path("success").asBoolean()).isTrue();
+    assertThat(coverSaves.get(1).path("success").asBoolean()).isTrue();
+
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", first.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(conditionEffects(bout.left())).contains("CLOCK").doesNotContain("UNTIL_TURN_END");
+    mockMvc
+        .perform(conditionCorrection(bout, first, poison, first, "remove-condition"))
+        .andExpect(status().isSeeOther());
+    assertThat(conditionEffects(bout.left())).isEqualTo("[]");
+
+    mockMvc
+        .perform(
+            conditionCorrection(bout, first, poison, second, "add-condition")
+                .param("durationKind", "rounds")
+                .param("durationAmount", "2"))
+        .andExpect(status().isSeeOther());
+    submitBout(bout, "/end");
+    mockMvc
+        .perform(get(bout.url()).with(user("combat-dm")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Encounter summary")));
+    assertThat(conditionEffects(bout.left())).contains("CLOCK", "\"seconds\": 12");
+    UUID latest =
+        encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50).reversible();
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/overrides", bout.id())
+                .param("kind", "undo-last")
+                .param("entryId", latest.toString())
+                .param("reason", "Reopen the encounter"))
+        .andExpect(status().isSeeOther());
+    assertThat(conditionEffects(bout.left())).contains("ROUNDS", "\"round\": 3");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT acting_id FROM encounter WHERE id = ?", UUID.class, bout.id()))
+        .isEqualTo(second);
+  }
+
+  @Test
+  void stealthTiesSuggestSurpriseAndAnNpcCanUsePlayerDeathSaves() throws Exception {
+    var bout = combatFixture(true);
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/combatants", bout.id())
+                .param("monsterKey", "step7-test:training-creature")
+                .param("deathMode", "player"))
+        .andExpect(status().isSeeOther());
+    UUID monster =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE encounter_id = ? AND monster_key IS NOT NULL",
+            UUID.class,
+            bout.id());
+    var first = bout.first().toString();
+    var second = bout.second().toString();
+    forceCombatDice(11, 18, 7, 12, 7, 14, 20);
+    var hide =
+        result(
+            mockMvc
+                .perform(
+                    combatAction(bout.url() + "/hides", bout.id())
+                        .header("HX-Request", "true")
+                        .param("actorId", first)
+                        .param("obscuredFromIds", second, monster.toString())
+                        .param("opponentIds", second, monster.toString()))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(hide.path("stealth").path("total").asInt()).isEqualTo(13);
+    assertThat(hide.path("stealth").path("ties").get(0).asString()).isEqualTo(second);
+    assertThat(hide.path("suggestedSurprisedIds").get(0).asString()).isEqualTo(monster.toString());
+    var resolved =
+        result(
+            mockMvc
+                .perform(
+                    combatAction(bout.url() + "/stealth-ties", bout.id())
+                        .header("HX-Request", "true")
+                        .param("actorId", first))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(resolved.path("suggestedSurprisedIds").size()).isEqualTo(2);
+
+    mockMvc
+        .perform(combatAction(bout.url() + "/start", bout.id()).param("surprisedIds", second))
+        .andExpect(status().isSeeOther());
+    var current = encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50);
+    assertThat(current.combatants().stream().filter(row -> row.surprised()).map(row -> row.id()))
+        .containsExactly(bout.second());
+    mockMvc
+        .perform(combatCorrection(bout.url(), bout.id(), monster, 3, "quiet", "Set up the blow"))
+        .andExpect(status().isSeeOther());
+    var strike =
+        result(
+            mockMvc
+                .perform(
+                    combatStrike(
+                        bout.url(),
+                        commands.newActionId(),
+                        combatVersion(bout.id()),
+                        bout.first(),
+                        monster,
+                        "unarmed"))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(strike.path("attack").path("roll").path("naturalD20").asInt()).isEqualTo(14);
+    assertThat(strike.path("hitPointsAfter").path("state").asString()).isEqualTo("DYING");
+    mockMvc
+        .perform(combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", first))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/death-saves", bout.id())
+                .param("actorId", monster.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT npc_vitals->'health'->>'current' FROM combatant WHERE id = ?",
+                String.class,
+                monster))
+        .isEqualTo("1");
+  }
+
+  @Test
+  void grappleTiesFailAndAnIncapacitatedTargetRequiresNoDice() throws Exception {
+    var bout = combatFixture(false);
+    forceCombatDice(18, 11, 10, 10);
+    submitBout(bout, "/start");
+    assertThat(grapple(bout).path("success").asBoolean()).isFalse();
+    var last =
+        encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50).reversible();
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/overrides", bout.id())
+                .param("kind", "undo-last")
+                .param("entryId", last.toString())
+                .param("reason", "Restore action"))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(
+            conditionCorrection(
+                bout, bout.second(), "srd-5.1:incapacitated", bout.first(), "add-condition"))
+        .andExpect(status().isSeeOther());
+    assertThat(grapple(bout).path("success").asBoolean()).isTrue();
+    assertThat(
+            encounters
+                .view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50)
+                .combatants()
+                .getLast()
+                .speed())
+        .isZero();
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/grapple-releases", bout.id())
+                .param("actorId", bout.first().toString())
+                .param("targetId", bout.second().toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            encounters
+                .view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50)
+                .combatants()
+                .getLast()
+                .conditions())
+        .containsExactly("srd-5.1:incapacitated");
+    org.mockito.Mockito.verify(combatDice, org.mockito.Mockito.times(4)).nextInt(20);
+  }
+
+  private tools.jackson.databind.JsonNode grapple(CombatFixture bout) throws Exception {
+    return result(
+        mockMvc
+            .perform(
+                combatAction(bout.url() + "/grapples", bout.id())
+                    .header("HX-Request", "true")
+                    .param("actorId", bout.first().toString())
+                    .param("targetId", bout.second().toString()))
+            .andExpect(status().isOk())
+            .andReturn());
+  }
+
+  @Test
+  void searchDiscoversTheHiderAndAThrownInCreatureArrivesProneWithDisadvantage() throws Exception {
+    var bout = combatFixture(true);
+    forceCombatDice(18, 11, 12, 15, 17, 8);
+    submitBout(bout, "/start");
+    String first = bout.first().toString();
+    String second = bout.second().toString();
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/hides", bout.id())
+                .param("actorId", first)
+                .param("obscuredFromIds", second))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", first))
+        .andExpect(status().isSeeOther());
+    var search =
+        result(
+            mockMvc
+                .perform(
+                    combatAction(bout.url() + "/ability-checks", bout.id())
+                        .header("HX-Request", "true")
+                        .param("actorId", second)
+                        .param("subjectIds", second)
+                        .param("searchTargetId", first)
+                        .param("ability", "wisdom")
+                        .param("skillKey", "perception"))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(search.path("outcomes").get(0).path("detected").asBoolean()).isTrue();
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/combatants", bout.id())
+                .param("monsterKey", "step7-test:training-creature")
+                .param("initiativeMode", "disadvantage")
+                .param("conditionKey", "srd-5.1:prone"))
+        .andExpect(status().isSeeOther());
+    var added =
+        encounters
+            .view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50)
+            .combatants()
+            .getLast();
+    assertThat(added.initiative()).isEqualTo(8);
+    assertThat(added.conditions()).contains("srd-5.1:prone");
+    mockMvc
+        .perform(combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", second))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/stands", bout.id()).param("actorId", added.id().toString()))
+        .andExpect(status().isSeeOther());
+    var after = encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50);
+    assertThat(after.table().budget().movementRemaining(30)).isEqualTo(15);
+    assertThat(after.combatants().getLast().conditions()).isEmpty();
+  }
+
+  @Test
+  void simultaneousCombatSubmissionsCommitOnlyOnceOnPostgres() throws Exception {
+    var bout = combatFixture(false);
+    forceCombatDice(18, 11);
+    submitBout(bout, "/start");
+    long original = combatVersion(bout.id());
+    var actor = bout.first().toString();
+    UUID replayId = commands.newActionId();
+    var repeat =
+        combatRace(
+            concurrentCombatPost(bout, "/dashes", replayId, original, actor),
+            concurrentCombatPost(bout, "/dashes", replayId, original, actor));
+    assertThat(repeat.stream().map(response -> response.getResponse().getStatus()))
+        .containsExactly(200, 200);
+    assertThat(repeat.stream().map(response -> response.getModelAndView().getModel().get("replay")))
+        .containsExactlyInAnyOrder(true, false);
+    assertThat(result(repeat.getFirst())).isEqualTo(result(repeat.getLast()));
+    assertThat(combatVersion(bout.id())).isEqualTo(original + 1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM combat_event WHERE encounter_id = ? AND action_id = ?",
+                Integer.class,
+                bout.id(),
+                replayId))
+        .isEqualTo(1);
+
+    long contested = combatVersion(bout.id());
+    var race =
+        combatRace(
+            concurrentCombatPost(bout, "/drops-prone", commands.newActionId(), contested, actor),
+            concurrentCombatPost(bout, "/end-turn", commands.newActionId(), contested, actor));
+    assertThat(race.stream().map(response -> response.getResponse().getStatus()))
+        .containsExactlyInAnyOrder(200, 409);
+    var rejected =
+        race.stream()
+            .filter(response -> response.getResponse().getStatus() == 409)
+            .findFirst()
+            .orElseThrow();
+    assertThat(rejected.getResponse().getContentAsString()).contains("ENCOUNTER_VERSION_CONFLICT");
+    assertThat(combatVersion(bout.id())).isEqualTo(contested + 1);
+  }
+
+  private java.util.List<MvcResult> combatRace(
+      MockHttpServletRequestBuilder first, MockHttpServletRequestBuilder second) throws Exception {
+    var barrier = new java.util.concurrent.CyclicBarrier(2);
+    var timeout = java.util.concurrent.TimeUnit.SECONDS;
+    try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var a =
+          pool.submit(
+              () -> {
+                barrier.await(10, timeout);
+                return mockMvc.perform(first).andReturn();
+              });
+      var b =
+          pool.submit(
+              () -> {
+                barrier.await(10, timeout);
+                return mockMvc.perform(second).andReturn();
+              });
+      return java.util.List.of(a.get(20, timeout), b.get(20, timeout));
+    }
+  }
+
+  private MockHttpServletRequestBuilder concurrentCombatPost(
+      CombatFixture bout, String route, UUID action, long version, String actor) {
+    return post(bout.url() + route)
+        .with(user("combat-dm"))
+        .with(csrf())
+        .header("HX-Request", "true")
+        .accept("application/problem+json")
+        .param("actionId", action.toString())
+        .param("expectedVersion", Long.toString(version))
+        .param("actorId", actor);
+  }
+
+  private static tools.jackson.databind.JsonNode result(MvcResult request) {
+    return (tools.jackson.databind.JsonNode) request.getModelAndView().getModel().get("result");
+  }
+
+  private void forceCombatDice(Integer... values) {
+    var faces = new java.util.ArrayDeque<>(java.util.List.of(values));
+    org.mockito.Mockito.when(combatDice.nextInt(org.mockito.ArgumentMatchers.anyInt()))
+        .thenAnswer(
+            call -> {
+              int face = faces.removeFirst();
+              assertThat(face).isBetween(1, call.getArgument(0, Integer.class));
+              return face - 1;
+            });
+  }
+
+  private MockHttpServletRequestBuilder conditionCorrection(
+      CombatFixture bout, UUID target, String condition, UUID source, String kind) {
+    return combatAction(bout.url() + "/overrides", bout.id())
+        .param("kind", kind)
+        .param("combatantId", target.toString())
+        .param("conditionKey", condition)
+        .param("sourceId", source.toString())
+        .param("reason", "Apply the test condition");
+  }
+
+  private String conditionEffects(UUID character) {
+    return jdbcTemplate.queryForObject(
+        "SELECT condition_effects::text FROM player_character WHERE id = ?",
+        String.class,
+        character);
+  }
+
+  private void submitBout(CombatFixture bout, String route) throws Exception {
+    mockMvc.perform(combatAction(bout.url() + route, bout.id())).andExpect(status().isSeeOther());
+  }
+
+  private CombatFixture combatFixture(boolean monsterPack) throws Exception {
+    UUID dm = characterAccount("combat-dm", true);
+    UUID p1 = characterAccount("combat-one", false);
+    UUID p2 = characterAccount("combat-two", false);
+    UUID campaign = campaigns.create(dm, "Combat acceptance table").id();
+    joinFixture(campaign, p1, p2);
+    String base = "/campaigns/" + campaign;
+    UUID left = createCombatFighter(base + "/characters", campaign, p1, "combat-one");
+    UUID right = createCombatFighter(base + "/characters", campaign, p2, "combat-two");
+    if (monsterPack) {
+      var pack =
+          packLoader.loadFolder(
+              java.nio.file.Path.of("src/test/resources/content-fixtures/step7-combat"),
+              java.util.List.of());
+      contentPacks.seed(pack);
+      jdbcTemplate.update(
+          """
+          INSERT INTO campaign_pack(campaign_id, pack_id, pack_key, position)
+          SELECT ?, id, pack_key, 1 FROM content_pack WHERE hash = ?
+          """,
+          campaign,
+          pack.hash());
+    }
+    play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+    String url =
+        mockMvc
+            .perform(
+                action(base + "/encounters", "combat-dm", campaign, dm)
+                    .param("name", "Acceptance combat"))
+            .andExpect(status().isSeeOther())
+            .andReturn()
+            .getResponse()
+            .getRedirectedUrl();
+    UUID id = UUID.fromString(url.substring(url.lastIndexOf('/') + 1));
+    for (UUID character : java.util.List.of(left, right)) {
+      mockMvc
+          .perform(combatAction(url + "/combatants", id).param("characterId", character.toString()))
+          .andExpect(status().isSeeOther());
+    }
+    String entry = "SELECT id FROM combatant WHERE encounter_id = ? AND character_id = ?";
+    return new CombatFixture(
+        dm,
+        campaign,
+        url,
+        id,
+        left,
+        jdbcTemplate.queryForObject(entry, UUID.class, id, left),
+        jdbcTemplate.queryForObject(entry, UUID.class, id, right));
+  }
+
+  private record CombatFixture(
+      UUID dm, UUID campaign, String url, UUID id, UUID left, UUID first, UUID second) {}
+
+  private UUID createCombatFighter(String url, UUID campaign, UUID owner, String username)
+      throws Exception {
+    var response =
+        mockMvc
+            .perform(
+                fighterForm(url, username, "review")
+                    .param("actionId", commands.newActionId().toString())
+                    .param(
+                        "expectedVersion",
+                        String.valueOf(commands.readClock(campaign, owner).version())))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    String redirect = response.getResponse().getRedirectedUrl();
+    return UUID.fromString(redirect.substring(redirect.lastIndexOf('/') + 1));
+  }
+
+  private com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelope
+      combatCampaignEnvelope(UUID campaign, UUID dm) {
+    return new com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelope(
+        commands.newActionId(), commands.readClock(campaign, dm).version());
+  }
+
+  private long combatVersion(UUID encounter) {
+    return jdbcTemplate.queryForObject(
+        "SELECT version FROM encounter WHERE id = ?", Long.class, encounter);
+  }
+
+  private MockHttpServletRequestBuilder combatAction(String url, UUID encounter) {
+    return post(url)
+        .with(user("combat-dm"))
+        .with(csrf())
+        .param("actionId", commands.newActionId().toString())
+        .param("expectedVersion", String.valueOf(combatVersion(encounter)));
+  }
+
+  private MockHttpServletRequestBuilder combatCorrection(
+      String url, UUID encounter, UUID target, int amount, String visibility, String reason) {
+    return combatAction(url + "/overrides", encounter)
+        .param("kind", "set-hit-points")
+        .param("combatantId", target.toString())
+        .param("amount", String.valueOf(amount))
+        .param("reason", reason)
+        .param("visibility", visibility)
+        .accept("application/problem+json");
+  }
+
+  private MockHttpServletRequestBuilder combatStrike(
+      String url, UUID id, long version, UUID actor, UUID target, String attack) {
+    return post(url + "/attacks")
+        .with(user("combat-dm"))
+        .with(csrf())
+        .header("HX-Request", "true")
+        .param("actionId", id.toString())
+        .param("expectedVersion", String.valueOf(version))
+        .param("actorId", actor.toString())
+        .param("targetId", target.toString())
+        .param("attackKey", attack);
   }
 
   private MockHttpServletRequestBuilder fighterForm(String url, String name, String step) {

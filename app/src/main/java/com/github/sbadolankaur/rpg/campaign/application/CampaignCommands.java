@@ -137,7 +137,8 @@ public class CampaignCommands {
     CHARACTER_EDIT,
     CHARACTER_LEVEL_GRANT,
     CHARACTER_LEVEL_UP,
-    PACK_UPGRADE
+    PACK_UPGRADE,
+    ENCOUNTER_CREATE
   }
 
   public enum Audience {

@@ -5,6 +5,9 @@ import com.github.sbadolankaur.rpg.character.application.CharacterCatalog.Data;
 import com.github.sbadolankaur.rpg.character.persistence.CharacterStore.State;
 import com.github.sbadolankaur.rpg.engine.character.CharacterRules;
 import com.github.sbadolankaur.rpg.engine.character.CharacterRules.AttackLine;
+import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
+import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
+import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AbilityScores;
 import com.github.sbadolankaur.rpg.engine.kernel.ProficiencyBonus;
@@ -236,7 +239,29 @@ public final class CharacterSheets {
                 })
             .toList();
     var conditions =
-        state.conditions().stream().map(key -> catalog.choice("condition", key)).toList();
+        java.util.stream.Stream.concat(
+                state.conditions().stream(),
+                state.combat().effects().stream()
+                    .filter(
+                        effect ->
+                            !effect
+                                .end()
+                                .expired(
+                                    state.combat().gameSeconds(),
+                                    0,
+                                    null,
+                                    ConditionInstance.Boundary.CLOCK))
+                    .map(ConditionInstance::key))
+            .distinct()
+            .map(
+                key ->
+                    catalog
+                        .optional("condition", key)
+                        .map(data -> new Choice(key, data.text("name")))
+                        .orElseGet(
+                            () -> new Choice(key, CombatConditions.names().getOrDefault(key, key))))
+            .toList();
+    int baseMaximum = CharacterRules.maximumHp(scores, state.rawHealth());
     return new View(
         header.id(),
         header.name(),
@@ -247,11 +272,16 @@ public final class CharacterSheets {
         level,
         proficiency,
         header.hp(),
-        CharacterRules.maximumHp(scores, state.rawHealth()),
+        Exhaustion.maximumHp(baseMaximum, state.combat().exhaustion()),
+        baseMaximum,
         header.temporaryHp(),
         armorClass,
         scores.modifier(Ability.DEX),
+        CombatConditions.speed(
+            Exhaustion.speed(speed, state.combat().exhaustion()),
+            conditions.stream().map(Choice::key).collect(java.util.stream.Collectors.toSet())),
         speed,
+        state.combat().exhaustion(),
         attacks,
         header.copper(),
         header.xp(),
@@ -264,6 +294,7 @@ public final class CharacterSheets {
         hitDice,
         resources,
         conditions,
+        state.conditions(),
         state.grantedClass(),
         dm);
   }
@@ -306,10 +337,13 @@ public final class CharacterSheets {
       int proficiency,
       int currentHp,
       int maximumHp,
+      int baseMaximumHp,
       int temporaryHp,
       int armorClass,
       int initiative,
       int speed,
+      int baseSpeed,
+      int exhaustion,
       int attacksPerAction,
       long copper,
       long xp,
@@ -322,6 +356,7 @@ public final class CharacterSheets {
       List<HitDice> hitDice,
       List<ResourceLine> resources,
       List<Choice> conditions,
+      List<String> baseConditionKeys,
       String grantedClass,
       boolean dm) {}
 }

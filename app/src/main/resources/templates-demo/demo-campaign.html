@@ -54,6 +54,7 @@
     </section>
     <nav><a th:href="@{/campaigns/{id}/characters(id=${campaign.id})}">Characters</a></nav>
     <nav th:if="${isDm}">
+        <a th:href="@{/campaigns/{id}/encounters(id=${campaign.id})}">Encounters</a>
         <a th:href="@{/campaigns/{id}/packs(id=${campaign.id})}">Content packs</a>
         <a th:href="@{/campaigns/{id}/players(id=${campaign.id})}">Players and invites</a>
         <a th:href="@{/campaigns/{id}/scenes(id=${campaign.id})}">Scenes</a>

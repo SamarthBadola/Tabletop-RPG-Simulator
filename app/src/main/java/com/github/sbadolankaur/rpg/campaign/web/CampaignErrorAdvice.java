@@ -13,7 +13,8 @@ import org.springframework.web.servlet.ModelAndView;
 @ControllerAdvice(
     basePackages = {
       "com.github.sbadolankaur.rpg.campaign.web",
-      "com.github.sbadolankaur.rpg.character.web"
+      "com.github.sbadolankaur.rpg.character.web",
+      "com.github.sbadolankaur.rpg.encounter.web"
     })
 class CampaignErrorAdvice {
   @ExceptionHandler(exception = CampaignException.class, produces = "text/html")
@@ -49,10 +50,21 @@ class CampaignErrorAdvice {
           case IDEMPOTENCY_KEY_CONFLICT,
               CAMPAIGN_VERSION_CONFLICT,
               SESSION_NOT_ACTIVE,
-              PACK_REVIEW_STALE ->
+              PACK_REVIEW_STALE,
+              ENCOUNTER_ACTIVE,
+              ENCOUNTER_STARTED,
+              ENCOUNTER_VERSION_CONFLICT,
+              SETTING_DECISION_REQUIRED ->
               HttpStatus.CONFLICT;
           case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
-          case SETTING_INVALID, PACK_NOT_ENABLED, CONTENT_INVALID ->
+          case SETTING_INVALID,
+              PACK_NOT_ENABLED,
+              CONTENT_INVALID,
+              NOT_YOUR_TURN,
+              NO_ACTIONS_LEFT,
+              TARGET_OUT_OF_RANGE,
+              TOTAL_COVER,
+              INVALID_TARGET ->
               HttpStatus.UNPROCESSABLE_CONTENT;
         };
     String detail =
@@ -70,11 +82,21 @@ class CampaignErrorAdvice {
           case PACK_NOT_ENABLED -> "Ask the DM to enable the content pack for this campaign.";
           case PACK_REVIEW_STALE -> "Review the current pack changes again.";
           case CONTENT_INVALID -> "Resolve the issues shown in the content pack review.";
+          case ENCOUNTER_VERSION_CONFLICT -> "This changed while you were looking at it.";
+          case ENCOUNTER_ACTIVE -> "End the active encounter before doing this.";
+          case ENCOUNTER_STARTED -> "This encounter has already started.";
+          case NOT_YOUR_TURN -> "Choose the creature whose turn it is.";
+          case NO_ACTIONS_LEFT -> "This creature has no action left for that.";
+          case TARGET_OUT_OF_RANGE -> "This target is out of range.";
+          case TOTAL_COVER -> "This target is behind total cover.";
+          case INVALID_TARGET -> "Choose an eligible target.";
+          case SETTING_DECISION_REQUIRED -> "Set the campaign rules for this action first.";
         };
     var problem = ProblemDetail.forStatusAndDetail(status, detail);
     problem.setType(URI.create("urn:trpg:error:" + failure.code().name()));
     problem.setProperty("code", failure.code().name());
     if (!failure.fields().isEmpty()) problem.setProperty("errors", failure.fields());
+    if (!failure.details().isEmpty()) problem.setProperty("details", failure.details());
     return problem;
   }
 }

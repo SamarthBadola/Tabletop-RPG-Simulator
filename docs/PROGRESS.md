@@ -88,6 +88,16 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 - Build the six-step creation and four-step level-up flows with Fighter levels 1 through 5, Fighting Style and Champion choices, and a sheet derived from character inputs and pinned content.
 - Keep the SRD 5.1 seed at 0.2.0 for new campaigns. Existing campaigns retain their installed version until the DM confirms a reviewed upgrade.
 - Keep combat and Two-Weapon Fighting damage resolution in Step 7.
+- [x] Owner reviewed and merged [PR #34](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/pull/34).
+
+### Step 7 — combat core
+
+- Add the DM encounter builder, initiative and reinforcements, turn actions, attacks, cover, health and death saves.
+- Persist encounter commands, original dice and audience-filtered events in one transaction. Undo restores the latest command's previous state while keeping its original dice and audit entries. The encounter ends with a DM recap of rounds, creatures that fell and resources spent.
+- Track each condition source and absolute expiry, apply cumulative exhaustion, and let the DM choose each NPC's death mode. Compare Stealth with each observer's passive Perception, let the DM settle ties, and use the result to suggest surprise.
+- The demo accepts manual cover per target on Dexterity saves through optional `cover[<combatant UUID>]` fields (RS-COV-002). The approved UX/API specification does not yet name a field for save cover. The demo also supplies visibility context for Hide and source and duration fields for condition corrections.
+- Resolve off-hand damage using the chosen Fighting Style. Under D-16, persist the term mark with the dice and warn after the transaction commits.
+- PostgreSQL acceptance tests cover the scripted fight, replay and audience filtering, simultaneous submissions, timed conditions and undo, and worked encounter examples. Reaction resolution follows in Step 8, rest events in Step 9, the full NPC roster in Step 12, and grid movement in Step 14.
 - [ ] Owner review and merge.
 
 **Implementation checkpoint note.** This progress section records status as of 2026-11-14. Since then, the approved specifications for later steps were added; follow the current AI Build Brief for the implementation sequence and stop points. This documentation sync does not verify later implementation work. Do not invent D&D rules from memory.
