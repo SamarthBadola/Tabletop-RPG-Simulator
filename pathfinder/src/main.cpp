@@ -137,7 +137,8 @@ thread_local bool shedding = false;
 // httplib hands every accepted connection to a "task queue". This one is our bounded WorkQueue.
 class BoundedTaskQueue final : public httplib::TaskQueue {
 public:
-    BoundedTaskQueue(std::size_t workers, std::size_t max_waiting) : queue_(workers, max_waiting) {}
+    BoundedTaskQueue(std::size_t workers, std::size_t max_waiting)
+        : queue_(workers, max_waiting, workers) {}
 
     bool enqueue(std::function<void()> fn) override {
         return queue_.submit([fn = std::move(fn)](bool shed) {
@@ -146,6 +147,31 @@ public:
             shedding = false;
         });
     }
+    bool on_rejected_connection(socket_t socket) override {
+        // The rejection worker is also busy. Reply without reading the request on the listener.
+        const pf::HttpResponse answer = pf::busy_response({});
+        std::string wire = "HTTP/1.1 503 Service Unavailable\r\nContent-Type: " + answer.content_type
+                           + "\r\nContent-Length: " + std::to_string(answer.body.size()) + "\r\n";
+        for (const auto& [key, value] : answer.headers) wire += key + ": " + value + "\r\n";
+        wire += "\r\n" + answer.body;
+
+        httplib::detail::set_nonblocking(socket, true);
+#ifdef MSG_NOSIGNAL
+        constexpr int flags = CPPHTTPLIB_SEND_FLAGS | MSG_NOSIGNAL;
+#else
+        constexpr int flags = CPPHTTPLIB_SEND_FLAGS;
+#endif
+        std::size_t sent = 0;
+        while (sent < wire.size()) {
+            const auto written =
+                httplib::detail::send_socket(socket, wire.data() + sent, wire.size() - sent, flags);
+            if (written <= 0) return false;
+            sent += static_cast<std::size_t>(written);
+        }
+        write_log(pf::log_line(answer, 0.0, timestamp_now()));
+        return true;
+    }
+
     void shutdown() override { queue_.shutdown(); }
 
 private:

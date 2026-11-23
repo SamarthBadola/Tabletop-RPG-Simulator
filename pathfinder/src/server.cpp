@@ -217,7 +217,8 @@ HttpResponse error_response(const HttpRequest& request, const ApiError& error) {
 HttpResponse busy_response(const HttpRequest& request) {
     HttpResponse response;
     fail(response, ApiError{503, "BUSY", "the service is busy, try again shortly", ""});
-    response.headers["Retry-After"] = "1";
+    response.headers.emplace("Retry-After", "1");
+    response.headers.emplace("Connection", "close");
     response.trace_id = trace_id_for(request);
     response.headers["X-Request-Id"] = response.trace_id;
     return response;

@@ -310,6 +310,7 @@ static void test_busy_response() {
     const HttpResponse response = busy_response(request);
     CHECK(is_problem(response, 503, "BUSY"));
     CHECK(header(response, "Retry-After") == "1");
+    CHECK(header(response, "Connection") == "close");
     CHECK(header(response, "X-Request-Id") == "abc-123");
     CHECK(response.trace_id == "abc-123");
     CHECK(response.route == "unmatched");

@@ -34,6 +34,10 @@ def server(binary, **settings):
                 logs.seek(0)
                 raise RuntimeError(f"Pathfinder did not start: {logs.read().decode(errors='replace')}")
             yield port
+        except Exception:
+            logs.seek(0)
+            print(logs.read().decode(errors="replace"), file=sys.stderr)
+            raise
         finally:
             if process.poll() is None:
                 process.terminate()
@@ -48,8 +52,8 @@ def get_health(port, headers=None):
     return request_json(port, "GET", "/healthz", headers=headers)
 
 
-def request_json(port, method, path, body=None, headers=None):
-    connection = HTTPConnection("127.0.0.1", port, timeout=2)
+def request_json(port, method, path, body=None, headers=None, timeout=2):
+    connection = HTTPConnection("127.0.0.1", port, timeout=timeout)
     try:
         connection.request(method, path, body, headers or {})
         response = connection.getresponse()
@@ -77,6 +81,44 @@ class HttpContract(unittest.TestCase):
                     else:
                         for key, value in expected["body"].items():
                             self.assertEqual(body[key], value)
+
+    def test_busy_is_returned_when_the_worker_and_overflow_lane_are_full(self):
+        with server(BINARY, WORKERS="1", MAX_QUEUE="0") as port:
+            worker = HTTPConnection("127.0.0.1", port, timeout=2)
+            try:
+                # Keep the normal worker assigned to this connection.
+                worker.request("GET", "/healthz")
+                response = worker.getresponse()
+                self.assertEqual(response.status, 200)
+                response.read()
+
+                status, headers, body = get_health(port)
+                self.assertEqual((status, headers["Retry-After"], body["code"]), (503, "1", "BUSY"))
+
+                # Expect: 100-continue confirms that the rejection worker has taken this request.
+                with socket.create_connection(("127.0.0.1", port), timeout=2) as rejection:
+                    rejection.sendall(
+                        b"POST /v1/path HTTP/1.1\r\nHost: localhost\r\n"
+                        b"Content-Type: application/json\r\nContent-Length: 2\r\n"
+                        b"Expect: 100-continue\r\nConnection: close\r\n\r\n"
+                    )
+                    with rejection.makefile("rb") as stream:
+                        self.assertEqual(stream.readline(), b"HTTP/1.1 100 Continue\r\n")
+                        self.assertEqual(stream.readline(), b"\r\n")
+                        with socket.create_connection(("127.0.0.1", port), timeout=2):
+                            self.assert_busy(*request_json(port, "GET", "/healthz", timeout=1))
+                        rejection.sendall(b"{}")
+                self.assertEqual(headers["Connection"], "close")
+            finally:
+                worker.close()
+
+    def assert_busy(self, status, headers, body):
+        self.assertEqual(status, 503)
+        self.assertEqual(headers["Retry-After"], "1")
+        self.assertEqual(headers["Connection"], "close")
+        self.assertEqual(headers.get_content_type(), "application/problem+json")
+        self.assertEqual(body["code"], "BUSY")
+        self.assertTrue(headers["X-Request-Id"])
 
     def test_header_block_limit_counts_all_header_lines(self):
         with server(BINARY) as port:

@@ -17,7 +17,7 @@ namespace pf {
 //
 // When the line is full a job is not dropped silently: it is handed to one extra "shed" thread
 // with shed = true, so the caller can answer 503 BUSY quickly. Only when that side line is full
-// too does submit() return false and the caller has to close the connection.
+// too does submit() return false so the caller can reject the connection without queuing it.
 class WorkQueue {
 public:
     using Job = std::function<void(bool shed)>;
