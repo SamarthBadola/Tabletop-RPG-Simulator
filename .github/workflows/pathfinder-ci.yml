@@ -61,3 +61,7 @@ jobs:
 
       - name: Run C++ tests
         run: ctest --test-dir build --output-on-failure
+
+      - name: Check the running HTTP service
+        if: matrix.name == 'release'
+        run: python3 test/test_http.py build/pathfinder_server
