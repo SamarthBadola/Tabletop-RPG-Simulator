@@ -14,7 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Repository
 public class ReactionStore {
   private static final String COLUMNS =
-      "id, campaign_id, encounter_id, opened_by_action_id, offers, continuation, version, created_at";
+      "id, campaign_id, encounter_id, opened_by_action_id, offers, continuation, version, created_at, scene_id";
   private final JdbcClient jdbc;
   private final JsonMapper json;
 
@@ -43,6 +43,32 @@ public class ReactionStore {
         .optional();
   }
 
+  public Optional<Window> forScene(UUID campaign, UUID scene) {
+    return jdbc.sql(
+            "SELECT " + COLUMNS + " FROM pending_reaction WHERE campaign_id = ? AND scene_id = ?")
+        .params(campaign, scene)
+        .query(this::window)
+        .optional();
+  }
+
+  public Optional<Window> findSceneWindow(UUID campaign, UUID id) {
+    return jdbc.sql(
+            "SELECT "
+                + COLUMNS
+                + " FROM pending_reaction WHERE campaign_id = ? AND id = ? AND scene_id IS NOT NULL")
+        .params(campaign, id)
+        .query(this::window)
+        .optional();
+  }
+
+  public boolean campaignHasSceneWindow(UUID campaign) {
+    return jdbc.sql(
+            "SELECT EXISTS (SELECT 1 FROM pending_reaction WHERE campaign_id = ? AND scene_id IS NOT NULL)")
+        .param(campaign)
+        .query(Boolean.class)
+        .single();
+  }
+
   public boolean campaignHasWindow(UUID campaign) {
     return jdbc.sql("SELECT EXISTS (SELECT 1 FROM pending_reaction WHERE campaign_id = ?)")
         .param(campaign)
@@ -54,11 +80,15 @@ public class ReactionStore {
     return jdbc.sql(
             """
         SELECT EXISTS (
-          SELECT 1 FROM pending_reaction r JOIN combatant c ON c.encounter_id = r.encounter_id
-          WHERE r.campaign_id = ? AND c.character_id = ?
+          SELECT 1 FROM pending_reaction r
+          WHERE r.campaign_id = ? AND (
+            (r.encounter_id IS NOT NULL AND EXISTS (
+               SELECT 1 FROM combatant c WHERE c.encounter_id = r.encounter_id AND c.character_id = ?
+            )) OR (r.scene_id IS NOT NULL AND jsonb_exists(r.continuation->'subjectIds', ?))
+          )
         )
         """)
-        .params(campaign, character)
+        .params(campaign, character, character.toString())
         .query(Boolean.class)
         .single();
   }
@@ -67,14 +97,15 @@ public class ReactionStore {
     jdbc.sql(
             """
         INSERT INTO pending_reaction
-          (id, campaign_id, encounter_id, opened_by_action_id, point, depth, offers,
+          (id, campaign_id, encounter_id, scene_id, opened_by_action_id, point, depth, offers,
            continuation, version, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, CAST(? AS jsonb), CAST(? AS jsonb), ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), CAST(? AS jsonb), ?, ?)
         """)
         .params(
             window.id(),
             window.campaign(),
             window.encounter(),
+            window.scene(),
             window.openedBy(),
             window.prompt().point().name(),
             window.prompt().frames().size(),
@@ -125,7 +156,8 @@ public class ReactionStore {
         json.readValue(row.getString(5), Prompt.class),
         json.readTree(row.getString(6)),
         row.getLong(7),
-        row.getObject(8, OffsetDateTime.class));
+        row.getObject(8, OffsetDateTime.class),
+        row.getObject(9, UUID.class));
   }
 
   public record Window(
@@ -136,5 +168,18 @@ public class ReactionStore {
       Prompt prompt,
       JsonNode continuation,
       long version,
-      OffsetDateTime createdAt) {}
+      OffsetDateTime createdAt,
+      UUID scene) {
+    public Window(
+        UUID id,
+        UUID campaign,
+        UUID encounter,
+        UUID openedBy,
+        Prompt prompt,
+        JsonNode continuation,
+        long version,
+        OffsetDateTime createdAt) {
+      this(id, campaign, encounter, openedBy, prompt, continuation, version, createdAt, null);
+    }
+  }
 }

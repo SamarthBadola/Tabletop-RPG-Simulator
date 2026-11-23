@@ -3,6 +3,7 @@ package com.github.sbadolankaur.rpg.engine.reaction;
 import com.github.sbadolankaur.rpg.engine.dice.RandomSource;
 import com.github.sbadolankaur.rpg.engine.dice.ReplayingRandomSource;
 import com.github.sbadolankaur.rpg.engine.dice.ReplayingRandomSource.Draw;
+import com.github.sbadolankaur.rpg.engine.dice.RollResult;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -178,7 +179,16 @@ public final class ReactionReplay {
     }
   }
 
-  public record Disclosure(Integer natural, Integer total, Boolean success) {}
+  public record Disclosure(Integer natural, Integer total, Boolean success) {
+    public static Disclosure forRoll(String mode, RollResult roll, Boolean success) {
+      return switch (mode) {
+        case "TOTAL_SHOWN" -> new Disclosure(null, roll.total(), null);
+        case "NATURAL_DIE_ONLY" -> new Disclosure(roll.naturalD20(), null, null);
+        case "OUTCOME_SHOWN" -> new Disclosure(roll.naturalD20(), roll.total(), success);
+        default -> throw new IllegalArgumentException("Unknown roll disclosure mode");
+      };
+    }
+  }
 
   public record Prompt(
       int sequence,

@@ -89,11 +89,13 @@ public class CampaignCommands {
       }
       return new Reply(clock.version(), json.readTree(action.result()), true);
     }
+    if (kind == Kind.CLOCK_ADVANCE && reactions.campaignHasWindow(campaign)
+        || (kind == Kind.SCENE_ACTIVATE || kind == Kind.SESSION_END)
+            && reactions.campaignHasSceneWindow(campaign)) {
+      throw new CampaignException(CampaignException.Code.REACTION_PENDING);
+    }
     if (clock.version() != envelope.expectedVersion()) {
       throw new CampaignException(CampaignException.Code.CAMPAIGN_VERSION_CONFLICT);
-    }
-    if (kind == Kind.CLOCK_ADVANCE && reactions.campaignHasWindow(campaign)) {
-      throw new CampaignException(CampaignException.Code.REACTION_PENDING);
     }
     Change change = mutation.apply(clock);
     long next = Math.incrementExact(clock.version());
@@ -139,6 +141,8 @@ public class CampaignCommands {
     SCENE_CREATE,
     SCENE_EDIT,
     SCENE_ACTIVATE,
+    SCENE_TEST,
+    SCENE_REACTION,
     SETTING_DECIDE,
     SETTING_RESET,
     SETTING_MODE,

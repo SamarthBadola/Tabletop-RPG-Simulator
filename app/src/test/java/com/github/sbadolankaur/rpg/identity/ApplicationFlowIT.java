@@ -1048,6 +1048,82 @@ class ApplicationFlowIT {
   }
 
   @Test
+  void sceneCheckReplaysAnInspirationDieAndFreezesTheSceneAndSubject() throws Exception {
+    var bout = combatFixture(false);
+    var scene =
+        play.saveScene(
+            bout.campaign(),
+            bout.dm(),
+            combatCampaignEnvelope(bout.campaign(), bout.dm()),
+            null,
+            new com.github.sbadolankaur.rpg.campaign.application.CampaignPlay.SceneInput(
+                "Investigation",
+                null,
+                com.github.sbadolankaur.rpg.campaign.persistence.PlayStore.Light.BRIGHT));
+    String sceneId = scene.data().path("sceneId").asString();
+    String base = "/campaigns/" + bout.campaign();
+    String scenePath = base + "/scenes/" + sceneId;
+    jdbcTemplate.update(
+        """
+        UPDATE player_character SET bardic_inspiration = '{"dieFaces":6,"endsAt":600}'::jsonb WHERE id = ?
+        """,
+        bout.left());
+    forceCombatDice(8, 6);
+    var opening =
+        action(scenePath + "/ability-checks", "combat-dm", bout.campaign(), bout.dm())
+            .header("HX-Request", "true")
+            .param("ability", "str")
+            .param("dc", "15")
+            .param("subjectIds", bout.left().toString());
+    var waiting = result(mockMvc.perform(opening).andExpect(status().isOk()).andReturn());
+    assertThat(waiting.path("reaction").path("prompt").path("point").asString())
+        .isEqualTo("AFTER_CHECK_ROLL");
+    mockMvc
+        .perform(get(scenePath + "/reaction").with(user("combat-dm")).header("HX-Request", "true"))
+        .andExpect(status().isOk())
+        .andExpect(
+            content().string(org.hamcrest.Matchers.containsString("Use Bardic Inspiration")));
+    mockMvc
+        .perform(
+            action(scenePath + "/edits", "combat-dm", bout.campaign(), bout.dm())
+                .accept("application/problem+json")
+                .param("name", "Frozen")
+                .param("light", "BRIGHT"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
+    mockMvc
+        .perform(
+            action(
+                    base + "/characters/" + bout.left() + "/edits",
+                    "combat-dm",
+                    bout.campaign(),
+                    bout.dm())
+                .accept("application/problem+json")
+                .param("section", "details")
+                .param("name", "Frozen"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
+    String answer = base + "/reactions/" + waiting.path("awaitingReaction").asString() + "/answers";
+    var choice =
+        action(answer, "combat-dm", bout.campaign(), bout.dm())
+            .header("HX-Request", "true")
+            .param("deciderId", bout.left().toString())
+            .param("choice", "use")
+            .param("optionKey", "bardic-inspiration");
+    var completed = result(mockMvc.perform(choice).andExpect(status().isOk()).andReturn());
+    assertThat(completed.path("outcomes").get(0).path("roll").path("naturalD20").asInt())
+        .isEqualTo(8);
+    assertThat(completed.path("outcomes").get(0).path("success").asBoolean()).isTrue();
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pending_reaction", Long.class))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM player_character WHERE bardic_inspiration IS NOT NULL",
+                Long.class))
+        .isZero();
+  }
+
+  @Test
   void opportunityAttackStopsMovementWhenItDropsTheMover() throws Exception {
     var bout = combatFixture(false);
     jdbcTemplate.update("UPDATE player_character SET hp_current = 1 WHERE id = ?", bout.left());

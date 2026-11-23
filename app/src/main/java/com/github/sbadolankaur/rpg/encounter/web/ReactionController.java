@@ -5,6 +5,7 @@ import com.github.sbadolankaur.rpg.campaign.web.CampaignWeb;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.AnswerKind;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.ReactionAnswer;
+import com.github.sbadolankaur.rpg.encounter.application.SceneRolls;
 import com.github.sbadolankaur.rpg.encounter.web.EncounterController.Fields;
 import com.github.sbadolankaur.rpg.identity.application.AccountDirectory;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,12 +25,20 @@ class ReactionController {
   private final EncounterCommands commands;
   private final EncounterController encounters;
   private final AccountDirectory accounts;
+  private final SceneRolls scenes;
+  private final SceneRollController sceneController;
 
   ReactionController(
-      EncounterCommands commands, EncounterController encounters, AccountDirectory accounts) {
+      EncounterCommands commands,
+      EncounterController encounters,
+      AccountDirectory accounts,
+      SceneRolls scenes,
+      SceneRollController sceneController) {
     this.commands = commands;
     this.encounters = encounters;
     this.accounts = accounts;
+    this.scenes = scenes;
+    this.sceneController = sceneController;
   }
 
   @PostMapping("/{route:answers|follow-ups|cancellations}")
@@ -56,7 +65,13 @@ class ReactionController {
               new ReactionAnswer(AnswerKind.CANCEL, null, null, form.optional("reason"));
           default -> throw new IllegalStateException("Unexpected reaction route");
         };
-    var reply = commands.answer(campaign, windowId, actor, form.envelope(), answer);
+    var envelope = form.envelope();
+    if (scenes.owns(campaign, windowId, envelope.actionId())) {
+      var reply = scenes.answer(campaign, windowId, actor, envelope, answer);
+      UUID scene = UUID.fromString(reply.data().path("sceneId").asString());
+      return sceneController.updated(campaign, scene, actor, request, model, reply);
+    }
+    var reply = commands.answer(campaign, windowId, actor, envelope, answer);
     UUID encounter = UUID.fromString(reply.data().path("encounterId").asString());
     return encounters.updated(campaign, encounter, actor, request, model, reply, "workspace");
   }

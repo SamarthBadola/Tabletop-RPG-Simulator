@@ -437,6 +437,13 @@ public class CharacterStore {
     jdbc.sql(statement).params(id, key).update();
   }
 
+  public void setBardicInspiration(UUID id, BardicInspiration inspiration) {
+    jdbc.sql("UPDATE player_character SET bardic_inspiration = CAST(? AS jsonb) WHERE id = ?")
+        .param(inspiration == null ? null : json.writeValueAsString(inspiration))
+        .param(id)
+        .update();
+  }
+
   public Map<Integer, Integer> spentSlots(UUID id) {
     var slots = new java.util.TreeMap<Integer, Integer>();
     jdbc.sql("SELECT slot_level, used FROM pc_slot WHERE player_character_id = ? AND used > 0")

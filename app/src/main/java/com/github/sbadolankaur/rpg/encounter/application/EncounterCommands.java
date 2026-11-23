@@ -145,7 +145,8 @@ public class EncounterCommands {
       }
       return new Reply(saved.version(), saved.result(), true);
     }
-    if (reactions.forEncounter(campaign, encounter).isPresent())
+    if (reactions.forEncounter(campaign, encounter).isPresent()
+        || ("start".equals(command) && reactions.campaignHasSceneWindow(campaign)))
       throw new CampaignException(Code.REACTION_PENDING);
     if (table.version() != envelope.expectedVersion())
       throw new CampaignException(Code.ENCOUNTER_VERSION_CONFLICT);

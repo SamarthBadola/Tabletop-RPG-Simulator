@@ -25,11 +25,17 @@ public class CampaignPlay {
   private final Campaigns campaigns;
   private final CampaignCommands commands;
   private final PlayStore store;
+  private final com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore reactions;
 
-  public CampaignPlay(Campaigns campaigns, CampaignCommands commands, PlayStore store) {
+  public CampaignPlay(
+      Campaigns campaigns,
+      CampaignCommands commands,
+      PlayStore store,
+      com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore reactions) {
     this.campaigns = campaigns;
     this.commands = commands;
     this.store = store;
+    this.reactions = reactions;
   }
 
   @Transactional(readOnly = true)
@@ -137,6 +143,8 @@ public class CampaignPlay {
             result = ServerIds.at(now.toInstant());
             store.addScene(campaign, result, input.name(), input.notes(), input.light(), now);
           } else {
+            if (reactions.forScene(campaign, id).isPresent())
+              throw new CampaignException(CampaignException.Code.REACTION_PENDING);
             if (!store.editScene(campaign, id, input.name(), input.notes(), input.light())) {
               throw new CampaignException(CampaignException.Code.NOT_FOUND);
             }

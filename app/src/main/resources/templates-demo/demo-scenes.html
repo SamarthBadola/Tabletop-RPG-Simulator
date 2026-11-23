@@ -7,6 +7,7 @@
         <article th:each="scene : ${scenes}">
             <h2 th:text="${scene.name}"></h2>
             <p th:if="${scene.active}">Active scene</p>
+            <a th:href="@{/campaigns/{id}/scenes/{sid}(id=${campaign.id},sid=${scene.id})}">Scene rolls</a>
             <form th:action="@{/campaigns/{id}/scenes/{sid}/edits(id=${campaign.id},sid=${scene.id})}" method="post">
                 <div th:replace="~{demo-command :: envelope}"></div>
                 <label>Name <input name="name" th:value="${scene.name}" maxlength="80" required></label>

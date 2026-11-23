@@ -8,8 +8,6 @@ import com.github.sbadolankaur.rpg.engine.affliction.Affliction;
 import com.github.sbadolankaur.rpg.engine.combat.BardicInspiration;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
 import com.github.sbadolankaur.rpg.engine.combat.TurnBudget;
-import com.github.sbadolankaur.rpg.engine.dice.DiceExpression;
-import com.github.sbadolankaur.rpg.engine.dice.RollPlan;
 import com.github.sbadolankaur.rpg.engine.dice.RollResult;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Disclosure;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Option;
@@ -24,6 +22,8 @@ public final class CombatFeatures {
   public static final String ACTION_SURGE = "srd-5.1:action-surge";
   public static final String BARDIC_INSPIRATION = "srd-5.1:bardic-inspiration";
   public static final String LAY_ON_HANDS = "srd-5.1:lay-on-hands";
+  static final Option INSPIRATION_OPTION =
+      new Option("bardic-inspiration", "Use Bardic Inspiration", false, null, 0);
 
   private CombatFeatures() {}
 
@@ -148,33 +148,15 @@ public final class CombatFeatures {
     var die = creature.vitals().inspiration();
     if (die == null || !die.active(context.seconds)) return roll;
     var disclosure =
-        switch (context.setting("rollDecisionInfo", String.class)) {
-          case "TOTAL_SHOWN" -> new Disclosure(null, roll.total(), null);
-          case "NATURAL_DIE_ONLY" -> new Disclosure(roll.naturalD20(), null, null);
-          case "OUTCOME_SHOWN" -> new Disclosure(roll.naturalD20(), roll.total(), success);
-          default -> throw new IllegalStateException("Unknown roll disclosure mode");
-        };
+        Disclosure.forRoll(context.setting("rollDecisionInfo", String.class), roll, success);
     UUID decider = creature.entry().id();
     context.reveal(decider, creature.owner(), disclosure);
     String option =
         context
             .reactions()
-            .choose(
-                point,
-                Step.ACTING_RESULT,
-                decider,
-                List.of(new Option("bardic-inspiration", "Use Bardic Inspiration", false, null, 0)),
-                disclosure);
+            .choose(point, Step.ACTING_RESULT, decider, List.of(INSPIRATION_OPTION), disclosure);
     if (option == null) return roll;
-    var bonus =
-        RollPlan.builder()
-            .dice(
-                "Bardic Inspiration",
-                BARDIC_INSPIRATION,
-                DiceExpression.parse("1d" + die.dieFaces()),
-                false)
-            .build()
-            .roll(context.random());
+    var bonus = die.roll(context.random());
     context.dice("Bardic Inspiration", decider, bonus);
     var current = context.creature(decider);
     context.vitals(current, current.vitals().inspiration(null));
