@@ -1,0 +1,12 @@
+{
+  "kind": "resource",
+  "key": "srd-5.1:channel-divinity-uses",
+  "name": "Channel Divinity",
+  "max": "1",
+  "recharge": [
+    {
+      "on": "LONG_REST",
+      "restore": "all"
+    }
+  ]
+}

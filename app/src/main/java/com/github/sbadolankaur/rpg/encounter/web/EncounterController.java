@@ -5,9 +5,11 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelop
 import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Reply;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
+import com.github.sbadolankaur.rpg.campaign.application.CampaignSettings;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
 import com.github.sbadolankaur.rpg.campaign.web.CampaignWeb;
 import com.github.sbadolankaur.rpg.encounter.application.CombatActions;
+import com.github.sbadolankaur.rpg.encounter.application.CombatFeatures;
 import com.github.sbadolankaur.rpg.encounter.application.CombatOverrides;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands;
 import com.github.sbadolankaur.rpg.encounter.application.Encounters;
@@ -39,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 class EncounterController {
   private final Campaigns campaigns;
   private final CampaignCommands campaignCommands;
+  private final CampaignSettings settings;
   private final EncounterCommands commands;
   private final Encounters encounters;
   private final CombatActions combat;
@@ -48,6 +51,7 @@ class EncounterController {
   EncounterController(
       Campaigns campaigns,
       CampaignCommands campaignCommands,
+      CampaignSettings settings,
       EncounterCommands commands,
       Encounters encounters,
       CombatActions combat,
@@ -55,6 +59,7 @@ class EncounterController {
       AccountDirectory accounts) {
     this.campaigns = campaigns;
     this.campaignCommands = campaignCommands;
+    this.settings = settings;
     this.commands = commands;
     this.encounters = encounters;
     this.combat = combat;
@@ -92,7 +97,7 @@ class EncounterController {
     return "demo-encounter";
   }
 
-  @GetMapping("/{id}/{region:turn-order|acting-panel|log|clock}")
+  @GetMapping("/{id}/{region:turn-order|acting-panel|log|clock|reaction}")
   String region(
       @PathVariable UUID campaign,
       @PathVariable UUID id,
@@ -290,8 +295,101 @@ class EncounterController {
                 form.flag("targetObscured"),
                 form.flag("nearbyHostile"),
                 form.flag("fearSourceVisible"),
-                form.flag("targetAbsent")));
+                form.flag("targetAbsent"),
+                form.ids("protectingAllyIds"),
+                form.integer("smiteSlotLevel"),
+                form.optionalFlag("enemyNearTarget")));
     return updated(campaign, id, actor, request, model, result, "workspace");
+  }
+
+  @PostMapping("/{id}/feature-uses")
+  Object featureUse(
+      @PathVariable UUID campaign,
+      @PathVariable UUID id,
+      @RequestParam MultiValueMap<String, String> fields,
+      Principal principal,
+      HttpServletRequest request,
+      Model model) {
+    UUID actor = dm(campaign, principal);
+    var form = new Fields(fields);
+    String featureKey = featureField(form, "featureKey", Function.identity());
+    UUID acting = featureField(form, "actorId", UUID::fromString);
+    var names =
+        switch (featureKey) {
+          case CombatFeatures.BARDIC_INSPIRATION -> Set.of("targetId");
+          case CombatFeatures.LAY_ON_HANDS -> Set.of("targetId", "healPoints", "cureIds");
+          case CombatFeatures.TURN_THE_UNHOLY -> Set.of("targetIds");
+          default -> Set.<String>of();
+        };
+    var common = Set.of("_csrf", "actionId", "expectedVersion", "actorId", "featureKey");
+    for (String key : fields.keySet()) {
+      if (!common.contains(key) && !names.contains(key)) throw CombatFeatures.invalidInput(key);
+    }
+    UUID targetId =
+        names.contains("targetId") ? featureField(form, "targetId", UUID::fromString) : null;
+    Integer healPoints =
+        names.contains("healPoints") ? featureField(form, "healPoints", Integer::valueOf) : null;
+    List<UUID> cureIds = List.of();
+    if (names.contains("cureIds")) {
+      if (fields.getOrDefault("cureIds", List.of()).size() > 20)
+        throw CombatFeatures.invalidInput("cureIds");
+      try {
+        cureIds = form.ids("cureIds");
+      } catch (CampaignException bad) {
+        throw CombatFeatures.invalidInput("cureIds");
+      }
+    }
+    var targetIds = List.<UUID>of();
+    if (names.contains("targetIds")) {
+      try {
+        targetIds = form.ids("targetIds");
+      } catch (CampaignException bad) {
+        throw CombatFeatures.invalidInput("targetIds");
+      }
+      if (targetIds.isEmpty()) throw CombatFeatures.invalidInput("targetIds");
+    }
+    var use = new CombatFeatures.Use(acting, featureKey, targetId, healPoints, cureIds, targetIds);
+    return updated(
+        campaign,
+        id,
+        actor,
+        request,
+        model,
+        combat.featureUse(campaign, id, actor, form.envelope(), use),
+        "workspace");
+  }
+
+  private static <T> T featureField(Fields form, String key, Function<String, T> parse) {
+    try {
+      String value = form.optional(key);
+      if (value != null) return parse.apply(value);
+    } catch (CampaignException | IllegalArgumentException bad) {
+      throw CombatFeatures.invalidInput(key);
+    }
+    throw CombatFeatures.invalidInput(key);
+  }
+
+  @PostMapping("/{id}/manual-moves")
+  Object manualMove(
+      @PathVariable UUID campaign,
+      @PathVariable UUID id,
+      @RequestParam MultiValueMap<String, String> fields,
+      Principal principal,
+      HttpServletRequest request,
+      Model model) {
+    UUID actor = dm(campaign, principal);
+    var form = new Fields(fields);
+    var move =
+        new CombatActions.ManualMove(
+            form.uuid("actorId"), form.number("distanceFeet", 0), form.ids("leavesReachOf"));
+    return updated(
+        campaign,
+        id,
+        actor,
+        request,
+        model,
+        combat.manualMove(campaign, id, actor, form.envelope(), move),
+        "workspace");
   }
 
   @PostMapping("/{id}/dashes")
@@ -349,7 +447,10 @@ class EncounterController {
             actor,
             form.envelope(),
             new CombatActions.Hide(
-                form.uuid("actorId"), form.ids("obscuredFromIds"), form.ids("opponentIds"))),
+                form.uuid("actorId"),
+                form.ids("obscuredFromIds"),
+                form.ids("opponentIds"),
+                form.optionalFlag("bonusAction"))),
         "workspace");
   }
 
@@ -416,7 +517,14 @@ class EncounterController {
         actor,
         request,
         model,
-        combat.simple(campaign, id, actor, form.envelope(), form.uuid("actorId"), action),
+        combat.simple(
+            campaign,
+            id,
+            actor,
+            form.envelope(),
+            form.uuid("actorId"),
+            action,
+            form.flag("bonusAction")),
         "workspace");
   }
 
@@ -488,7 +596,8 @@ class EncounterController {
             new CombatActions.ObjectUse(
                 form.uuid("actorId"),
                 java.util.Objects.toString(form.optional("note"), ""),
-                form.flag("usesAction")));
+                form.flag("usesAction"),
+                form.optionalFlag("bonusAction")));
     return updated(campaign, id, actor, request, model, result, "workspace");
   }
 
@@ -667,7 +776,8 @@ class EncounterController {
                 form.optional("noticedOnTie") == null ? null : form.flag("noticedOnTie"),
                 form.flag("requiresSight"),
                 form.flag("requiresHearing"),
-                form.flag("fearSourceVisible")));
+                form.flag("fearSourceVisible"),
+                form.optionalFlag("bonusAction")));
     return updated(campaign, id, actor, request, model, result, "workspace");
   }
 
@@ -750,7 +860,7 @@ class EncounterController {
     }
   }
 
-  private Object updated(
+  Object updated(
       UUID campaign,
       UUID id,
       UUID actor,
@@ -768,13 +878,31 @@ class EncounterController {
 
   private void populate(UUID campaign, UUID id, UUID actor, Model model, long before, int limit) {
     var view = encounters.view(campaign, id, actor, before, limit);
+    var reaction = commands.reaction(campaign, id, actor);
+    model.addAttribute("reaction", reaction);
+    if (reaction != null) {
+      model.addAttribute("reactionPath", "/campaigns/" + campaign + "/reactions/" + reaction.id());
+      model.addAttribute(
+          "reactionDecider",
+          view.combatants().stream()
+              .filter(creature -> creature.id().equals(reaction.prompt().decider()))
+              .map(Encounters.Combatant::name)
+              .findFirst()
+              .orElse("Creature"));
+    }
     model.addAttribute("fight", view);
-    model.addAttribute(
-        "acting",
+    var acting =
         view.combatants().stream()
             .filter(row -> row.id().equals(view.table().acting()))
             .findFirst()
-            .orElse(null));
+            .orElse(null);
+    model.addAttribute("acting", acting);
+    model.addAttribute(
+        "smitePredeclare",
+        acting != null
+            && acting.features().contains("srd-5.1:divine-smite")
+            && "BEFORE_ATTACK"
+                .equals(settings.effective(campaign, actor).value("divineSmiteTiming")));
     model.addAttribute("campaignId", campaign);
     model.addAttribute("commandPath", path(campaign, id));
     model.addAttribute("gameSeconds", campaignCommands.readClock(campaign, actor).gameSeconds());
@@ -786,7 +914,7 @@ class EncounterController {
         java.util.Arrays.stream(DurationKind.values())
             .filter(kind -> kind != DurationKind.INSTANT)
             .toList());
-    envelope(model, view.table().version());
+    envelope(model, reaction == null ? view.table().version() : reaction.version());
   }
 
   private void envelope(Model model, long version) {
@@ -808,7 +936,7 @@ class EncounterController {
     return new CampaignException(Code.VALIDATION_FAILED);
   }
 
-  private record Fields(MultiValueMap<String, String> values) {
+  record Fields(MultiValueMap<String, String> values) {
     String optional(String key) {
       var list = values.get(key);
       if (list == null || list.isEmpty()) return null;
@@ -863,6 +991,16 @@ class EncounterController {
         if (value != Cover.NONE && cover.putIfAbsent(target, value) != null) throw invalid();
       }
       return cover;
+    }
+
+    Boolean optionalFlag(String key) {
+      String value = optional(key);
+      if (value == null) return null;
+      return switch (value) {
+        case "true", "on" -> true;
+        case "false" -> false;
+        default -> throw new CampaignException(new CampaignException.FieldError(key, "INCORRECT"));
+      };
     }
 
     boolean flag(String key) {

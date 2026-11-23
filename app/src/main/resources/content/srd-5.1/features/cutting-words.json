@@ -1,0 +1,20 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:cutting-words",
+  "name": "Cutting Words",
+  "text": {
+    "file": "text/features/cutting-words.md"
+  },
+  "effects": [
+    {
+      "type": "roll_penalty_die"
+    }
+  ],
+  "cost": {
+    "action": "reaction",
+    "resource": "srd-5.1:bardic-inspiration-uses"
+  },
+  "trigger": {
+    "point": "AFTER_ATTACK_ROLL"
+  }
+}

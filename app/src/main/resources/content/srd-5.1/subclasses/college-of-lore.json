@@ -1,0 +1,18 @@
+{
+  "kind": "subclass",
+  "key": "srd-5.1:college-of-lore",
+  "name": "College of Lore",
+  "text": {
+    "file": "text/subclasses/college-of-lore.md"
+  },
+  "class": "srd-5.1:bard",
+  "levels": [
+    {
+      "level": 3,
+      "features": [
+        "srd-5.1:bonus-proficiencies",
+        "srd-5.1:cutting-words"
+      ]
+    }
+  ]
+}

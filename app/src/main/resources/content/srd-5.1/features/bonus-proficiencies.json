@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:bonus-proficiencies",
+  "name": "Bonus Proficiencies",
+  "text": {
+    "file": "text/features/bonus-proficiencies.md"
+  },
+  "effects": [
+    {
+      "type": "proficiency_fraction"
+    }
+  ]
+}

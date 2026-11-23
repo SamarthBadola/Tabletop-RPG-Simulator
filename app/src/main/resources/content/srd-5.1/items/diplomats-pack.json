@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:diplomats-pack",
+  "name": "Diplomat's Pack",
+  "text": {
+    "file": "text/items/diplomats-pack.md"
+  },
+  "cost": 3900,
+  "weight": 0,
+  "tier": 0,
+  "category": "gear"
+}

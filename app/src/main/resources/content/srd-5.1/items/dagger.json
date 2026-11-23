@@ -1,0 +1,27 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:dagger",
+  "name": "Dagger",
+  "text": {
+    "file": "text/items/dagger.md"
+  },
+  "cost": 200,
+  "weight": 100,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d4",
+    "damageType": "piercing",
+    "properties": [
+      "finesse",
+      "light",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    }
+  }
+}

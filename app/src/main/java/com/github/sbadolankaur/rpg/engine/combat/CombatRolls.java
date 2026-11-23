@@ -48,6 +48,11 @@ public final class CombatRolls {
     if (cover == Cover.TOTAL) throw new IllegalArgumentException("Total cover blocks targeting");
     int target = Math.addExact(armorClass, cover.bonus());
     var roll = d20("Attack modifier", bonus, mode, random);
+    return attackOutcome(roll, target, criticalOn, criticalOnHit);
+  }
+
+  public static Attack attackOutcome(
+      RollResult roll, int target, int criticalOn, boolean criticalOnHit) {
     int natural = roll.naturalD20();
     boolean hit = natural != 1 && (natural >= criticalOn || roll.total() >= target);
     return new Attack(roll, target, hit, hit && (criticalOnHit || natural >= criticalOn));
@@ -64,6 +69,15 @@ public final class CombatRolls {
       }
     }
     return plan.build();
+  }
+
+  public static RollPlan divineSmite(int slotLevel, boolean undeadOrFiend) {
+    if (slotLevel < 1 || slotLevel > 9)
+      throw new IllegalArgumentException("Invalid spell slot level");
+    int dice = Math.min(5, slotLevel + 1) + (undeadOrFiend ? 1 : 0);
+    return RollPlan.builder()
+        .dice("Divine Smite", "srd-5.1:divine-smite", DiceExpression.parse(dice + "d8"), true)
+        .build();
   }
 
   public static RollResult damage(

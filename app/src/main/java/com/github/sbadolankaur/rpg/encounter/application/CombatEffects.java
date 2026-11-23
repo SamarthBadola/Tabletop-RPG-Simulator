@@ -51,6 +51,19 @@ final class CombatEffects {
     if (!state.equals(next)) context.vitals(context.creature(entry.id()), next);
   }
 
+  static void removeAfflictionEffects(Context context, Creature creature, UUID source) {
+    var entry = creature.entry();
+    var old = entry.tactics().conditions();
+    var remaining = old.stream().filter(effect -> !source.equals(effect.source())).toList();
+    if (!old.equals(remaining))
+      context.update(entry.tactics(entry.tactics().conditions(remaining)));
+    var vitals = creature.vitals();
+    var effects =
+        vitals.effects().stream().filter(effect -> !source.equals(effect.source())).toList();
+    if (!effects.equals(vitals.effects()))
+      context.vitals(context.creature(entry.id()), vitals.effects(effects));
+  }
+
   private static boolean matches(String key, UUID source, String selected, UUID selectedSource) {
     return key.equals(selected)
         && (selectedSource == null || Objects.equals(source, selectedSource));
@@ -62,6 +75,7 @@ final class CombatEffects {
       if (!Encounters.present(entry)) continue;
       if (entry.character() == null
           && entry.npcVitals().effects().isEmpty()
+          && entry.npcVitals().inspiration() == null
           && !entry.tactics().dodging()
           && entry.npcVitals().recoveryAt() == null) continue;
       var creature = context.creature(id);
@@ -86,6 +100,13 @@ final class CombatEffects {
         creature = context.creature(id);
       }
       var state = creature.vitals();
+      if (state.inspiration() != null && !state.inspiration().active(context.seconds)) {
+        state = state.inspiration(null);
+        context.vitals(creature, state);
+        context.dm("BardicInspirationExpired", Map.of("combatantId", id));
+        creature = context.creature(id);
+      }
+      var current = creature;
       var effects =
           state.effects().stream()
               .filter(
@@ -93,7 +114,9 @@ final class CombatEffects {
                       !effect
                               .end()
                               .expired(context.seconds, context.table.round(), acting, boundary)
-                          && !endedGrapple(context, effect))
+                          && !endedGrapple(context, effect)
+                          && !(CombatFeatures.SACRED_WEAPON.equals(effect.key())
+                              && !OathFeatures.sacredActive(context, current)))
               .toList();
       if (!effects.equals(state.effects())) {
         context.vitals(creature, state.effects(effects));

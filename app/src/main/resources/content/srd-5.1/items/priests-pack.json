@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:priests-pack",
+  "name": "Priest's Pack",
+  "text": {
+    "file": "text/items/priests-pack.md"
+  },
+  "cost": 1900,
+  "weight": 0,
+  "tier": 0,
+  "category": "gear"
+}

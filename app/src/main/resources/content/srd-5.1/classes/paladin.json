@@ -1,0 +1,503 @@
+{
+  "kind": "class",
+  "key": "srd-5.1:paladin",
+  "name": "Paladin",
+  "text": {
+    "file": "text/classes/paladin.md"
+  },
+  "hitDie": 10,
+  "savingThrows": [
+    "wis",
+    "cha"
+  ],
+  "proficiencies": {
+    "armor": [
+      "light",
+      "medium",
+      "heavy",
+      "shield"
+    ],
+    "weapons": [
+      "simple",
+      "martial"
+    ],
+    "tools": [],
+    "skillChoice": {
+      "count": 2,
+      "from": [
+        "athletics",
+        "insight",
+        "intimidation",
+        "medicine",
+        "persuasion",
+        "religion"
+      ]
+    }
+  },
+  "startingEquipment": [
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shield",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:greatsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:battleaxe",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortsword",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:warhammer",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          },
+          {
+            "item": "srd-5.1:longbow",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:javelin",
+            "count": 5
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:dagger",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:handaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:javelin",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:mace",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:priests-pack",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:explorers-pack",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "fixed": [
+        {
+          "item": "srd-5.1:chain-mail",
+          "count": 1
+        },
+        {
+          "item": "srd-5.1:holy-symbol",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "startingGold": {
+    "dice": "5d4",
+    "multiplier": 10
+  },
+  "levels": [
+    {
+      "level": 1,
+      "features": [
+        "srd-5.1:divine-sense",
+        "srd-5.1:lay-on-hands"
+      ]
+    },
+    {
+      "level": 2,
+      "features": [
+        "srd-5.1:divine-smite"
+      ],
+      "grants": [
+        "fighting_style"
+      ]
+    },
+    {
+      "level": 3,
+      "features": [
+        "srd-5.1:divine-health"
+      ],
+      "grants": [
+        "subclass"
+      ]
+    },
+    {
+      "level": 4,
+      "grants": [
+        "asi"
+      ]
+    },
+    {
+      "level": 5,
+      "features": [
+        "srd-5.1:extra-attack"
+      ]
+    }
+  ],
+  "spellcasting": {
+    "ability": "cha",
+    "progression": "half",
+    "preparation": "prepared"
+  }
+}

@@ -1,5 +1,6 @@
 package com.github.sbadolankaur.rpg.encounter.application;
 
+import com.github.sbadolankaur.rpg.engine.combat.BardicInspiration;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.DeathMode;
 import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
@@ -176,6 +177,24 @@ public final class EncounterState {
           stealth);
     }
 
+    public Tactics spendReaction() {
+      if (!reactionAvailable) throw new IllegalStateException("No reaction available");
+      return new Tactics(
+          firstRound,
+          lastTurn,
+          surprised,
+          dodging,
+          hidden,
+          false,
+          deathSaveDue,
+          helping,
+          helpedTarget,
+          readied,
+          conditions,
+          deathMode,
+          stealth);
+    }
+
     public Tactics deathSave(boolean due) {
       return new Tactics(
           firstRound,
@@ -291,22 +310,27 @@ public final class EncounterState {
       Long recoveryAt,
       Set<String> conditions,
       List<ConditionInstance> effects,
-      int exhaustion) {
+      int exhaustion,
+      BardicInspiration inspiration) {
     public Vitals {
       conditions = Set.copyOf(conditions);
       effects = effects == null ? List.of() : List.copyOf(effects);
     }
 
     public Vitals(CombatHealth health, Long recoveryAt, Set<String> conditions) {
-      this(health, recoveryAt, conditions, List.of(), 0);
+      this(health, recoveryAt, conditions, List.of(), 0, null);
     }
 
     Vitals effects(List<ConditionInstance> next) {
-      return new Vitals(health, recoveryAt, conditions, next, exhaustion);
+      return new Vitals(health, recoveryAt, conditions, next, exhaustion, inspiration);
     }
 
     Vitals conditions(Set<String> next) {
-      return new Vitals(health, recoveryAt, next, effects, exhaustion);
+      return new Vitals(health, recoveryAt, next, effects, exhaustion, inspiration);
+    }
+
+    Vitals inspiration(BardicInspiration next) {
+      return new Vitals(health, recoveryAt, conditions, effects, exhaustion, next);
     }
   }
 }

@@ -1,0 +1,19 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:mace",
+  "name": "Mace",
+  "text": {
+    "file": "text/items/mace.md"
+  },
+  "cost": 500,
+  "weight": 400,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d6",
+    "damageType": "bludgeoning",
+    "properties": []
+  }
+}

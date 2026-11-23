@@ -19,6 +19,35 @@
         <ul th:unless="${fight.recap.resourcesSpent.isEmpty()}"><li th:each="resource : ${fight.recap.resourcesSpent}"
             th:text="|${resource.key} × ${resource.value}|"></li></ul>
     </section>
+    <section id="reaction" th:fragment="reaction" aria-live="polite">
+        <div th:if="${reaction != null}">
+            <h2>Reaction decision</h2>
+            <p th:text="|Decide for ${reactionDecider}.|"></p>
+            <div th:with="shown=${reaction.prompt.disclosure}" th:if="${reaction.prompt.disclosure != null}">
+                <p th:if="${shown.natural != null}" th:text="|Natural roll: ${shown.natural}|"></p>
+                <p th:if="${shown.total != null}" th:text="|Total: ${shown.total}|"></p>
+                <p th:if="${shown.success != null}" th:text="${shown.success ? 'Success' : 'Failure'}"></p>
+            </div>
+            <form th:action="@{${reactionPath + (reaction.prompt.followUp ? '/follow-ups' : '/answers')}}"
+                  method="post" th:each="option : ${reaction.prompt.options}">
+                <th:block th:replace="~{demo-encounter :: command}"></th:block>
+                <input type="hidden" name="deciderId" th:value="${reaction.prompt.decider}">
+                <input type="hidden" th:name="${option.key.matches('[1-9]') ? 'slotLevel' : 'optionKey'}"
+                       th:value="${option.key}">
+                <button type="submit" name="choice" value="use" th:text="${option.label}"></button>
+            </form>
+            <form th:unless="${reaction.prompt.followUp}" th:action="@{${reactionPath + '/answers'}}" method="post">
+                <th:block th:replace="~{demo-encounter :: command}"></th:block>
+                <input type="hidden" name="deciderId" th:value="${reaction.prompt.decider}">
+                <button type="submit" name="choice" value="pass">Pass</button>
+            </form>
+            <form th:action="@{${reactionPath + '/cancellations'}}" method="post">
+                <th:block th:replace="~{demo-encounter :: command}"></th:block>
+                <label>Reason (optional) <input name="reason" maxlength="200"></label>
+                <button type="submit">Cancel action</button>
+            </form>
+        </div>
+    </section>
     <section id="turn-order" th:fragment="turn-order" th:if="${fight.table.phase.name() != 'FINISHED'}">
         <h2>Turn order</h2>
         <p th:if="${fight.table.round > 0}" th:text="|Round ${fight.table.round}|"></p>
@@ -124,6 +153,8 @@
                 </label>
             </fieldset>
             <button type="submit">Roll Stealth</button>
+            <button th:if="${acting != null and acting.features.contains('srd-5.1:cunning-action')}"
+                    type="submit" name="bonusAction" value="true">Hide as a bonus action</button>
         </form>
         <form th:each="hider : ${fight.combatants}" th:unless="${hider.stealthTies.isEmpty()}"
               th:action="@{${commandPath + '/stealth-ties'}}" method="post">
@@ -155,7 +186,7 @@
             <button type="submit">Save order</button>
         </form>
     </section>
-    <section id="acting-panel" th:fragment="acting-panel" th:if="${acting != null}">
+    <section id="acting-panel" th:fragment="acting-panel" th:if="${acting != null and reaction == null}">
         <h2 th:text="|${acting.name}'s turn|"></h2>
         <p th:text="|${fight.table.budget.actions} action(s), ${fight.table.budget.attacksLeft} follow-up attack(s), ${fight.table.budget.movementRemaining(acting.speed)} ft remaining|"></p>
         <form th:unless="${acting.attacks.isEmpty()}" th:action="@{${commandPath + '/attacks'}}" method="post">
@@ -169,13 +200,102 @@
             <label><input type="checkbox" name="attackerObscured" value="true">Attacker is obscured</label>
             <label><input type="checkbox" name="targetObscured" value="true">Target is obscured</label>
             <label><input type="checkbox" name="fearSourceVisible" value="true">Attacker can see the source of fear</label>
+            <fieldset>
+                <legend>Allies within 5 feet who can see the target</legend>
+                <label th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}">
+                    <input type="checkbox" name="protectingAllyIds" th:value="${creature.id}">
+                    <span th:text="${creature.name}"></span>
+                </label>
+            </fieldset>
+            <label th:if="${acting.features.contains('srd-5.1:sneak-attack')}">
+                <input type="checkbox" name="enemyNearTarget" value="true">
+                Another enemy of the target is within 5 feet and can act
+            </label>
+            <label th:if="${smitePredeclare}">
+                Declared Divine Smite slot <input type="number" name="smiteSlotLevel" min="1" max="9">
+            </label>
             <button type="submit">Attack</button>
+        </form>
+        <form th:action="@{${commandPath + '/manual-moves'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <label>Distance (feet) <input type="number" name="distanceFeet" min="1" max="1000" required></label>
+            <label>Hostile creatures whose reach the move leaves
+                <select name="leavesReachOf" multiple>
+                    <option th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}"
+                            th:value="${creature.id}" th:text="${creature.name}"></option>
+                </select>
+            </label>
+            <button type="submit">Move</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:action-surge')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:action-surge">
+            <button type="submit">Action Surge</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:bardic-inspiration')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:bardic-inspiration">
+            <th:block th:replace="~{demo-encounter :: target}"></th:block>
+            <button type="submit">Grant Bardic Inspiration</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:lay-on-hands')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:lay-on-hands">
+            <label>Creature within touch range <select name="targetId" required>
+                <option th:each="creature : ${fight.combatants}"
+                        th:value="${creature.id}" th:text="${creature.name}"></option>
+            </select></label>
+            <label>Hit points to heal <input type="number" name="healPoints" min="0" value="0" required></label>
+            <label th:unless="${fight.cureChoices.isEmpty()}">Afflictions to cure (5 points each)
+                <select name="cureIds" multiple>
+                    <optgroup th:each="creature : ${fight.combatants}" th:label="${creature.name}"
+                              th:if="${fight.cureChoices.containsKey(creature.id)}">
+                        <option th:each="cure : ${fight.cureChoices.get(creature.id)}"
+                                th:value="${cure.id}" th:text="|${cure.kind} — ${cure.definitionKey}|"></option>
+                    </optgroup>
+                </select>
+            </label>
+            <button type="submit">Lay on Hands</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:divine-sense')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:divine-sense">
+            <button type="submit" aria-describedby="divine-sense">Divine Sense</button>
+            <p id="divine-sense">Until the end of the paladin's next turn, narrate the type and location of celestials, fiends,
+                and undead within 60 feet and outside total cover, and any consecrated or desecrated places or objects in range.</p>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:sacred-weapon')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:sacred-weapon">
+            <button type="submit">Sacred Weapon</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:turn-the-unholy')}"
+              th:action="@{${commandPath + '/feature-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="featureKey" value="srd-5.1:turn-the-unholy">
+            <fieldset><legend>Fiends or undead within 30 feet that can see or hear the paladin</legend>
+                <label th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}">
+                    <input type="checkbox" name="targetIds" th:value="${creature.id}">
+                    <span th:text="${creature.name}"></span>
+                </label>
+            </fieldset>
+            <button type="submit">Turn the Unholy</button>
         </form>
         <form th:action="@{${commandPath + '/dashes'}}" method="post">
             <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
             <button type="submit">Dash</button>
             <button type="submit" th:formaction="@{${commandPath + '/dodges'}}">Dodge</button>
             <button type="submit" th:formaction="@{${commandPath + '/disengages'}}">Disengage</button>
+            <th:block th:if="${acting.features.contains('srd-5.1:cunning-action')}">
+                <button type="submit" name="bonusAction" value="true">Dash as a bonus action</button>
+                <button type="submit" name="bonusAction" value="true"
+                        th:formaction="@{${commandPath + '/disengages'}}">Disengage as a bonus action</button>
+            </th:block>
             <button type="submit" th:formaction="@{${commandPath + '/stands'}}">Stand</button>
             <button type="submit" th:formaction="@{${commandPath + '/drops-prone'}}">Drop prone</button>
         </form>
@@ -217,6 +337,8 @@
             <label>Object use <input name="note" maxlength="200"></label>
             <label><input type="checkbox" name="usesAction" value="true">Object requires an action</label>
             <button type="submit">Use object</button>
+            <button th:if="${acting.features.contains('srd-5.1:fast-hands')}"
+                    type="submit" name="bonusAction" value="true">Use object as a bonus action</button>
         </form>
         <form th:action="@{${commandPath + '/saving-throws'}}" method="post">
             <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
@@ -249,6 +371,16 @@
                         th:value="${creature.id}" th:text="${creature.name}"></option>
             </select></label>
             <button type="submit">Search</button>
+        </form>
+        <form th:if="${acting.features.contains('srd-5.1:fast-hands')}"
+              th:action="@{${commandPath + '/ability-checks'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="subjectIds" th:value="${acting.id}">
+            <input type="hidden" name="ability" value="dexterity">
+            <input type="hidden" name="skillKey" value="sleight-of-hand">
+            <input type="hidden" name="bonusAction" value="true">
+            <label>Difficulty class <input type="number" name="dc" min="1" max="40" required></label>
+            <button type="submit">Sleight of Hand as a bonus action</button>
         </form>
         <form th:if="${acting.deathSaveDue}" th:action="@{${commandPath + '/death-saves'}}" method="post">
             <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>

@@ -9,9 +9,18 @@ public record TurnBudget(
     int movementSpent,
     int dashes,
     boolean disengaged,
-    boolean mainHandLightAttack) {
+    boolean mainHandLightAttack,
+    boolean actionSurged,
+    java.util.Set<java.util.UUID> sneakAttackUsed) {
+  public TurnBudget {
+    sneakAttackUsed =
+        sneakAttackUsed == null
+            ? java.util.Set.of()
+            : java.util.Collections.unmodifiableSet(new java.util.TreeSet<>(sneakAttackUsed));
+  }
+
   public static TurnBudget start() {
-    return new TurnBudget(1, 0, true, true, 0, 0, false, false);
+    return new TurnBudget(1, 0, true, true, 0, 0, false, false, false, java.util.Set.of());
   }
 
   public TurnBudget attack(int attacksPerAction, boolean lightMainHand) {
@@ -26,7 +35,9 @@ public record TurnBudget(
         movementSpent,
         dashes,
         disengaged,
-        mainHandLightAttack || lightMainHand);
+        mainHandLightAttack || lightMainHand,
+        actionSurged,
+        sneakAttackUsed);
   }
 
   public TurnBudget offHand() {
@@ -40,7 +51,9 @@ public record TurnBudget(
         movementSpent,
         dashes,
         disengaged,
-        mainHandLightAttack);
+        mainHandLightAttack,
+        actionSurged,
+        sneakAttackUsed);
   }
 
   public TurnBudget action() {
@@ -53,33 +66,95 @@ public record TurnBudget(
         movementSpent,
         dashes,
         disengaged,
-        mainHandLightAttack);
+        mainHandLightAttack,
+        actionSurged,
+        sneakAttackUsed);
   }
 
-  public TurnBudget dash() {
-    var spent = action();
+  public TurnBudget sneakAttack(java.util.UUID attacker) {
+    if (sneakAttackUsed.contains(attacker))
+      throw new IllegalStateException("Sneak Attack already used");
+    var used = new java.util.TreeSet<>(sneakAttackUsed);
+    used.add(attacker);
     return new TurnBudget(
-        spent.actions,
-        attacksLeft,
-        bonusAvailable,
-        interactionAvailable,
-        movementSpent,
-        dashes + 1,
-        disengaged,
-        mainHandLightAttack);
-  }
-
-  public TurnBudget disengage() {
-    var spent = action();
-    return new TurnBudget(
-        spent.actions,
+        actions,
         attacksLeft,
         bonusAvailable,
         interactionAvailable,
         movementSpent,
         dashes,
+        disengaged,
+        mainHandLightAttack,
+        actionSurged,
+        used);
+  }
+
+  public TurnBudget surge() {
+    if (actionSurged) throw new IllegalStateException("Action Surge already used on this turn");
+    return new TurnBudget(
+        Math.incrementExact(actions),
+        attacksLeft,
+        bonusAvailable,
+        interactionAvailable,
+        movementSpent,
+        dashes,
+        disengaged,
+        mainHandLightAttack,
         true,
-        mainHandLightAttack);
+        sneakAttackUsed);
+  }
+
+  public TurnBudget bonusAction() {
+    if (!bonusAvailable) throw new IllegalStateException("No bonus action left");
+    return new TurnBudget(
+        actions,
+        attacksLeft,
+        false,
+        interactionAvailable,
+        movementSpent,
+        dashes,
+        disengaged,
+        mainHandLightAttack,
+        actionSurged,
+        sneakAttackUsed);
+  }
+
+  public TurnBudget dash() {
+    return dash(false);
+  }
+
+  public TurnBudget dash(boolean bonus) {
+    var spent = bonus ? bonusAction() : action();
+    return new TurnBudget(
+        spent.actions,
+        attacksLeft,
+        spent.bonusAvailable,
+        interactionAvailable,
+        movementSpent,
+        dashes + 1,
+        disengaged,
+        mainHandLightAttack,
+        actionSurged,
+        sneakAttackUsed);
+  }
+
+  public TurnBudget disengage() {
+    return disengage(false);
+  }
+
+  public TurnBudget disengage(boolean bonus) {
+    var spent = bonus ? bonusAction() : action();
+    return new TurnBudget(
+        spent.actions,
+        attacksLeft,
+        spent.bonusAvailable,
+        interactionAvailable,
+        movementSpent,
+        dashes,
+        true,
+        mainHandLightAttack,
+        actionSurged,
+        sneakAttackUsed);
   }
 
   public TurnBudget interact(boolean usesAction) {
@@ -92,7 +167,9 @@ public record TurnBudget(
         movementSpent,
         dashes,
         disengaged,
-        mainHandLightAttack);
+        mainHandLightAttack,
+        actionSurged,
+        sneakAttackUsed);
   }
 
   public int movementRemaining(int speed) {
@@ -110,7 +187,9 @@ public record TurnBudget(
         movementSpent + cost,
         dashes,
         disengaged,
-        mainHandLightAttack);
+        mainHandLightAttack,
+        actionSurged,
+        sneakAttackUsed);
   }
 
   public static int movementCost(int feet, boolean difficult, boolean crawling, boolean squeezing) {

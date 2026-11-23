@@ -65,6 +65,13 @@ public final class CombatConditions {
     return conditions.stream().anyMatch(INCAPACITATING::contains);
   }
 
+  public static boolean canReact(Set<String> conditions, boolean available, boolean surprised) {
+    return available
+        && !surprised
+        && !incapacitated(conditions)
+        && !conditions.contains("srd-5.1:turned");
+  }
+
   public static int speed(int base, Set<String> conditions) {
     return conditions.stream().anyMatch(IMMOBILE::contains) ? 0 : base;
   }

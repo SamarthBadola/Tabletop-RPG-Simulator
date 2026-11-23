@@ -1,0 +1,241 @@
+{
+  "kind": "class",
+  "key": "srd-5.1:bard",
+  "name": "Bard",
+  "text": {
+    "file": "text/classes/bard.md"
+  },
+  "hitDie": 8,
+  "savingThrows": [
+    "dex",
+    "cha"
+  ],
+  "proficiencies": {
+    "armor": [
+      "light"
+    ],
+    "weapons": [
+      "simple",
+      "hand_crossbow",
+      "longsword",
+      "rapier",
+      "shortsword"
+    ],
+    "tools": [],
+    "skillChoice": {
+      "count": 3,
+      "from": [
+        "acrobatics",
+        "animal_handling",
+        "arcana",
+        "athletics",
+        "deception",
+        "history",
+        "insight",
+        "intimidation",
+        "investigation",
+        "medicine",
+        "nature",
+        "perception",
+        "performance",
+        "persuasion",
+        "religion",
+        "sleight_of_hand",
+        "stealth",
+        "survival"
+      ]
+    }
+  },
+  "startingEquipment": [
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:rapier",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:longsword",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:dagger",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:handaxe",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:javelin",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:mace",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shortbow",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:crossbow-light",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:diplomats-pack",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:entertainers-pack",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "options": [
+        [
+          {
+            "item": "srd-5.1:lute",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:bagpipes",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:drum",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:dulcimer",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:flute",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:lyre",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:horn",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:pan-flute",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:shawm",
+            "count": 1
+          }
+        ],
+        [
+          {
+            "item": "srd-5.1:viol",
+            "count": 1
+          }
+        ]
+      ]
+    },
+    {
+      "fixed": [
+        {
+          "item": "srd-5.1:leather-armor",
+          "count": 1
+        },
+        {
+          "item": "srd-5.1:dagger",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "startingGold": {
+    "dice": "5d4",
+    "multiplier": 10
+  },
+  "levels": [
+    {
+      "level": 1,
+      "features": [
+        "srd-5.1:bardic-inspiration"
+      ]
+    },
+    {
+      "level": 2,
+      "features": [
+        "srd-5.1:jack-of-all-trades",
+        "srd-5.1:song-of-rest"
+      ]
+    },
+    {
+      "level": 3,
+      "features": [
+        "srd-5.1:bard-expertise"
+      ],
+      "grants": [
+        "subclass"
+      ]
+    },
+    {
+      "level": 4,
+      "grants": [
+        "asi"
+      ]
+    },
+    {
+      "level": 5,
+      "features": [
+        "srd-5.1:font-of-inspiration"
+      ]
+    }
+  ],
+  "spellcasting": {
+    "ability": "cha",
+    "progression": "full",
+    "preparation": "known",
+    "ritualCasting": true
+  }
+}

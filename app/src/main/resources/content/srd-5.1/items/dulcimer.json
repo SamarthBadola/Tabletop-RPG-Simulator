@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:dulcimer",
+  "name": "Dulcimer",
+  "text": {
+    "file": "text/items/dulcimer.md"
+  },
+  "cost": 2500,
+  "weight": 1000,
+  "tier": 0,
+  "category": "tool"
+}

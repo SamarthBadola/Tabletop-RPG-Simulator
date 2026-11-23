@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:shawm",
+  "name": "Shawm",
+  "text": {
+    "file": "text/items/shawm.md"
+  },
+  "cost": 200,
+  "weight": 100,
+  "tier": 0,
+  "category": "tool"
+}

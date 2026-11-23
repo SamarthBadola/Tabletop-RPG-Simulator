@@ -1,0 +1,26 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:shortbow",
+  "name": "Shortbow",
+  "text": {
+    "file": "text/items/shortbow.md"
+  },
+  "cost": 2500,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "ranged",
+    "proficiencyGroup": "simple",
+    "damage": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "two_handed"
+    ],
+    "range": {
+      "normal": 80,
+      "long": 320
+    }
+  }
+}

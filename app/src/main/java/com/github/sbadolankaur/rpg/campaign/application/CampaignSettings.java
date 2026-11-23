@@ -191,6 +191,14 @@ public class CampaignSettings {
     }
   }
 
+  public SettingsView pinned(JsonNode recorded) {
+    Map<String, Object> values = new LinkedHashMap<>();
+    for (Definition definition : SettingsRegistry.all()) {
+      values.put(definition.key(), definition.parse(recorded.path(definition.key()).asString()));
+    }
+    return new SettingsView(values);
+  }
+
   private SettingsView snapshot(UUID campaign) {
     var decisions = store.decisions(campaign);
     Map<String, Object> values = new LinkedHashMap<>();

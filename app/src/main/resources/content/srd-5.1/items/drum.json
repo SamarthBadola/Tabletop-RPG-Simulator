@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:drum",
+  "name": "Drum",
+  "text": {
+    "file": "text/items/drum.md"
+  },
+  "cost": 600,
+  "weight": 300,
+  "tier": 0,
+  "category": "tool"
+}

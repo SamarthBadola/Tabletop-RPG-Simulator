@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Scene rolls</title></head>
+<body><main th:fragment="workspace">
+    <h1 th:text="${view.name}"></h1>
+    <div th:replace="~{demo-encounter :: reaction}"></div>
+    <section th:unless="${reaction != null}">
+        <form th:action="@{${commandPath + '/ability-checks'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <label>Ability <select name="ability"><option th:each="ability : ${abilities}" th:text="${ability}"></option></select></label>
+            <label>Difficulty class <input name="dc" type="number" min="1" max="40"></label>
+            <label>Subjects <select name="subjectIds" multiple required>
+                <option th:each="subject : ${view.subjects}" th:value="${subject.id}" th:text="${subject.name}"></option>
+            </select></label>
+            <button type="submit">Roll ability check</button>
+        </form>
+        <form th:action="@{${commandPath + '/saving-throws'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <label>Ability <select name="ability"><option th:each="ability : ${abilities}" th:text="${ability}"></option></select></label>
+            <label>Difficulty class <input name="dc" type="number" min="1" max="40" required></label>
+            <label>Targets <select name="targetIds" multiple required>
+                <option th:each="subject : ${view.subjects}" th:value="${subject.id}" th:text="${subject.name}"></option>
+            </select></label>
+            <button type="submit">Roll saving throw</button>
+        </form>
+    </section>
+    <section id="result" th:if="${result != null and reaction == null}" aria-live="polite">
+        <h2>Result</h2>
+        <pre th:text="${result.toPrettyString()}"></pre>
+    </section>
+</main><footer th:replace="~{demo-footer :: help}"></footer></body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:horn",
+  "name": "Horn",
+  "text": {
+    "file": "text/items/horn.md"
+  },
+  "cost": 300,
+  "weight": 200,
+  "tier": 0,
+  "category": "tool"
+}

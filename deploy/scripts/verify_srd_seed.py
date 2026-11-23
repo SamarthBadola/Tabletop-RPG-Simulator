@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import unicodedata
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -17,7 +18,8 @@ CONTENT = ROOT / "app/src/main/resources/content"
 
 
 def normalize(text):
-    text = re.sub(r"[\u2010\u2011\u2212]+", "-", text.replace("\u00ad", ""))
+    text = "".join(char for char in text if unicodedata.category(char) != "Cf")
+    text = re.sub(r"[\u2010\u2011\u2212]+", "-", text)
     return " ".join(text.split()).translate(str.maketrans("\u2018\u2019\u201c\u201d\u2212", "''\"\"-"))
 
 
@@ -37,9 +39,11 @@ def verify(pdf_path):
         raise ValueError("The PDF does not match the pinned Creative Commons source")
     reader = PdfReader(pdf_path)
     for span in index["spans"]:
-        if "flatStart" in span:
-            page = " ".join(reader.pages[span["pdfPage"] - 1].extract_text().split())
-            parts = [page[span["flatStart"]:span["flatEnd"]]]
+        if "flatStart" in span or "segments" in span:
+            parts = []
+            for segment in span.get("segments", [span]):
+                page = " ".join(reader.pages[segment["pdfPage"] - 1].extract_text().split())
+                parts.append(page[segment["flatStart"]:segment["flatEnd"]])
         else:
             parts = extract(reader, span["pdfPage"], span["heading"], span["nextHeading"])
         source = normalize(" ".join(parts))

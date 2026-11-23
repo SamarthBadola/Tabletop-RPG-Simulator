@@ -9,11 +9,19 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignSettings;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignView;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
 import com.github.sbadolankaur.rpg.campaign.persistence.CommandStore;
+import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
+import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore.Window;
+import com.github.sbadolankaur.rpg.content.ContentPacks;
+import com.github.sbadolankaur.rpg.encounter.application.CombatActions.Attack;
+import com.github.sbadolankaur.rpg.encounter.application.CombatActions.Check;
+import com.github.sbadolankaur.rpg.encounter.application.CombatActions.ManualMove;
 import com.github.sbadolankaur.rpg.encounter.application.CombatRoster.Creature;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Entry;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Table;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
+import com.github.sbadolankaur.rpg.encounter.persistence.AfflictionStore;
 import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
+import com.github.sbadolankaur.rpg.engine.affliction.Affliction;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
@@ -25,10 +33,16 @@ import com.github.sbadolankaur.rpg.engine.dice.RandomSource;
 import com.github.sbadolankaur.rpg.engine.dice.RollResult;
 import com.github.sbadolankaur.rpg.engine.kernel.HitPointRules;
 import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay;
+import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Prompt;
 import com.github.sbadolankaur.rpg.platform.InstanceMac;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -57,6 +71,10 @@ public class EncounterCommands {
   private final InstanceMac mac;
   private final JsonMapper json;
   private final EncounterDice random;
+  private final ReactionStore reactions;
+  private final ContentPacks contentPacks;
+  private final MeterRegistry metrics;
+  private final AfflictionStore afflictions;
 
   EncounterCommands(
       Campaigns campaigns,
@@ -67,7 +85,11 @@ public class EncounterCommands {
       CombatRoster roster,
       InstanceMac mac,
       JsonMapper json,
-      EncounterDice random) {
+      EncounterDice random,
+      ReactionStore reactions,
+      ContentPacks contentPacks,
+      MeterRegistry metrics,
+      AfflictionStore afflictions) {
     this.campaigns = campaigns;
     this.campaignCommands = campaignCommands;
     this.settings = settings;
@@ -77,6 +99,10 @@ public class EncounterCommands {
     this.mac = mac;
     this.json = json;
     this.random = random;
+    this.reactions = reactions;
+    this.contentPacks = contentPacks;
+    this.metrics = metrics;
+    this.afflictions = afflictions;
   }
 
   public Reply create(UUID campaign, UUID actor, Envelope envelope, String name) {
@@ -119,6 +145,9 @@ public class EncounterCommands {
       }
       return new Reply(saved.version(), saved.result(), true);
     }
+    if (reactions.forEncounter(campaign, encounter).isPresent()
+        || ("start".equals(command) && reactions.campaignHasSceneWindow(campaign)))
+      throw new CampaignException(Code.REACTION_PENDING);
     if (table.version() != envelope.expectedVersion())
       throw new CampaignException(Code.ENCOUNTER_VERSION_CONFLICT);
     if (needsSession
@@ -134,6 +163,32 @@ public class EncounterCommands {
             settings.effective(campaign, actor),
             roster.content(campaign, actor),
             store.entries(encounter));
+    boolean endTurn = "end-turn".equals(command);
+    boolean deathSave = "death-saves".equals(command);
+    boolean turnUnholy =
+        request instanceof CombatFeatures.Use use
+            && CombatFeatures.TURN_THE_UNHOLY.equals(use.featureKey());
+    if (request instanceof Attack
+        || request instanceof ManualMove
+        || request instanceof Check
+        || endTurn
+        || deathSave
+        || turnUnholy) {
+      var pinned =
+          new RecordedAction(
+              request instanceof Attack attack ? attack : null,
+              request instanceof ManualMove move ? move : null,
+              request instanceof Check check ? check : null,
+              endTurn ? (UUID) request : null,
+              deathSave ? (UUID) request : null,
+              turnUnholy ? (CombatFeatures.Use) request : null,
+              json.valueToTree(context.effective.values()),
+              context.content.packHashes(),
+              ReactionReplay.Continuation.empty(),
+              0,
+              0);
+      return resolveReactionAction(context, envelope, hash, pinned, null, null);
+    }
     if (!"overrides".equals(command)
         || !(request instanceof CombatOverrides.Correction correction)
         || correction.kind() != CombatOverrides.Kind.UNDO_LAST) {
@@ -141,22 +196,36 @@ public class EncounterCommands {
     }
     resolve.accept(context);
     if (context.captureUndo) CombatEffects.expire(context, null, ConditionInstance.Boundary.CLOCK);
+    return commit(context, envelope, hash, table, clock.gameSeconds(), 0, 0);
+  }
+
+  private Reply commit(
+      Context context,
+      Envelope envelope,
+      byte[] hash,
+      Table table,
+      long secondsBefore,
+      int auditedEvents,
+      int auditedWarnings) {
+    UUID encounter = table.id();
     long version = Math.incrementExact(table.version());
     JsonNode result = json.valueToTree(context.result);
     store.action(
         encounter,
         envelope.actionId(),
-        actor,
+        context.actor,
         hash,
         result,
         json.valueToTree(context.settingsRead),
         version);
     int lastDmEvent = context.lastDmEvent();
+    int seen = 0;
     for (int position = 0; position < context.events.size(); position++) {
       var event = context.events.get(position);
+      if (event.auditedDuringPause() && seen++ < auditedEvents) continue;
       var payload = json.<tools.jackson.databind.node.ObjectNode>valueToTree(event.payload());
       if (position == lastDmEvent && context.captureUndo) {
-        payload.set("actionPreimage", json.valueToTree(context.undo(table, clock.gameSeconds())));
+        payload.set("actionPreimage", json.valueToTree(context.undo(table, secondsBefore)));
       }
       store.event(
           encounter,
@@ -169,26 +238,333 @@ public class EncounterCommands {
           payload);
     }
     store.update(context.table, version);
-    if (context.seconds != clock.gameSeconds()) {
-      clocks.updateClock(campaign, context.seconds, Math.incrementExact(clock.version()));
+    if (context.seconds != secondsBefore) {
+      clocks.updateClock(
+          table.campaign(), context.seconds, Math.incrementExact(context.clockVersion));
     }
-    if (!context.criticalWarnings.isEmpty()) {
-      var warnings = List.copyOf(context.criticalWarnings);
-      TransactionSynchronizationManager.registerSynchronization(
-          new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-              warnings.forEach(
+    criticalWarnings(encounter, context.criticalWarnings, auditedWarnings);
+    return new Reply(version, result, false);
+  }
+
+  private static void criticalWarnings(UUID encounter, List<Warning> warnings, int alreadyLogged) {
+    var fresh = List.copyOf(warnings.subList(alreadyLogged, warnings.size()));
+    if (!fresh.isEmpty())
+      afterCommit(
+          () ->
+              fresh.forEach(
                   warning ->
                       LOG.warn(
                           "critical_not_applied encounter_id={} term_label={} term_source={}",
                           encounter,
                           safeLog(warning.label()),
-                          safeLog(warning.source())));
-            }
-          });
+                          safeLog(warning.source()))));
+  }
+
+  private static void afterCommit(Runnable effect) {
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            effect.run();
+          }
+        });
+  }
+
+  @Transactional(readOnly = true)
+  public ReactionView reaction(UUID campaign, UUID encounter, UUID actor) {
+    campaigns.requireDm(campaign, actor);
+    require(campaign, encounter, false);
+    return reactions.forEncounter(campaign, encounter).map(ReactionView::of).orElse(null);
+  }
+
+  @Transactional
+  public Reply answer(
+      UUID campaign, UUID windowId, UUID actor, Envelope envelope, ReactionAnswer answer) {
+    if (!campaigns.isMember(campaign, actor)
+        || campaigns.requireMember(campaign, actor).role() != CampaignView.Role.DM) {
+      metrics.counter("reaction.denied").increment();
+      LOG.warn("reaction.denied campaign={} window={} principal={}", campaign, windowId, actor);
+      throw new CampaignException(Code.REACTION_NOT_PERMITTED);
     }
+    if (envelope.actionId() == null || envelope.expectedVersion() < 0 || answer == null)
+      throw invalid();
+    if (answer.reason() != null
+        && answer.reason().codePointCount(0, answer.reason().length()) > 200) throw invalid();
+    byte[] hash = mac.sign("encounter-reaction:" + windowId, json.writeValueAsString(answer));
+    var clock = clocks.clock(campaign, true);
+    var receipt = store.reactionAction(campaign, windowId, envelope.actionId());
+    if (receipt.isPresent()) return replay(receipt.get(), actor, hash);
+    var window =
+        reactions
+            .findEncounterWindow(campaign, windowId)
+            .orElseThrow(() -> new CampaignException(Code.REACTION_OPTION_INVALID));
+    var table = require(campaign, window.encounter(), true);
+    var previous = store.action(table.id(), envelope.actionId());
+    if (previous.isPresent()) return replay(previous.get(), actor, hash);
+    if (table.version() != envelope.expectedVersion()
+        || window.version() != envelope.expectedVersion())
+      throw new CampaignException(Code.ENCOUNTER_VERSION_CONFLICT);
+
+    if (answer.kind() == AnswerKind.CANCEL) {
+      var context =
+          new Context(table, actor, clock.gameSeconds(), clock.version(), null, null, List.of());
+      context.disableUndo();
+      context.result("encounterId", table.id());
+      context.result("reactionWindowId", window.id());
+      context.result("outcome", "cancelled");
+      var event = new LinkedHashMap<String, Object>();
+      event.put("windowId", window.id());
+      event.put("openedByActionId", window.openedBy());
+      if (answer.reason() != null) event.put("reason", answer.reason());
+      context.dm("ActionCancelled", event);
+      closeReaction(window);
+      afterCommit(() -> LOG.info("reaction.cancelled window={} principal={}", window.id(), actor));
+      return commit(context, envelope, hash, table, clock.gameSeconds(), 0, 0);
+    }
+
+    var prompt = window.prompt();
+    boolean followUp = answer.kind() == AnswerKind.FOLLOW_UP;
+    if (!prompt.decider().equals(answer.deciderId())
+        || prompt.followUp() != followUp
+        || !prompt.permits(answer.optionKey()))
+      throw new CampaignException(Code.REACTION_OPTION_INVALID);
+    var saved = json.treeToValue(window.continuation(), RecordedAction.class);
+    var context =
+        new Context(
+            table,
+            actor,
+            clock.gameSeconds(),
+            clock.version(),
+            settings.pinned(saved.settings()),
+            contentPacks.openPinned(saved.packHashes()),
+            store.entries(table.id()));
+    var decision = new LinkedHashMap<String, Object>();
+    decision.put("windowId", window.id());
+    decision.put("deciderId", prompt.decider());
+    decision.put("principalId", actor);
+    decision.put("point", prompt.point());
+    decision.put("choice", answer.optionKey() == null ? "pass" : answer.optionKey());
+    context.dm("ReactionAnswered", decision);
+    afterCommit(
+        () ->
+            LOG.info(
+                "reaction.answered window={} decider={} option={} principal={}",
+                windowId,
+                prompt.decider(),
+                decision.get("choice"),
+                actor));
+    return resolveReactionAction(context, envelope, hash, saved, window, answer.optionKey());
+  }
+
+  private static Reply replay(EncounterStore.Replay saved, UUID actor, byte[] hash) {
+    if (!actor.equals(saved.actor()) || !MessageDigest.isEqual(hash, saved.hash()))
+      throw new CampaignException(Code.IDEMPOTENCY_KEY_CONFLICT);
+    return new Reply(saved.version(), saved.result(), true);
+  }
+
+  private Reply resolveReactionAction(
+      Context context,
+      Envelope envelope,
+      byte[] hash,
+      RecordedAction saved,
+      Window window,
+      String option) {
+    Table table = context.table;
+    long secondsBefore = context.seconds;
+    var continuation =
+        window == null ? saved.replay() : saved.replay().answer(window.prompt(), option);
+    context.stage = true;
+    context.resuming = window != null;
+    var outcome =
+        ReactionReplay.run(
+            saved.name(),
+            continuation,
+            random,
+            engine -> {
+              context.replay = engine;
+              CombatEffects.expire(context, null, ConditionInstance.Boundary.CLOCK);
+              saved.resolve(context);
+              CombatEffects.expire(context, null, ConditionInstance.Boundary.CLOCK);
+              return context;
+            });
+    if (outcome.pending() == null) {
+      context.flush();
+      if (window != null) {
+        closeReaction(window);
+        context.result("reactionWindowId", window.id());
+        context.result("encounterId", table.id());
+      }
+      for (var point : outcome.depthLimits()) {
+        context.dm("ReactionDepthLimit", Map.of("point", point));
+        afterCommit(
+            () -> {
+              metrics.counter("reaction.depth_limit").increment();
+              LOG.warn("reaction.depth_limit encounter={} point={}", table.id(), point);
+            });
+      }
+      return commit(
+          context,
+          envelope,
+          hash,
+          table,
+          secondsBefore,
+          saved.auditedEvents(),
+          saved.auditedWarnings());
+    }
+
+    long version = Math.incrementExact(table.version());
+    var now = OffsetDateTime.now(ZoneOffset.UTC);
+    UUID id = window == null ? ServerIds.at(now.toInstant()) : window.id();
+    int audited = (int) context.events.stream().filter(PendingEvent::auditedDuringPause).count();
+    var record =
+        new RecordedAction(
+            saved.action(),
+            saved.move(),
+            saved.check(),
+            saved.endTurn(),
+            saved.deathSave(),
+            saved.feature(),
+            saved.settings(),
+            saved.packHashes(),
+            outcome.continuation(),
+            audited,
+            context.criticalWarnings.size());
+    var next =
+        new Window(
+            id,
+            table.campaign(),
+            table.id(),
+            window == null ? envelope.actionId() : window.openedBy(),
+            outcome.pending(),
+            json.valueToTree(record),
+            version,
+            window == null ? now : window.createdAt());
+    JsonNode result =
+        json.valueToTree(
+            Map.of(
+                "reactionWindowId",
+                id,
+                "encounterId",
+                table.id(),
+                "awaitingReaction",
+                id,
+                "reaction",
+                ReactionView.of(next)));
+    store.action(
+        table.id(),
+        envelope.actionId(),
+        context.actor,
+        hash,
+        result,
+        json.valueToTree(context.settingsRead),
+        version);
+    int seen = 0;
+    for (var event : context.events) {
+      if (event.auditedDuringPause() && seen++ >= saved.auditedEvents()
+          || "ReactionAnswered".equals(event.type())) {
+        store.event(
+            table.id(),
+            envelope.actionId(),
+            event.gameSeconds(),
+            event.round(),
+            event.type(),
+            event.audience(),
+            event.recipient(),
+            json.valueToTree(event.payload()));
+      }
+    }
+    store.event(
+        table.id(),
+        envelope.actionId(),
+        secondsBefore,
+        table.round(),
+        "ReactionOpened",
+        "DM",
+        null,
+        json.valueToTree(
+            Map.of(
+                "windowId",
+                id,
+                "point",
+                next.prompt().point(),
+                "depth",
+                next.prompt().frames().size())));
+    if (window == null) reactions.open(next);
+    else reactions.advance(window, next);
+    store.update(table, version);
+    criticalWarnings(table.id(), context.criticalWarnings, saved.auditedWarnings());
+    afterCommit(
+        () -> {
+          metrics.counter("reaction.opened").increment();
+          LOG.info(
+              "reaction.opened encounter={} window={} point={}",
+              table.id(),
+              id,
+              next.prompt().point());
+        });
     return new Reply(version, result, false);
+  }
+
+  private void closeReaction(Window window) {
+    reactions.close(window);
+    afterCommit(
+        () ->
+            metrics
+                .timer("reaction.open_seconds")
+                .record(Duration.between(window.createdAt(), OffsetDateTime.now(ZoneOffset.UTC))));
+  }
+
+  private record RecordedAction(
+      Attack action,
+      ManualMove move,
+      Check check,
+      UUID endTurn,
+      UUID deathSave,
+      CombatFeatures.Use feature,
+      JsonNode settings,
+      List<String> packHashes,
+      ReactionReplay.Continuation replay,
+      int auditedEvents,
+      int auditedWarnings) {
+    String name() {
+      if (action != null) return "attack";
+      if (move != null) return "move";
+      if (check != null) return check.save() ? "save" : "check";
+      if (feature != null) return "turn-unholy";
+      return endTurn != null ? "end-turn" : "death-save";
+    }
+
+    void resolve(Context context) {
+      if (action != null) CombatActions.resolveAttack(context, action);
+      else if (move != null) CombatActions.resolveManualMove(context, move);
+      else if (check != null) CombatActions.resolveCheck(context, check);
+      else if (feature != null) CombatFeatures.use(context, feature);
+      else if (endTurn != null) Encounters.resolveEndTurn(context, endTurn);
+      else Encounters.resolveExplicitDeathSave(context, deathSave);
+    }
+  }
+
+  public record ReactionView(UUID id, long version, Prompt prompt) {
+    static ReactionView of(Window window) {
+      return new ReactionView(window.id(), window.version(), window.prompt());
+    }
+  }
+
+  public enum AnswerKind {
+    ANSWER,
+    FOLLOW_UP,
+    CANCEL
+  }
+
+  public record ReactionAnswer(AnswerKind kind, UUID deciderId, String optionKey, String reason) {
+    public ReactionAnswer {
+      if (kind == null
+          || (kind == AnswerKind.CANCEL
+              ? deciderId != null || optionKey != null
+              : deciderId == null
+                  || reason != null
+                  || kind == AnswerKind.FOLLOW_UP && optionKey == null)) throw invalid();
+    }
   }
 
   private static String safeLog(String text) {
@@ -214,8 +590,17 @@ public class EncounterCommands {
     private final UUID actor;
     private final SettingsView effective;
     final ContentSet content;
+    // Step 14 will resolve the geometry from the encounter's map.
+    final EncounterGeometry geometry = EncounterGeometry.UNMAPPED;
     final Map<UUID, Entry> entries = new LinkedHashMap<>();
     private final Map<UUID, Creature> profiles = new HashMap<>();
+    private final Map<UUID, Vitals> pendingVitals = new HashMap<>();
+    private final Map<UUID, Map<Integer, Integer>> pendingSlots = new HashMap<>();
+    private final Map<UUID, Map<String, Integer>> pendingResources = new HashMap<>();
+    private final List<Runnable> writes = new ArrayList<>();
+    private boolean stage;
+    private boolean resuming;
+    private ReactionReplay replay;
     private final Map<String, Object> settingsRead = new LinkedHashMap<>();
     private final List<PendingEvent> events = new ArrayList<>();
     private final List<Warning> criticalWarnings = new ArrayList<>();
@@ -240,11 +625,31 @@ public class EncounterCommands {
     }
 
     RandomSource random() {
-      return random;
+      return replay == null ? random : replay.random();
+    }
+
+    ReactionReplay reactions() {
+      return replay;
     }
 
     void preflight(List<String> keys) {
-      settings.requireDecisions(table.campaign(), actor, keys);
+      if (!resuming && (replay == null || replay.canAskSettings()))
+        settings.requireDecisions(table.campaign(), actor, keys);
+    }
+
+    private void write(Runnable operation) {
+      if (stage) writes.add(operation);
+      else operation.run();
+    }
+
+    private void flush() {
+      writes.forEach(Runnable::run);
+      writes.clear();
+      pendingVitals.clear();
+      pendingSlots.clear();
+      pendingResources.clear();
+      profiles.clear();
+      stage = false;
     }
 
     <T> T setting(String key, Class<T> type) {
@@ -256,8 +661,23 @@ public class EncounterCommands {
     Creature creature(UUID id) {
       Entry entry = entries.get(id);
       if (entry == null) throw new CampaignException(Code.NOT_FOUND);
-      return profiles.computeIfAbsent(
-          id, key -> roster.load(table.campaign(), actor, entry, content));
+      var profile =
+          profiles.computeIfAbsent(
+              id, key -> roster.load(table.campaign(), actor, entry, content, effective));
+      if (!stage) return profile;
+      var vitals =
+          entry.character() == null
+              ? entry.npcVitals()
+              : pendingVitals.getOrDefault(id, profile.vitals());
+      return profile.withState(
+          entry, vitals, pendingResources.getOrDefault(id, profile.resources()));
+    }
+
+    String creatureType(Creature creature) {
+      String monster = creature.entry().monster();
+      return monster == null
+          ? "humanoid"
+          : String.valueOf(content.find("monster", monster).orElseThrow().fields().get("type"));
     }
 
     Creature acting(UUID id) {
@@ -267,8 +687,14 @@ public class EncounterCommands {
     }
 
     Creature canAct(UUID id) {
+      return canAct(id, false);
+    }
+
+    Creature canAct(UUID id, boolean turnedMayAct) {
       var creature = acting(id);
-      if (creature.incapacitated() || creature.entry().tactics().surprised())
+      if (creature.incapacitated()
+          || creature.entry().tactics().surprised()
+          || !turnedMayAct && creature.conditions().contains("srd-5.1:turned"))
         throw new CampaignException(Code.NO_ACTIONS_LEFT);
       return creature;
     }
@@ -286,7 +712,9 @@ public class EncounterCommands {
           creature.owner(),
           creature.vitals(),
           creature.resources(),
-          equipment(creature));
+          equipment(creature),
+          spellSlots(creature),
+          afflictions(id));
     }
 
     void disableUndo() {
@@ -335,21 +763,23 @@ public class EncounterCommands {
     void update(Entry entry) {
       remember(entry.id());
       entries.put(entry.id(), entry);
-      profiles.remove(entry.id());
-      store.update(entry);
+      if (!stage) profiles.remove(entry.id());
+      write(() -> store.update(entry));
     }
 
     void add(Entry entry) {
       remember(entry.id());
       entries.put(entry.id(), entry);
-      store.add(table.id(), entry);
+      UUID encounter = table.id();
+      write(() -> store.add(encounter, entry));
     }
 
     void remove(UUID id) {
       remember(id);
       entries.remove(id);
       profiles.remove(id);
-      store.remove(table.id(), id);
+      UUID encounter = table.id();
+      write(() -> store.remove(encounter, id));
     }
 
     Vitals health(Creature current, CombatHealth next) {
@@ -385,11 +815,13 @@ public class EncounterCommands {
       if (next.state() != State.ALIVE) {
         conditions.add(CombatConditions.UNCONSCIOUS);
         conditions.add(CombatConditions.PRONE);
-        if (before.health().state() == State.ALIVE) roster.dropHeld(current);
+        if (before.health().state() == State.ALIVE) write(() -> roster.dropHeld(current));
       } else if (before.health().state() != State.ALIVE) {
         conditions.remove(CombatConditions.UNCONSCIOUS);
       }
-      var vitals = new Vitals(next, recoveryAt, conditions, before.effects(), exhaustion);
+      var vitals =
+          new Vitals(
+              next, recoveryAt, conditions, before.effects(), exhaustion, before.inspiration());
       vitals(current, vitals);
       return vitals;
     }
@@ -398,8 +830,9 @@ public class EncounterCommands {
       remember(current.entry().id());
       if (current.entry().character() == null) update(current.entry().vitals(next));
       else {
-        roster.writePlayer(current, next);
-        profiles.remove(current.entry().id());
+        if (stage) pendingVitals.put(current.entry().id(), next);
+        else profiles.remove(current.entry().id());
+        write(() -> roster.writePlayer(current, next));
       }
     }
 
@@ -418,6 +851,17 @@ public class EncounterCommands {
               table.round()));
     }
 
+    void reveal(UUID decider, UUID recipient, ReactionReplay.Disclosure disclosure) {
+      events.add(
+          new PendingEvent(
+              "ReactionRollRevealed",
+              recipient == null ? "DM" : "PLAYERS",
+              recipient,
+              Map.of("deciderId", decider, "disclosure", disclosure),
+              seconds,
+              table.round()));
+    }
+
     void result(String key, Object value) {
       result.put(key, value);
     }
@@ -428,14 +872,49 @@ public class EncounterCommands {
 
     void restoreEquipment(Creature creature, Map<UUID, String> slots) {
       remember(creature.entry().id());
-      roster.restoreEquipment(creature, slots);
+      write(() -> roster.restoreEquipment(creature, slots));
       profiles.remove(creature.entry().id());
     }
 
+    Map<UUID, Affliction> afflictions(UUID combatant) {
+      return afflictions.forCombatant(combatant);
+    }
+
+    void affliction(UUID combatant, Affliction affliction) {
+      remember(combatant);
+      afflictions.update(combatant, affliction);
+    }
+
+    Map<Integer, Integer> spellSlots(Creature creature) {
+      var staged = pendingSlots.get(creature.entry().id());
+      return staged == null ? roster.spentSlots(creature) : staged;
+    }
+
+    void spellSlot(Creature creature, int level, int used) {
+      UUID id = creature.entry().id();
+      remember(id);
+      if (stage) {
+        var slots = new HashMap<>(spellSlots(creature));
+        if (used == 0) slots.remove(level);
+        else slots.put(level, used);
+        pendingSlots.put(id, Map.copyOf(slots));
+      }
+      write(() -> roster.spellSlot(creature, level, used));
+    }
+
+    boolean alwaysPass(Creature creature, String feature) {
+      return roster.alwaysPassReaction(creature, feature);
+    }
+
     void resource(Creature creature, String key, int used) {
-      remember(creature.entry().id());
-      roster.setResource(creature, key, used);
-      profiles.remove(creature.entry().id());
+      UUID id = creature.entry().id();
+      remember(id);
+      if (stage) {
+        var next = new HashMap<>(creature.resources());
+        next.put(key, used);
+        pendingResources.put(id, Map.copyOf(next));
+      } else profiles.remove(id);
+      write(() -> roster.setResource(creature, key, used));
     }
 
     void dice(String purpose, UUID creature, RollResult roll) {
@@ -460,7 +939,11 @@ public class EncounterCommands {
       UUID recipient,
       Map<String, ?> payload,
       long gameSeconds,
-      int round) {}
+      int round) {
+    boolean auditedDuringPause() {
+      return type.equals("DiceRolled") || type.equals("ReactionRollRevealed");
+    }
+  }
 
   private record Warning(String label, String source) {}
 }

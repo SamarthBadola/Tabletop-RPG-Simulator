@@ -11,6 +11,7 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignSettings;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignView.Role;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
+import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
 import com.github.sbadolankaur.rpg.character.application.CharacterCatalog.Choice;
 import com.github.sbadolankaur.rpg.character.application.CharacterCreation.EquipmentGroup;
 import com.github.sbadolankaur.rpg.character.persistence.CharacterStore;
@@ -20,6 +21,7 @@ import com.github.sbadolankaur.rpg.character.persistence.CharacterStore.State;
 import com.github.sbadolankaur.rpg.engine.character.AbilityGeneration;
 import com.github.sbadolankaur.rpg.engine.character.CharacterRules;
 import com.github.sbadolankaur.rpg.engine.content.ContentExpression;
+import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.dice.DiceExpression;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AbilityScores;
@@ -45,17 +47,20 @@ public class Characters {
   private final CampaignCommands commands;
   private final CampaignSettings settings;
   private final CharacterStore store;
+  private final ReactionStore reactions;
   private final SecureRandom random = new SecureRandom();
 
   Characters(
       Campaigns campaigns,
       CampaignCommands commands,
       CampaignSettings settings,
-      CharacterStore store) {
+      CharacterStore store,
+      ReactionStore reactions) {
     this.campaigns = campaigns;
     this.commands = commands;
     this.settings = settings;
     this.store = store;
+    this.reactions = reactions;
   }
 
   @Transactional(readOnly = true)
@@ -79,6 +84,14 @@ public class Characters {
   }
 
   @Transactional(readOnly = true)
+  public CharacterSheets.View combatSheet(
+      UUID campaign, UUID actor, UUID id, ContentSet content, SettingsView effective) {
+    var access = access(campaign, actor, id);
+    return CharacterSheets.derive(
+        store.read(access.character()), new CharacterCatalog(content), effective, access.dm());
+  }
+
+  @Transactional(readOnly = true)
   public Wizard wizard(UUID campaign, UUID actor, Creation form) {
     boolean dm = campaigns.requireMember(campaign, actor).role() == Role.DM;
     var catalog = catalog(campaign, actor);
@@ -90,7 +103,9 @@ public class Characters {
         catalog.choices("species"),
         catalog.choices("class"),
         catalog.choices("background"),
-        form.classKey() == null ? List.of() : catalog.styles(form.classKey()),
+        form.classKey() == null
+            ? catalog.styles("srd-5.1:fighter")
+            : startingStyles(catalog, form.classKey()),
         form.classKey() == null
             ? List.of()
             : catalog
@@ -103,7 +118,8 @@ public class Characters {
         method,
         rolled.map(CharacterStore.Rolled::values).orElseGet(List::of),
         dm,
-        CharacterSheets.SKILLS.keySet().stream().sorted().toList());
+        CharacterSheets.SKILLS.keySet().stream().sorted().toList(),
+        "srd-5.1:rogue".equals(form.classKey()));
   }
 
   public void validateCreation(UUID campaign, UUID actor, Creation form, Step through) {
@@ -263,8 +279,11 @@ public class Characters {
     catalog.require("species", form.speciesKey());
     if (through.ordinal() >= Step.CLASS.ordinal()) {
       catalog.require("class", form.classKey());
-      if (catalog.styles(form.classKey()).stream()
-          .noneMatch(choice -> choice.key().equals(form.fightingStyleKey()))) throw invalid();
+      var styles = startingStyles(catalog, form.classKey());
+      if (styles.isEmpty()
+          ? form.fightingStyleKey() != null
+          : styles.stream().noneMatch(choice -> choice.key().equals(form.fightingStyleKey())))
+        throw invalid();
     }
     if (through.ordinal() >= Step.ABILITIES.ordinal()) {
       var set = store.rolled(campaign, actor);
@@ -287,6 +306,13 @@ public class Characters {
     if (through == Step.REVIEW) name(form.name());
   }
 
+  private static List<Choice> startingStyles(CharacterCatalog catalog, String classKey) {
+    return catalog.level(classKey, 1).strings("grants").contains("fighting_style")
+            || "srd-5.1:fighter".equals(classKey)
+        ? catalog.styles(classKey)
+        : List.of();
+  }
+
   private static List<CharacterStore.Proficiency> proficiencies(
       CharacterCatalog catalog, Creation form, SettingsView effective) {
     var source =
@@ -298,8 +324,42 @@ public class Characters {
             form.skillChoices(),
             form.languageChoices(),
             effective.get("duplicateProficiencyReplacement", String.class));
-    return CharacterCreation.replacements(
-        source, form.skillChoices(), form.skillReplacements(), form.classKey());
+    var trained =
+        CharacterCreation.replacements(
+            source, form.skillChoices(), form.skillReplacements(), form.classKey());
+    var additions = new ArrayList<>(trained);
+    additions.addAll(
+        expertise(
+            trained,
+            form.expertiseChoices(),
+            "srd-5.1:rogue".equals(form.classKey()) ? 2 : 0,
+            form.classKey(),
+            true));
+    return List.copyOf(additions);
+  }
+
+  private static List<CharacterStore.Proficiency> expertise(
+      List<CharacterStore.Proficiency> trained,
+      List<String> choices,
+      int count,
+      String source,
+      boolean tools) {
+    if (choices.size() != count
+        || new HashSet<>(choices).size() != count
+        || choices.stream()
+            .anyMatch(
+                key ->
+                    trained.stream()
+                        .noneMatch(
+                            entry ->
+                                entry.key().equals(key)
+                                    && ("skill".equals(entry.kind())
+                                        || tools
+                                            && "tool".equals(entry.kind())
+                                            && "thieves_tools".equals(key))))) throw invalid();
+    return choices.stream()
+        .map(key -> new CharacterStore.Proficiency("expertise", key, source))
+        .toList();
   }
 
   public Reply grant(UUID campaign, UUID actor, UUID id, Envelope envelope, String classKey) {
@@ -313,6 +373,7 @@ public class Characters {
         new Target(id, classKey),
         clock -> {
           var state = state(campaign, actor, id);
+          requireUnfrozen(campaign, id);
           var selected = selectedClass(state, classKey);
           catalog(campaign, actor).level(selected.key(), selected.level() + 1);
           if (state.rawHealth().size() >= FIGHTER_SCOPE_LIMIT) throw invalid();
@@ -345,8 +406,9 @@ public class Characters {
         Kind.CHARACTER_LEVEL_UP,
         new LevelAction(id, form),
         clock -> {
-          if (store.inActiveEncounter(id)) throw new CampaignException(Code.ENCOUNTER_ACTIVE);
           var state = state(campaign, actor, id);
+          requireUnfrozen(campaign, id);
+          if (store.inActiveEncounter(id)) throw new CampaignException(Code.ENCOUNTER_ACTIVE);
           var catalog = catalog(campaign, actor);
           var effective = settings.effective(campaign, actor);
           var plan = plan(state, catalog, effective, form);
@@ -359,6 +421,29 @@ public class Characters {
           if (!plan.subclassRequired()
               && form.subclassKey() != null
               && !Objects.equals(subclass, form.subclassKey())) throw invalid();
+
+          if (plan.styles().isEmpty()
+              ? form.fightingStyleKey() != null
+              : plan.styles().stream()
+                  .noneMatch(choice -> choice.key().equals(form.fightingStyleKey())))
+            throw invalid();
+          boolean lore = plan.level() == 3 && "srd-5.1:college-of-lore".equals(subclass);
+          if (form.bonusSkills().size() != (lore ? 3 : 0)
+              || new HashSet<>(form.bonusSkills()).size() != form.bonusSkills().size()
+              || !plan.newSkills().containsAll(form.bonusSkills())) throw invalid();
+          var additions = new ArrayList<CharacterStore.Proficiency>();
+          form.bonusSkills()
+              .forEach(
+                  key -> additions.add(new CharacterStore.Proficiency("skill", key, subclass)));
+          var eligible = new ArrayList<>(state.proficiencies());
+          eligible.addAll(additions);
+          additions.addAll(
+              expertise(
+                  eligible,
+                  form.expertiseChoices(),
+                  plan.expertiseRequired() ? 2 : 0,
+                  previous.key(),
+                  false));
 
           if (!plan.hpMethods().contains(form.hitPointMethod())) throw invalid();
           if (plan.improvementRequired()
@@ -404,7 +489,9 @@ public class Characters {
               hp,
               improved,
               form.featKey(),
-              catalog.resources(previous.key(), plan.level()));
+              catalog.resources(previous.key(), plan.level(), subclass));
+          if (form.fightingStyleKey() != null) store.fightingStyle(id, form.fightingStyleKey());
+          store.addProficiencies(id, additions);
           return Change.at(
                   clock,
                   "CharacterLeveledUp",
@@ -470,7 +557,23 @@ public class Characters {
         row.strings("features").stream().map(key -> catalog.choice("feature", key)).toList(),
         methods,
         feats,
-        losses);
+        losses,
+        grants.contains("fighting_style") ? catalog.styles(current.key()) : List.of(),
+        row.strings("features").contains("srd-5.1:bard-expertise"),
+        state.proficiencies().stream()
+            .filter(entry -> "skill".equals(entry.kind()))
+            .map(entry -> entry.key())
+            .distinct()
+            .sorted()
+            .toList(),
+        CharacterSheets.SKILLS.keySet().stream()
+            .filter(
+                key ->
+                    state.proficiencies().stream()
+                        .noneMatch(
+                            entry -> "skill".equals(entry.kind()) && key.equals(entry.key())))
+            .sorted()
+            .toList());
   }
 
   private static boolean prerequisite(CharacterCatalog catalog, String feat, AbilityScores scores) {
@@ -504,6 +607,7 @@ public class Characters {
         new EditAction(id, form),
         clock -> {
           var rights = access(campaign, actor, id);
+          requireUnfrozen(campaign, id);
           var state = store.read(rights.character());
           var catalog = catalog(campaign, actor);
           if (form.section() == null) throw invalid();
@@ -634,6 +738,11 @@ public class Characters {
     return store.read(access(campaign, actor, id).character());
   }
 
+  private void requireUnfrozen(UUID campaign, UUID id) {
+    if (reactions.protectsCharacter(campaign, id))
+      throw new CampaignException(Code.REACTION_PENDING);
+  }
+
   private CharacterCatalog catalog(UUID campaign, UUID actor) {
     return new CharacterCatalog(campaigns.contentFor(campaign, actor));
   }
@@ -688,7 +797,8 @@ public class Characters {
       List<String> skillReplacements,
       List<String> languageChoices,
       List<String> equipmentChoices,
-      String name) {}
+      String name,
+      List<String> expertiseChoices) {}
 
   public record Wizard(
       List<Choice> species,
@@ -701,7 +811,8 @@ public class Characters {
       AbilityGeneration method,
       List<Integer> rolled,
       boolean dm,
-      List<String> replacements) {}
+      List<String> replacements,
+      boolean rogueExpertise) {}
 
   public record Advancement(
       String classKey,
@@ -709,7 +820,10 @@ public class Characters {
       String hitPointMethod,
       Map<Ability, Integer> improvements,
       String featKey,
-      boolean acknowledgeLoss) {}
+      boolean acknowledgeLoss,
+      String fightingStyleKey,
+      List<String> expertiseChoices,
+      List<String> bonusSkills) {}
 
   public record LevelPlan(
       String classKey,
@@ -721,7 +835,11 @@ public class Characters {
       List<Choice> features,
       List<String> hpMethods,
       List<Choice> feats,
-      Map<Ability, AbilityScores.ImprovementPreview> losses) {}
+      Map<Ability, AbilityScores.ImprovementPreview> losses,
+      List<Choice> styles,
+      boolean expertiseRequired,
+      List<String> trainedSkills,
+      List<String> newSkills) {}
 
   public record Edit(
       String section,

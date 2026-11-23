@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:flute",
+  "name": "Flute",
+  "text": {
+    "file": "text/items/flute.md"
+  },
+  "cost": 200,
+  "weight": 100,
+  "tier": 0,
+  "category": "tool"
+}

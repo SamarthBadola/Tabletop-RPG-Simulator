@@ -16,6 +16,7 @@ import com.github.sbadolankaur.rpg.engine.combat.CombatRolls;
 import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
+import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -32,6 +33,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 @Component
 class CombatRoster {
+  private static final Set<String> OFF_HAND_DAMAGE_EFFECTS =
+      Set.of("off_hand_ability_damage", "two_weapon_fighting");
+
   private final Campaigns campaigns;
   private final Characters characters;
   private final CharacterStore characterStore;
@@ -62,8 +66,21 @@ class CombatRoster {
         : npc(entry, content);
   }
 
+  Creature load(
+      UUID campaign, UUID actor, Entry entry, ContentSet content, SettingsView effective) {
+    if (entry.character() == null) return npc(entry, content);
+    return player(
+        campaign,
+        entry,
+        content,
+        characters.combatSheet(campaign, actor, entry.character(), content, effective));
+  }
+
   private Creature player(UUID campaign, UUID actor, Entry entry, ContentSet content) {
-    View sheet = characters.sheet(campaign, actor, entry.character());
+    return player(campaign, entry, content, characters.sheet(campaign, actor, entry.character()));
+  }
+
+  private Creature player(UUID campaign, Entry entry, ContentSet content, View sheet) {
     var details = characterStore.combatMetadata(entry.character());
     var state =
         sheet.currentHp() > 0
@@ -108,7 +125,12 @@ class CombatRoster {
         sheet.attacksPerAction(),
         size,
         new Vitals(
-            health, details.recoveryAt(), conditionKeys, details.effects(), details.exhaustion()),
+            health,
+            details.recoveryAt(),
+            conditionKeys,
+            details.effects(),
+            details.exhaustion(),
+            details.inspiration()),
         abilities,
         saves,
         sheet.skills(),
@@ -118,7 +140,12 @@ class CombatRoster {
         resources,
         List.of(),
         Set.of(),
-        DeathMode.PLAYER);
+        DeathMode.PLAYER,
+        sheet.features().stream().map(view -> view.key()).collect(Collectors.toUnmodifiableSet()),
+        sheet.inventory().stream()
+            .anyMatch(item -> "OFF_HAND".equals(item.slot()) && "shield".equals(item.category())),
+        sheet.classes().stream()
+            .collect(Collectors.toUnmodifiableMap(line -> line.key(), line -> line.level())));
   }
 
   private boolean wearsNoisyArmor(View sheet, ContentSet content) {
@@ -180,10 +207,8 @@ class CombatRoster {
                                       .valueStream()
                                       .anyMatch(
                                           effect ->
-                                              effect
-                                                  .path("type")
-                                                  .asString()
-                                                  .equals("two_weapon_fighting"))));
+                                              OFF_HAND_DAMAGE_EFFECTS.contains(
+                                                  effect.path("type").asString()))));
       for (var item : sheet.inventory()) {
         if (!item.category().equals("weapon") || !"OFF_HAND".equals(item.slot())) continue;
         var data = weapon(content, item.key());
@@ -324,7 +349,10 @@ class CombatRoster {
             .valueStream()
             .map(JsonNode::asString)
             .collect(Collectors.toUnmodifiableSet()),
-        entry.tactics().deathMode() == null ? DeathMode.DIE_AT_ZERO : entry.tactics().deathMode());
+        entry.tactics().deathMode() == null ? DeathMode.DIE_AT_ZERO : entry.tactics().deathMode(),
+        Set.of(),
+        false,
+        Map.of());
   }
 
   void writePlayer(Creature current, Vitals next) {
@@ -338,7 +366,8 @@ class CombatRoster {
         health.failures(),
         next.recoveryAt(),
         next.exhaustion(),
-        next.effects());
+        next.effects(),
+        next.inspiration());
     for (String key : current.vitals().conditions()) {
       if (!next.conditions().contains(key)) characterStore.condition(player, key, false);
     }
@@ -347,8 +376,23 @@ class CombatRoster {
     }
   }
 
+  boolean alwaysPassReaction(Creature creature, String feature) {
+    var id = creature.entry().character();
+    return id != null && characterStore.alwaysPassReaction(id, feature);
+  }
+
+  Map<Integer, Integer> spentSlots(Creature creature) {
+    return creature.entry().character() == null
+        ? Map.of()
+        : characterStore.spentSlots(creature.entry().character());
+  }
+
+  void spellSlot(Creature creature, int level, int used) {
+    characterStore.spellSlot(creature.entry().character(), level, used);
+  }
+
   void setResource(Creature creature, String key, int used) {
-    if (!creature.resources().containsKey(key) || used < 0 || used > 1)
+    if (!creature.resources().containsKey(key) || used < 0 || used > creature.resourceLimit(key))
       throw new CampaignException(Code.VALIDATION_FAILED);
     characterStore.resource(creature.entry().character(), key, used);
   }
@@ -393,13 +437,63 @@ class CombatRoster {
       Map<String, Integer> resources,
       List<Defense> defenses,
       Set<String> immunities,
-      DeathMode deathMode) {
+      DeathMode deathMode,
+      Set<String> features,
+      boolean shield,
+      Map<String, Integer> classLevels) {
+    int resourceLimit(String key) {
+      return switch (key) {
+        case "srd-5.1:action-surge-uses" -> classLevel("srd-5.1:fighter") >= 17 ? 2 : 1;
+        case "srd-5.1:bardic-inspiration-uses" -> Math.max(1, abilities.get(Ability.CHA));
+        case "srd-5.1:lay-on-hands-pool" -> 5 * classLevel("srd-5.1:paladin");
+        default -> 1;
+      };
+    }
+
+    int classLevel(String key) {
+      return classLevels.getOrDefault(key, 0);
+    }
+
+    Creature withState(Entry next, Vitals state, Map<String, Integer> spent) {
+      return new Creature(
+          next,
+          name,
+          owner,
+          armor,
+          initiative,
+          baseSpeed,
+          baseMaximumHp,
+          attacksPerAction,
+          size,
+          state,
+          abilities,
+          saves,
+          skills,
+          passivePerceptionBonus,
+          noisyArmor,
+          attacks,
+          spent,
+          defenses,
+          immunities,
+          deathMode,
+          features,
+          shield,
+          classLevels);
+    }
+
     Set<String> conditions() {
       var keys = new HashSet<>(vitals.conditions());
       entry.tactics().conditions().forEach(condition -> keys.add(condition.key()));
       vitals.effects().forEach(condition -> keys.add(condition.key()));
       if (vitals.health().state() != State.ALIVE) keys.add(CombatConditions.UNCONSCIOUS);
       return keys;
+    }
+
+    int abilityCheck(Ability ability) {
+      int value = abilities.get(ability);
+      if (!features.contains("srd-5.1:jack-of-all-trades")) return value;
+      int level = classLevels.values().stream().mapToInt(Integer::intValue).sum();
+      return value + com.github.sbadolankaur.rpg.engine.kernel.ProficiencyBonus.forLevel(level) / 2;
     }
 
     int speed() {

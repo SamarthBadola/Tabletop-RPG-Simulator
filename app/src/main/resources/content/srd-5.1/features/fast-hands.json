@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:fast-hands",
+  "name": "Fast Hands",
+  "text": {
+    "file": "text/features/fast-hands.md"
+  },
+  "effects": [
+    {
+      "type": "grant_bonus_action_option"
+    }
+  ]
+}

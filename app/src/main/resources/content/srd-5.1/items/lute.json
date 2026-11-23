@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:lute",
+  "name": "Lute",
+  "text": {
+    "file": "text/items/lute.md"
+  },
+  "cost": 3500,
+  "weight": 200,
+  "tier": 0,
+  "category": "tool"
+}

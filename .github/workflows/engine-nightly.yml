@@ -35,6 +35,13 @@ jobs:
         working-directory: app
         run: ./mvnw -B -ntp org.pitest:pitest-maven:1.30.2:mutationCoverage
 
+      - name: Check reaction engine mutation coverage
+        working-directory: app
+        run: >-
+          ./mvnw -B -ntp test-compile org.pitest:pitest-maven:1.30.2:mutationCoverage
+          '-Dpitest.classes=com.github.sbadolankaur.rpg.engine.reaction.*'
+          '-Dpitest.tests=com.github.sbadolankaur.rpg.*.Reaction*Test'
+
   newest-jdk:
     name: newest-jdk (non-blocking)
     runs-on: ubuntu-latest

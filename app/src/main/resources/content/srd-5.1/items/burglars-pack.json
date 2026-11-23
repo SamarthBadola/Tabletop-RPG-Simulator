@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:burglars-pack",
+  "name": "Burglar's Pack",
+  "text": {
+    "file": "text/items/burglars-pack.md"
+  },
+  "cost": 1600,
+  "weight": 0,
+  "tier": 0,
+  "category": "gear"
+}

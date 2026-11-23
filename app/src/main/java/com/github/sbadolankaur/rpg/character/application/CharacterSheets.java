@@ -53,14 +53,18 @@ public final class CharacterSheets {
           ability,
           new Score(scores.score(ability), modifier, modifier + (proficient ? proficiency : 0)));
     }
+    var features = catalog.features(state.classes(), header.style(), header.background());
+    boolean jack =
+        features.stream().anyMatch(feature -> "srd-5.1:jack-of-all-trades".equals(feature.key()));
     var skills = new TreeMap<String, Integer>();
     SKILLS.forEach(
-        (key, ability) ->
-            skills.put(
-                key,
-                scores.modifier(ability) + (proficient(state, "skill", key) ? proficiency : 0)));
-
-    var features = catalog.features(state.classes(), header.style(), header.background());
+        (key, ability) -> {
+          int training =
+              proficient(state, "expertise", key)
+                  ? 2 * proficiency
+                  : proficient(state, "skill", key) ? proficiency : jack ? proficiency / 2 : 0;
+          skills.put(key, scores.modifier(ability) + training);
+        });
     var featureLines = new ArrayList<FeatureLine>();
     for (var feature : features) {
       featureLines.add(
@@ -235,7 +239,10 @@ public final class CharacterSheets {
                 resource -> {
                   var definition = catalog.require("resource", resource.key());
                   return new ResourceLine(
-                      resource.key(), definition.text("name"), resource.used(), 1);
+                      resource.key(),
+                      definition.text("name"),
+                      resource.used(),
+                      resourceLimit(resource.key(), state, scores));
                 })
             .toList();
     var conditions =
@@ -276,7 +283,7 @@ public final class CharacterSheets {
         baseMaximum,
         header.temporaryHp(),
         armorClass,
-        scores.modifier(Ability.DEX),
+        scores.modifier(Ability.DEX) + (jack ? proficiency / 2 : 0),
         CombatConditions.speed(
             Exhaustion.speed(speed, state.combat().exhaustion()),
             conditions.stream().map(Choice::key).collect(java.util.stream.Collectors.toSet())),
@@ -297,6 +304,24 @@ public final class CharacterSheets {
         state.conditions(),
         state.grantedClass(),
         dm);
+  }
+
+  private static int resourceLimit(String key, State state, AbilityScores scores) {
+    return switch (key) {
+      case "srd-5.1:lay-on-hands-pool" -> 5 * classLevel(state, "srd-5.1:paladin");
+      case "srd-5.1:bardic-inspiration-uses" -> Math.max(1, scores.modifier(Ability.CHA));
+      case "srd-5.1:divine-sense-uses" -> Math.max(0, 1 + scores.modifier(Ability.CHA));
+      case "srd-5.1:action-surge-uses" -> classLevel(state, "srd-5.1:fighter") >= 17 ? 2 : 1;
+      default -> 1;
+    };
+  }
+
+  private static int classLevel(State state, String name) {
+    return state.classes().stream()
+        .filter(level -> name.equals(level.key()))
+        .findFirst()
+        .map(level -> level.level())
+        .orElse(0);
   }
 
   private static boolean proficient(State state, String kind, String key) {

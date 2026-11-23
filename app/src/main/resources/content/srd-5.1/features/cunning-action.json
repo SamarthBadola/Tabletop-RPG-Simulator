@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:cunning-action",
+  "name": "Cunning Action",
+  "text": {
+    "file": "text/features/cunning-action.md"
+  },
+  "effects": [
+    {
+      "type": "grant_bonus_action_option"
+    }
+  ]
+}

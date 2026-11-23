@@ -15,6 +15,26 @@
     "duration" : {
       "enum" : [ "INSTANT", "ROUNDS", "CLOCK", "CONCENTRATION", "UNTIL_TURN_START", "UNTIL_TURN_END", "UNTIL_DISPELLED", "UNTIL_SHORT_OR_LONG_REST", "UNTIL_LONG_REST", "UNTIL_USED", "PERMANENT", "WHILE_EQUIPPED", "WHILE_ATTUNED" ]
     },
+    "effect-add_damage_dice" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "add_damage_dice"
+        }
+      }
+    },
+    "effect-condition_immunity" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "condition_immunity"
+        }
+      }
+    },
     "effect-damage_die_reroll" : {
       "type" : "object",
       "additionalProperties" : false,
@@ -57,6 +77,16 @@
         },
         "activeWhen" : {
           "$ref" : "common.schema.json#/$defs/predicate"
+        }
+      }
+    },
+    "effect-grant_bonus_action_option" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "grant_bonus_action_option"
         }
       }
     },
@@ -108,6 +138,26 @@
         }
       }
     },
+    "effect-off_hand_ability_damage" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "off_hand_ability_damage"
+        }
+      }
+    },
+    "effect-proficiency_fraction" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "proficiency_fraction"
+        }
+      }
+    },
     "effect-reaction_option" : {
       "type" : "object",
       "additionalProperties" : false,
@@ -118,6 +168,66 @@
         },
         "point" : {
           "$ref" : "#/$defs/trigger"
+        }
+      }
+    },
+    "effect-reduce_damage" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "reduce_damage"
+        }
+      }
+    },
+    "effect-rest_option" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "rest_option"
+        }
+      }
+    },
+    "effect-roll_bonus_die" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "roll_bonus_die"
+        }
+      }
+    },
+    "effect-roll_penalty_die" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "roll_penalty_die"
+        }
+      }
+    },
+    "effect-spend_resource" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "spend_resource"
+        }
+      }
+    },
+    "effect-turned" : {
+      "type" : "object",
+      "additionalProperties" : false,
+      "required" : [ "type" ],
+      "properties" : {
+        "type" : {
+          "const" : "turned"
         }
       }
     },

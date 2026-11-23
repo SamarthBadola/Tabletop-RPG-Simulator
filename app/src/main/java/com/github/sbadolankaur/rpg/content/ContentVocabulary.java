@@ -60,7 +60,7 @@ final class ContentVocabulary {
           Map.entry("equipmentPick", names("martial_weapon simple_weapon armor gear")),
           Map.entry("rollKind", names("attack save check damage initiative death_save")));
 
-  private static final Map<String, Entry> EFFECTS =
+  private static final Map<String, Entry> CORE_EFFECTS =
       Map.of(
           "modifier",
           new Entry(
@@ -119,6 +119,36 @@ final class ContentVocabulary {
                "properties":{"type":{"const":"two_weapon_fighting"}}}
               """,
               node -> Boolean.TRUE));
+  private static final Map<String, Entry> EFFECTS = effects();
+
+  private static Map<String, Entry> effects() {
+    var entries = new TreeMap<>(CORE_EFFECTS);
+    for (String name :
+        List.of(
+            "add_damage_dice",
+            "reduce_damage",
+            "roll_bonus_die",
+            "roll_penalty_die",
+            "proficiency_fraction",
+            "condition_immunity",
+            "turned",
+            "grant_bonus_action_option",
+            "off_hand_ability_damage",
+            "rest_option",
+            "spend_resource")) {
+      entries.put(
+          name,
+          new Entry(
+              """
+          {"type":"object","additionalProperties":false,"required":["type"],
+           "properties":{"type":{"const":"%s"}}}
+          """
+                  .formatted(name),
+              node -> Boolean.TRUE));
+    }
+    return Map.copyOf(entries);
+  }
+
   private static final Map<String, Entry> PARTS =
       Map.of(
           "restriction",
@@ -248,8 +278,8 @@ final class ContentVocabulary {
   }
 
   private static boolean statKey(String key) {
-    if (names("ac speed hp_max crit_threshold attacks_per_action jump_distance").contains(key))
-      return true;
+    if (names("ac speed hp_max crit_threshold attacks_per_action jump_distance climb_speed")
+        .contains(key)) return true;
     for (String skill : SKILLS) {
       if (key.equals("skill:" + skill) || key.equals("skill:" + skill + ":prof_multiplier"))
         return true;
