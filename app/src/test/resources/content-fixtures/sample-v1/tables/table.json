@@ -1,0 +1,18 @@
+{
+  "kind": "ruleTable",
+  "key": "sample-pack:table",
+  "name": "Fixture table",
+  "index": "level",
+  "columns": [
+    {
+      "name": "capacity",
+      "type": "int"
+    }
+  ],
+  "rows": [
+    {
+      "level": 1,
+      "capacity": 4
+    }
+  ]
+}

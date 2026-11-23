@@ -1,0 +1,16 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:improved-critical",
+  "name": "Improved Critical",
+  "text": {
+    "file": "text/features/improved-critical.md"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "crit_threshold",
+      "operation": "MIN",
+      "value": 19
+    }
+  ]
+}

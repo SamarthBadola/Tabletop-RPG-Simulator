@@ -1,0 +1,22 @@
+<section xmlns:th="https://www.thymeleaf.org" th:id="${singleRow == true ? 'setting-row' : 'setting-' + row.definition.key}" th:fragment="row">
+        <h2 th:text="${row.definition.label}"></h2>
+        <p th:text="${row.isDefault ? 'Default' : 'Decided'}"></p>
+        <p th:unless="${row.isDefault}" th:text="|${row.decidedBy} · ${row.decidedAt}|"></p>
+        <form th:action="@{/campaigns/{id}/settings/{key}/decisions(id=${campaign.id},key=${row.definition.key})}" method="post">
+            <div th:replace="~{demo-command :: envelope}"></div>
+            <label>Value
+                <select th:unless="${row.definition.options.isEmpty()}" name="value">
+                    <option th:each="option : ${row.definition.options}" th:value="${option.key}"
+                            th:selected="${option.key == row.text()}" th:text="${option.value}"></option>
+                </select>
+                <input th:if="${row.definition.options.isEmpty()}" name="value" th:value="${row.text()}" required>
+            </label>
+            <p th:text="${row.definition.explanation}"></p>
+            <button type="submit">Save setting</button>
+        </form>
+        <form th:unless="${row.isDefault}"
+              th:action="@{/campaigns/{id}/settings/{key}/resets(id=${campaign.id},key=${row.definition.key})}" method="post">
+            <div th:replace="~{demo-command :: envelope}"></div>
+            <button type="submit">Return to default</button>
+        </form>
+    </section>

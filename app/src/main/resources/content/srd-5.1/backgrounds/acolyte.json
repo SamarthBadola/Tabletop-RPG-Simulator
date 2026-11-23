@@ -1,0 +1,36 @@
+{
+  "kind": "background",
+  "key": "srd-5.1:acolyte",
+  "name": "Acolyte",
+  "text": {
+    "file": "text/backgrounds/acolyte.md"
+  },
+  "skills": [
+    "insight",
+    "religion"
+  ],
+  "languages": [
+    {
+      "id": "extra-languages",
+      "kind": "language",
+      "count": 2,
+      "from": [
+        "dwarvish",
+        "elvish",
+        "giant",
+        "gnomish",
+        "goblin",
+        "halfling",
+        "orc",
+        "abyssal",
+        "celestial",
+        "draconic",
+        "deep_speech",
+        "infernal",
+        "primordial",
+        "sylvan",
+        "undercommon"
+      ]
+    }
+  ]
+}

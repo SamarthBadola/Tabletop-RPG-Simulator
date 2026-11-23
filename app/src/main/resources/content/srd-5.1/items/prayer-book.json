@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:prayer-book",
+  "name": "Prayer Book",
+  "text": {
+    "file": "text/items/prayer-book.md"
+  },
+  "cost": 2500,
+  "weight": 500,
+  "tier": 0,
+  "category": "gear"
+}

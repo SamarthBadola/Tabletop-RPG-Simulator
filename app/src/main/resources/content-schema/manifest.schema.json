@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/manifest.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "minimum": 1,
+      "x-visibility": "dm"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,39}$",
+      "x-visibility": "dm"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "x-visibility": "dm"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$",
+      "x-visibility": "dm"
+    },
+    "ruleset": {
+      "const": "srd-5.1",
+      "x-visibility": "dm"
+    },
+    "vocabulary": {
+      "type": "integer",
+      "minimum": 1,
+      "x-visibility": "dm"
+    },
+    "license": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "x-visibility": "dm"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^https?://[^\\s]+$",
+          "x-visibility": "dm"
+        },
+        "attributionRequired": {
+          "type": "boolean",
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "attributionRequired"
+      ],
+      "additionalProperties": false,
+      "x-visibility": "dm"
+    },
+    "attribution": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "x-visibility": "dm"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "x-visibility": "dm"
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "x-visibility": "dm"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "x-visibility": "dm"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[a-z0-9][a-z0-9.-]{1,39}$",
+            "x-visibility": "dm"
+          },
+          "minVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$",
+            "x-visibility": "dm"
+          }
+        },
+        "required": [
+          "id",
+          "minVersion"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 16,
+      "x-visibility": "dm"
+    },
+    "notes": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "x-visibility": "dm"
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "name",
+    "version",
+    "ruleset",
+    "vocabulary",
+    "license"
+  ],
+  "additionalProperties": false
+}

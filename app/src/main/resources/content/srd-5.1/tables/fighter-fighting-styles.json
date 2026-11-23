@@ -1,0 +1,38 @@
+{
+  "kind": "ruleTable",
+  "key": "srd-5.1:fighter-fighting-styles",
+  "name": "Fighter fighting styles",
+  "index": "name",
+  "columns": [
+    {
+      "name": "feature",
+      "type": "name"
+    }
+  ],
+  "rows": [
+    {
+      "name": "Archery",
+      "feature": "srd-5.1:archery"
+    },
+    {
+      "name": "Defense",
+      "feature": "srd-5.1:defense"
+    },
+    {
+      "name": "Dueling",
+      "feature": "srd-5.1:dueling"
+    },
+    {
+      "name": "Great Weapon Fighting",
+      "feature": "srd-5.1:great-weapon-fighting"
+    },
+    {
+      "name": "Protection",
+      "feature": "srd-5.1:protection"
+    },
+    {
+      "name": "Two-Weapon Fighting",
+      "feature": "srd-5.1:two-weapon-fighting"
+    }
+  ]
+}

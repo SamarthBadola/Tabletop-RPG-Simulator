@@ -1,0 +1,13 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:two-weapon-fighting",
+  "name": "Two-Weapon Fighting",
+  "text": {
+    "file": "text/features/two-weapon-fighting.md"
+  },
+  "effects": [
+    {
+      "type": "two_weapon_fighting"
+    }
+  ]
+}

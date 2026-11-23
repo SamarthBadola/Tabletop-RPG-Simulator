@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:longsword",
+  "name": "Longsword",
+  "text": {
+    "file": "text/items/longsword.md"
+  },
+  "cost": 1500,
+  "weight": 300,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d8",
+    "damageType": "slashing",
+    "properties": [
+      "versatile"
+    ],
+    "versatileDamage": "1d10"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:incense",
+  "name": "Incense",
+  "text": {
+    "file": "text/items/incense.md"
+  },
+  "cost": 0,
+  "weight": 0,
+  "tier": 0,
+  "category": "gear"
+}

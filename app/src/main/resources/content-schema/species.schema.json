@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/species.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "size": {
+          "$ref": "vocabulary.json#/$defs/size",
+          "x-visibility": "dm"
+        },
+        "speed": {
+          "type": "integer",
+          "minimum": 0,
+          "x-visibility": "dm"
+        },
+        "abilityBonuses": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "ability": {
+                    "$ref": "vocabulary.json#/$defs/ability",
+                    "x-visibility": "dm"
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "minimum": -30,
+                    "maximum": 30,
+                    "x-visibility": "dm"
+                  }
+                },
+                "required": [
+                  "ability",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "$ref": "common.schema.json#/$defs/choice"
+              }
+            ]
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "feature"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "species",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "text",
+        "size",
+        "speed"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

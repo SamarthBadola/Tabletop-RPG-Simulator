@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:crossbow-bolts",
+  "name": "Crossbow Bolt",
+  "text": {
+    "file": "text/items/crossbow-bolts.md"
+  },
+  "cost": 5,
+  "weight": 8,
+  "tier": 0,
+  "category": "ammunition"
+}

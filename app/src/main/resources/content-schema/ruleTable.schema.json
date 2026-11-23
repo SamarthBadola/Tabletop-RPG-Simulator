@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/ruleTable.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "index": {
+          "enum": [
+            "level",
+            "name"
+          ],
+          "x-visibility": "dm"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "x-visibility": "dm"
+              },
+              "type": {
+                "enum": [
+                  "int",
+                  "dice",
+                  "name"
+                ],
+                "x-visibility": "dm"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "minProperties": 2,
+            "additionalProperties": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            }
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "ruleTable",
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "index",
+        "columns",
+        "rows"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}
