@@ -18,6 +18,7 @@ COPY include include
 COPY src src
 COPY test test
 COPY contract contract
+COPY bench bench
 COPY third_party third_party
 ARG PATHFINDER_BUILD=dev
 # The C++ runtime library is linked into the program, so the final image needs nothing but libc.

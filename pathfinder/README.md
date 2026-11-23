@@ -12,3 +12,5 @@ python3 test/test_http.py build/pathfinder_server
 ```
 
 From the repository root, `docker build -t rpg-pathfinder pathfinder` builds and tests the service with GCC 13. The final Debian runtime uses the `pathfinder` user and the binary's `--healthcheck`.
+
+GitHub builds, smoke-tests and scans the amd64 and arm64 images. The scan checks for fixable high and critical vulnerabilities in each runtime image. The nightly `Pathfinder HTTP benchmark` publishes a CSV with C++ HTTP results for open, maze and unreachable grids at 30×20, 100×100 and 200×200. The Java reference can add its in-process results when it lands.

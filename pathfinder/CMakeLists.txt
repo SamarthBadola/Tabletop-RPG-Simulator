@@ -35,6 +35,10 @@ add_executable(pathfinder_work_queue_tests test/test_work_queue.cpp)
 target_link_libraries(pathfinder_work_queue_tests PRIVATE pathfinder_core Threads::Threads)
 add_test(NAME pathfinder_work_queue_tests COMMAND pathfinder_work_queue_tests)
 
+# Not part of ctest: timings are for people (and one loose limit in CI), not for pass/fail on a laptop.
+add_executable(pathfinder_bench bench/bench_search.cpp)
+target_link_libraries(pathfinder_bench PRIVATE pathfinder_core)
+
 # The service itself: the program that listens on a port.
 set(PATHFINDER_BUILD "dev" CACHE STRING "Build identifier shown by GET /v1/info")
 add_executable(pathfinder_server src/main.cpp)
