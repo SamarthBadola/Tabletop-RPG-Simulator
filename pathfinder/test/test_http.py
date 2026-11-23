@@ -45,9 +45,13 @@ def server(binary, **settings):
 
 
 def get_health(port, headers=None):
+    return request_json(port, "GET", "/healthz", headers=headers)
+
+
+def request_json(port, method, path, body=None, headers=None):
     connection = HTTPConnection("127.0.0.1", port, timeout=2)
     try:
-        connection.request("GET", "/healthz", headers=headers or {})
+        connection.request(method, path, body, headers or {})
         response = connection.getresponse()
         return response.status, response.headers, json.loads(response.read())
     finally:
@@ -55,6 +59,25 @@ def get_health(port, headers=None):
 
 
 class HttpContract(unittest.TestCase):
+    def test_shared_corpus_examples_over_http(self):
+        cases = Path(__file__).resolve().parents[1] / "contract" / "cases"
+        names = ("C-02-zigzag-example", "C-15-spec-example", "C-18-nostop-blocked")
+        with server(BINARY) as port:
+            for name in names:
+                with self.subTest(case=name):
+                    case = json.loads((cases / f"{name}.json").read_text(encoding="utf-8"))
+                    status, _, body = request_json(
+                        port, "POST", case["endpoint"], json.dumps(case["request"]),
+                        {"Content-Type": "application/json"},
+                    )
+                    expected = case["expect"]
+                    self.assertEqual(status, expected["status"])
+                    if status == 200:
+                        self.assertEqual(body, expected["body"])
+                    else:
+                        for key, value in expected["body"].items():
+                            self.assertEqual(body[key], value)
+
     def test_header_block_limit_counts_all_header_lines(self):
         with server(BINARY) as port:
             below = {f"X-Contract-{n}": "a" * 2600 for n in range(3)}
