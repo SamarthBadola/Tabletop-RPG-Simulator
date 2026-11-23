@@ -1,0 +1,55 @@
+name: Pathfinder HTTP benchmark
+
+on:
+  pull_request:
+    paths:
+      - pathfinder/bench/bench_http.py
+      - .github/workflows/pathfinder-benchmark.yml
+  schedule:
+    - cron: "30 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  http-benchmark:
+    name: pathfinder HTTP benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pathfinder
+    env:
+      PORT: "19001"
+      BIND: "127.0.0.1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the service
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target pathfinder_server -j"$(nproc)"
+
+      - name: Compare the benchmark grids over HTTP
+        run: |
+          set -euo pipefail
+          ./build/pathfinder_server > "$RUNNER_TEMP/pathfinder-benchmark.log" 2>&1 &
+          pid=$!
+          trap 'kill -TERM "$pid" 2>/dev/null || true; wait "$pid" || true' EXIT
+          for _ in $(seq 1 50); do
+            curl -fsS "http://127.0.0.1:${PORT}/healthz" > /dev/null 2>&1 && break
+            sleep 0.1
+          done
+          curl -fsS "http://127.0.0.1:${PORT}/healthz"
+          python3 bench/bench_http.py --port "$PORT" --out "$RUNNER_TEMP/pathfinder-benchmark.csv"
+
+      - name: Upload the benchmark CSV
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pathfinder-benchmark
+          path: ${{ runner.temp }}/pathfinder-benchmark.csv
+          if-no-files-found: error

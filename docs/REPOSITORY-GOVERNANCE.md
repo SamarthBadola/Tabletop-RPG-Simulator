@@ -78,7 +78,7 @@ The active `.github/workflows/ci.yml` defines five GitHub Actions jobs:
 
 All five jobs passed on [PR run #40](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38251836058) and [post-merge `main` run #41](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38252435012). The smoke job runs for pull requests and branch pushes after `integration`; it is not main-only. The live `main-quality-gates` ruleset requires all five jobs plus `DCO`. The DCO App previously passed on [PR #4](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/pull/4).
 
-A C++ pathfinder test suite, Java/C++ contract test suite, and image-publishing/release pipeline are not implemented yet. Do not add required status checks for those future jobs until they exist and have reported checks.
+Pathfinder has additional checks for C++ release, ASan/UBSan and TSan builds, HTTP contract tests, and smoke tests and scans for the amd64 and arm64 runtime images. The nightly HTTP benchmark uploads its C++ timings as CSV. These jobs run on Pathfinder changes. The Java/C++ comparison and image publishing are later delivery work. Only add a required status check after it exists and has reported.
 
 ## Verification checklist
 
