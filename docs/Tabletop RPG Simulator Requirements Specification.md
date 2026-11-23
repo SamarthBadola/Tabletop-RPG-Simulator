@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: Requirements Specification (v1.20)
+# Tabletop RPG Simulator: Requirements Specification (v1.21)
 
 Enterprise Web Application (Java) course project. Draft 1, 11 October 2026. Ruleset: D&D System Reference Document 5.1 (2014 rules), CC-BY-4.0. Companion to `the Architecture document`.
 
@@ -322,7 +322,7 @@ The rules are in section 13 of the Ruleset Specification. Each requirement cites
 | FR-ENV-018 | The system shall let the DM choose the environment settings of Ruleset Specification 13.12.1 through the settings registry (FR-SET-001 to FR-SET-008). | M | A |
 | FR-ENV-019 | The system shall make a fall, a trap resolution and an affliction action safe to repeat, so that a request sent twice with the same key changes nothing the second time (FR-ACT-007, FR-ACT-008, E-152). | M | A |
 | FR-ENV-020 | The environment rules shall run in pure Java engine packages with no framework, database or network access, and shall meet the budgets of Ruleset Specification 13.9 (E-151, E-153, T-99, T-100). | S | B |
-| FR-MAD-001 | The system shall track an affliction as an instance on one creature, with a kind (short-term, long-term or indefinite madness, or a disease), a source, a status and an end time on the game clock, and shall end the instance when the clock passes that time (Ruleset Specification 13.8, RS-MAD-001, RS-MAD-003, RS-MAD-007, RS-MAD-011, E-147). | M | A |
+| FR-MAD-001 | The system shall track an affliction as an instance on one creature, with a kind (short-term, long-term or indefinite madness, a disease or a lasting poison), a source, a status and an end time on the game clock, and shall end the instance when the clock passes that time (Ruleset Specification 13.8, RS-MAD-001, RS-MAD-003, RS-MAD-007, RS-MAD-011, E-147, E-158). | M | A |
 | FR-MAD-002 | The system shall let the DM inflict madness by naming the creature, the kind and the source, shall make the saving throw through the ordinary saving throw path, and shall roll the result on the madness tables of the content pack and record the roll (RS-MAD-002, RS-MAD-004 to RS-MAD-006, E-148). | M | A |
 | FR-MAD-003 | The system shall apply the mechanical part of a result as conditions, modifiers and triggers, shall show every other part as an instruction to the DM and the player, and shall not play the character (RS-MAD-008, RS-MAD-009, RS-MAD-013). | M | A |
 | FR-MAD-004 | The system shall suppress, end or cure an affliction by the spells and effects that the rules name, and shall keep the timer running while the instance is suppressed (RS-MAD-010, E-149). | M | A |
@@ -568,7 +568,7 @@ The seams register is maintained in the Architecture document, section 15.
 
 ## 13. Version and revision history
 
-Current version: **1.20**.
+Current version: **1.21**.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -595,3 +595,4 @@ Current version: **1.20**.
 | 1.18 | 2026-11-21 | UX and API Specification, accepted by the owner on 2026-11-21, applied by reference. FR-ACC-004 names the health route. NFR-USA-002 raises the target to WCAG 2.2 AA. FR-CAM-003 becomes a Must in milestone A: a signed-in user joins with a campaign invite code. New FR-GRD-010 to FR-GRD-015 (map upload, obstacle detection inside the request, full-screen map, placing creatures, start area, unplaced characters), FR-AST-004 (monster image mapping), FR-CHR-017 (held characters) and NFR-PERF-003. FR-CHR-002 (rolled set kept until the character is created), FR-CHK-002 (a restore saves a checkpoint first), FR-EXP-001 (access data by username) and NFR-SEC-005 (maps) reworded. FR-LIV-004 moved to v2. Release scope updated. |
 | 1.19 | 2026-11-22 | Duplicate requirement identifiers removed after a review. The monster, spell and rest requirements that predate the rules parts kept the numbers that the new sections then reused. The older FR-MON-001 (the DM chooses the monsters of an encounter from the enabled packs) and FR-MON-002 (custom monsters from a stat-block form) in section 12.2 are now FR-MON-015 and FR-MON-016; the older FR-SPL-009 (homebrew spells) in section 12.2 is now FR-SPL-015. FR-MON-001 to FR-MON-014 in section 3.16 and FR-SPL-009 to FR-SPL-014 in section 3.6 are unchanged. In section 3.9 the original FR-RST-001 and FR-RST-002 are removed because the fuller FR-RST-001 to FR-RST-008 in section 12.2 replace them, and the original FR-RST-003 (refresh at dawn and by turn) is now FR-RST-009 and keeps only the turn-based part, since FR-RST-005 already covers dawn. Priorities and milestones are unchanged. Every identifier is now defined once. |
 | 1.20 | 2026-11-22 | FR-ENC-010 now says how an override is shown: the players who may see the changed value read it as one standard sentence without the old value or the reason, and the DM may make an override quiet only when no player can see that value. Applies UXD-11 and UXQ-24, accepted by the owner. No other requirement changed. |
+| 1.21 | 2026-11-24 | The affliction requirement now lists a lasting poison among the kinds, so that a cure can name a poison by its id (Ruleset E-158, Decision Log DEC-115). No other requirement changed. |
