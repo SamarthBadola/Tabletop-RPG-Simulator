@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Campaign request</title></head>
+<body>
+<main>
+    <p role="alert" th:attr="data-error-code=${code}" th:text="${detail}">The request could not be completed.</p>
+    <p><a th:href="@{/campaigns}">Back to campaigns</a></p>
+</main>
+</body>
+</html>

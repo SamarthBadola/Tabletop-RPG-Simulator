@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/condition.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/part"
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "levels": {
+          "type": "integer",
+          "minimum": 1,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "condition",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "text",
+        "parts"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Encounter</title></head>
+<body><main id="encounter" th:fragment="workspace">
+    <a th:href="@{/campaigns/{id}/encounters(id=${campaignId})}">Encounters</a>
+    <h1 th:text="${fight.table.name}"></h1>
+    <p th:text="${fight.table.phase}"></p>
+    <section id="clock" th:fragment="clock"><h2>Game clock</h2>
+        <p th:text="|${gameSeconds} s|"></p>
+    </section>
+    <section th:if="${fight.recap != null}">
+        <h2>Encounter summary</h2>
+        <p th:text="|Rounds ${fight.table.round}|"></p>
+        <h3>Creatures that fell</h3>
+        <p th:if="${fight.recap.fallen.isEmpty()}">None</p>
+        <ul th:unless="${fight.recap.fallen.isEmpty()}"><li th:each="name : ${fight.recap.fallen}" th:text="${name}"></li></ul>
+        <h3>Resources spent</h3>
+        <p th:if="${fight.recap.resourcesSpent.isEmpty()}">None</p>
+        <ul th:unless="${fight.recap.resourcesSpent.isEmpty()}"><li th:each="resource : ${fight.recap.resourcesSpent}"
+            th:text="|${resource.key} × ${resource.value}|"></li></ul>
+    </section>
+    <section id="turn-order" th:fragment="turn-order" th:if="${fight.table.phase.name() != 'FINISHED'}">
+        <h2>Turn order</h2>
+        <p th:if="${fight.table.round > 0}" th:text="|Round ${fight.table.round}|"></p>
+        <table><thead><tr><th>Name</th><th>Initiative</th><th>Hit points</th><th>State</th><th>Conditions</th><th>Actions</th></tr></thead>
+            <tbody><tr th:each="creature : ${fight.combatants}">
+                <th scope="row" th:text="${creature.name}"></th>
+                <td th:text="${creature.initiative}"></td>
+                <td th:text="|${creature.health.current} / ${creature.health.maximum}|"></td>
+                <td th:text="${creature.surprised ? 'Surprised' : creature.health.state}"></td>
+                <td><span th:text="${creature.conditions}"></span>
+                    <span th:if="${creature.exhaustion > 0}" th:text="|Exhaustion ${creature.exhaustion}|"></span>
+                </td>
+                <td th:unless="${fight.table.phase.name() == 'FINISHED'}">
+                    <form th:action="@{${commandPath + '/combatants/' + creature.id + '/removals'}}" method="post">
+                        <th:block th:replace="~{demo-encounter :: command}"></th:block>
+                        <button type="submit" th:attr="aria-label=|Remove ${creature.name}|">Remove</button>
+                    </form>
+                    <form th:if="${fight.table.phase.name() == 'ACTIVE'}" th:action="@{${commandPath + '/overrides/new'}}" method="get">
+                        <input type="hidden" name="combatantId" th:value="${creature.id}">
+                        <label>Correction <select name="kind">
+                            <option value="set-hit-points">Set hit points</option>
+                            <option value="adjust-hit-points">Adjust hit points</option>
+                            <option value="add-condition">Add condition</option>
+                            <option value="remove-condition">Remove condition</option>
+                            <option value="set-resource" th:unless="${creature.resources.isEmpty()}">Set resource</option>
+                            <option value="set-initiative">Set initiative</option>
+                            <option value="set-exhaustion">Set exhaustion</option>
+                        </select></label>
+                        <button type="submit">Review correction</button>
+                    </form>
+                </td>
+            </tr></tbody>
+        </table>
+    </section>
+    <section th:if="${fight.table.phase.name() == 'SETUP' or fight.table.phase.name() == 'ACTIVE'}">
+        <h2>Add combatants</h2>
+        <form th:action="@{${commandPath + '/combatants'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <label>Character <select name="characterId"><option value="">Choose character</option>
+                <option th:each="choice : ${fight.characters}" th:value="${choice.key}" th:text="${choice.label}"></option>
+            </select></label>
+            <label th:unless="${fight.monsters.isEmpty()}">Creature <select name="monsterKey"><option value="">Choose creature</option>
+                <option th:each="choice : ${fight.monsters}" th:value="${choice.key}" th:text="${choice.label}"></option>
+            </select></label>
+            <label th:unless="${fight.monsters.isEmpty()}">Creature count <input type="number" name="count" value="1" min="1" max="20"></label>
+            <label th:unless="${fight.monsters.isEmpty()}">Creature at zero hit points <select name="deathMode">
+                <option value="">Dies</option><option value="player">Rolls death saves</option>
+                <option value="stable-at-zero">Falls unconscious and stable</option>
+            </select></label>
+            <fieldset th:if="${fight.table.phase.name() == 'ACTIVE'}"><legend>Join options</legend>
+                <label>Timing <select name="joinMode"><option value="at-initiative">At initiative</option><option value="end-of-round">Next round</option></select></label>
+                <label>Roll <select name="initiativeMode"><option>Normal</option><option>Advantage</option><option>Disadvantage</option></select></label>
+                <label>Fixed initiative <input type="number" name="fixedInitiative"></label>
+                <label>Starting condition <select name="conditionKey"><option value="">None</option>
+                    <option th:each="condition : ${conditions}" th:value="${condition.key}" th:text="${condition.value}"></option>
+                </select></label>
+                <label><input type="checkbox" name="surprised" value="true">Surprised on first turn</label>
+                <fieldset><legend>Combatants caught off guard, if enabled in House rules</legend>
+                    <label th:each="creature : ${fight.combatants}">
+                        <input type="checkbox" name="caughtOffGuardIds" th:value="${creature.id}">
+                        <span th:text="${creature.name}"></span>
+                    </label>
+                </fieldset>
+                <fieldset><legend>Arrival is obscured from</legend>
+                    <label th:each="creature : ${fight.combatants}">
+                        <input type="checkbox" name="obscuredFromIds" th:value="${creature.id}">
+                        <span th:text="${creature.name}"></span>
+                    </label>
+                </fieldset>
+            </fieldset>
+            <button type="submit">Add combatants</button>
+        </form>
+        <form th:if="${fight.table.phase.name() == 'SETUP'}" th:action="@{${commandPath + '/start'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <fieldset><legend>Surprised combatants</legend>
+                <label th:each="creature : ${fight.combatants}">
+                    <input type="checkbox" name="surprisedIds" th:value="${creature.id}"
+                           th:checked="${fight.surpriseSuggestions.contains(creature.id)}">
+                    <span th:text="${creature.name}"></span>
+                </label>
+            </fieldset>
+            <button type="submit">Roll initiative and start</button>
+        </form>
+    </section>
+    <section th:if="${!fight.combatants.isEmpty() and (fight.table.phase.name() == 'SETUP' or acting != null)}">
+        <h2 th:text="${acting == null ? 'Check for surprise' : 'Hide'}"></h2>
+        <form th:action="@{${commandPath + '/hides'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <input th:if="${acting != null}" type="hidden" name="actorId" th:value="${acting.id}">
+            <label th:if="${acting == null}">Hider <select name="actorId">
+                <option th:each="creature : ${fight.combatants}" th:value="${creature.id}" th:text="${creature.name}"></option>
+            </select></label>
+            <fieldset><legend>Obscured from</legend>
+                <label th:each="creature : ${fight.combatants}" th:if="${acting == null or creature.id != acting.id}">
+                    <input type="checkbox" name="obscuredFromIds" th:value="${creature.id}">
+                    <span th:text="${creature.name}"></span>
+                </label>
+            </fieldset>
+            <fieldset th:if="${acting == null}"><legend>Opponents for surprise</legend>
+                <label th:each="creature : ${fight.combatants}">
+                    <input type="checkbox" name="opponentIds" th:value="${creature.id}">
+                    <span th:text="${creature.name}"></span>
+                </label>
+            </fieldset>
+            <button type="submit">Roll Stealth</button>
+        </form>
+        <form th:each="hider : ${fight.combatants}" th:unless="${hider.stealthTies.isEmpty()}"
+              th:action="@{${commandPath + '/stealth-ties'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <input type="hidden" name="actorId" th:value="${hider.id}">
+            <fieldset><legend th:text="|Who noticed ${hider.name} on a tie?|"></legend>
+                <label th:each="creature : ${fight.combatants}" th:if="${hider.stealthTies.contains(creature.id)}">
+                    <input type="checkbox" name="noticedIds" th:value="${creature.id}">
+                    <span th:text="${creature.name}"></span>
+                </label>
+            </fieldset>
+            <button type="submit">Resolve Stealth ties</button>
+        </form>
+    </section>
+    <section th:unless="${fight.tieIds.isEmpty()}">
+        <h2>Resolve initiative tie</h2>
+        <form th:action="@{${commandPath + '/initiative-ties'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <button type="submit" name="rollOff" value="true">Roll off</button>
+        </form>
+        <form th:action="@{${commandPath + '/initiative-ties'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <label th:each="id, position : ${fight.tieIds}">
+                <span th:text="|Position ${position.count}|"></span>
+                <select name="order"><option th:each="creature : ${fight.combatants}"
+                    th:if="${fight.tieIds.contains(creature.id)}" th:value="${creature.id}"
+                    th:text="${creature.name}" th:selected="${creature.id == id}"></option></select>
+            </label>
+            <button type="submit">Save order</button>
+        </form>
+    </section>
+    <section id="acting-panel" th:fragment="acting-panel" th:if="${acting != null}">
+        <h2 th:text="|${acting.name}'s turn|"></h2>
+        <p th:text="|${fight.table.budget.actions} action(s), ${fight.table.budget.attacksLeft} follow-up attack(s), ${fight.table.budget.movementRemaining(acting.speed)} ft remaining|"></p>
+        <form th:unless="${acting.attacks.isEmpty()}" th:action="@{${commandPath + '/attacks'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <label>Attack <select name="attackKey"><option th:each="attack : ${acting.attacks}" th:value="${attack.key}" th:text="${attack.label}"></option></select></label>
+            <th:block th:replace="~{demo-encounter :: target}"></th:block>
+            <label>Distance (feet) <input type="number" name="distanceFeet" min="0" value="5" required></label>
+            <label>Cover <select name="cover"><option th:each="cover : ${covers}" th:text="${cover}"></option></select></label>
+            <label><input type="checkbox" name="knockOut" value="true">Knock out if reduced to zero by melee</label>
+            <label><input type="checkbox" name="nearbyHostile" value="true">Another visible hostile is within 5 feet</label>
+            <label><input type="checkbox" name="attackerObscured" value="true">Attacker is obscured</label>
+            <label><input type="checkbox" name="targetObscured" value="true">Target is obscured</label>
+            <label><input type="checkbox" name="fearSourceVisible" value="true">Attacker can see the source of fear</label>
+            <button type="submit">Attack</button>
+        </form>
+        <form th:action="@{${commandPath + '/dashes'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <button type="submit">Dash</button>
+            <button type="submit" th:formaction="@{${commandPath + '/dodges'}}">Dodge</button>
+            <button type="submit" th:formaction="@{${commandPath + '/disengages'}}">Disengage</button>
+            <button type="submit" th:formaction="@{${commandPath + '/stands'}}">Stand</button>
+            <button type="submit" th:formaction="@{${commandPath + '/drops-prone'}}">Drop prone</button>
+        </form>
+        <form th:action="@{${commandPath + '/grapples'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <th:block th:replace="~{demo-encounter :: target}"></th:block>
+            <label><input type="checkbox" name="acrobatics" value="true">Defender chooses Acrobatics</label>
+            <button type="submit">Grapple</button>
+            <button type="submit" th:formaction="@{${commandPath + '/shoves'}}" name="shoveKind" value="prone">Shove prone</button>
+            <button type="submit" th:formaction="@{${commandPath + '/shoves'}}" name="shoveKind" value="push">Push 5 feet</button>
+            <button type="submit" th:formaction="@{${commandPath + '/grapple-escapes'}}">Escape grapple</button>
+            <button type="submit" th:formaction="@{${commandPath + '/grapple-releases'}}">Release grapple</button>
+            <button type="submit" th:formaction="@{${commandPath + '/stabilizations'}}">Stabilize</button>
+        </form>
+        <form th:action="@{${commandPath + '/helps'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <label>Help with <select name="helpKind">
+                <option value="ability-check">Ability check</option><option value="attack">Attack</option>
+            </select></label>
+            <label>Ally <select name="recipientId" required>
+                <option th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}"
+                        th:value="${creature.id}" th:text="${creature.name}"></option>
+            </select></label>
+            <label>Enemy within 5 feet for an attack <select name="targetId">
+                <option value="">Choose enemy</option>
+                <option th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}"
+                        th:value="${creature.id}" th:text="${creature.name}"></option>
+            </select></label>
+            <button type="submit">Help</button>
+        </form>
+        <form th:action="@{${commandPath + '/readies'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <label>Trigger <input name="trigger" maxlength="200" required></label>
+            <label>Response <select name="actionKind"><option>attack</option><option>move</option><option>other</option></select></label>
+            <button type="submit">Ready action</button>
+        </form>
+        <form th:action="@{${commandPath + '/object-uses'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <label>Object use <input name="note" maxlength="200"></label>
+            <label><input type="checkbox" name="usesAction" value="true">Object requires an action</label>
+            <button type="submit">Use object</button>
+        </form>
+        <form th:action="@{${commandPath + '/saving-throws'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <label>Ability <select name="ability">
+                <option th:each="ability : ${abilities}" th:text="${ability}"></option>
+            </select></label>
+            <label>Difficulty class <input type="number" name="dc" min="1" max="40" value="10" required></label>
+            <fieldset><legend>Save targets</legend>
+                <div th:each="creature : ${fight.combatants}">
+                    <label><input type="checkbox" name="targetIds" th:value="${creature.id}">
+                        <span th:text="${creature.name}"></span>
+                    </label>
+                    <label>Cover for Dexterity save
+                        <select th:name="|cover[${creature.id}]|">
+                            <option value="">None</option><option value="half">Half</option>
+                            <option value="three-quarters">Three quarters</option><option value="total">Total</option>
+                        </select>
+                    </label>
+                </div>
+            </fieldset>
+            <button type="submit">Roll saves</button>
+        </form>
+        <form th:if="${fight.combatants.size() > 1}" th:action="@{${commandPath + '/ability-checks'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <input type="hidden" name="subjectIds" th:value="${acting.id}">
+            <input type="hidden" name="ability" value="wisdom">
+            <input type="hidden" name="skillKey" value="perception">
+            <label>Search for <select name="searchTargetId" required>
+                <option th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}"
+                        th:value="${creature.id}" th:text="${creature.name}"></option>
+            </select></label>
+            <button type="submit">Search</button>
+        </form>
+        <form th:if="${acting.deathSaveDue}" th:action="@{${commandPath + '/death-saves'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <button type="submit">Roll death save</button>
+        </form>
+        <form th:action="@{${commandPath + '/end-turn'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: turn-command}"></th:block>
+            <button type="submit">End turn</button>
+        </form>
+    </section>
+    <form th:if="${fight.table.phase.name() == 'ACTIVE'}" th:action="@{${commandPath + '/end'}}" method="post">
+        <th:block th:replace="~{demo-encounter :: command}"></th:block>
+        <button type="submit">End encounter</button>
+    </form>
+    <section id="override-panel" th:fragment="override-panel" th:if="${preview != null}">
+        <h2 th:text="|Correct ${preview.name}|"></h2>
+        <p th:text="|Current value ${preview.currentValue}|"></p>
+        <p th:text="${preview.playersText}"></p>
+        <p th:if="${correctionMessage != null}" role="alert" th:text="${correctionMessage}"></p>
+        <form th:action="@{${commandPath + '/overrides'}}" method="post">
+            <th:block th:replace="~{demo-encounter :: command}"></th:block>
+            <input type="hidden" name="kind" th:value="${preview.kind}">
+            <input type="hidden" name="combatantId" th:value="${preview.combatant}">
+            <input type="hidden" name="entryId" th:value="${preview.entryId}">
+            <label th:if="${preview.kind.name() == 'ADD_CONDITION' or preview.kind.name() == 'REMOVE_CONDITION'}">
+                Condition <select name="conditionKey" required>
+                    <option th:each="condition : ${conditions}" th:value="${condition.key}" th:text="${condition.value}"></option>
+                </select>
+            </label>
+            <fieldset th:if="${preview.kind.name() == 'ADD_CONDITION' or preview.kind.name() == 'REMOVE_CONDITION'}">
+                <legend>Condition source</legend>
+                <label>Source <select name="sourceId">
+                    <option value="" th:text="${preview.kind.name() == 'REMOVE_CONDITION' ? 'All sources' : 'No creature source'}"></option>
+                    <option th:each="creature : ${fight.combatants}" th:value="${creature.id}" th:text="${creature.name}"></option>
+                </select></label>
+                <th:block th:if="${preview.kind.name() == 'ADD_CONDITION'}">
+                    <label>Ends <select name="durationKind">
+                        <option value="">When dispelled</option>
+                        <option th:each="kind : ${durations}" th:unless="${kind.name() == 'UNTIL_DISPELLED'}"
+                                th:text="${kind}"></option>
+                    </select></label>
+                    <label>Duration (rounds or game seconds) <input type="number" name="durationAmount" min="1"></label>
+                    <label>Whose turn <select name="durationCreatureId">
+                        <option value="">Affected creature</option>
+                        <option th:each="creature : ${fight.combatants}" th:value="${creature.id}" th:text="${creature.name}"></option>
+                    </select></label>
+                </th:block>
+            </fieldset>
+            <label th:if="${preview.kind.name() == 'SET_RESOURCE'}">Resource
+                <select name="resourceKey" required><option th:each="key : ${preview.resourceKeys}" th:text="${key}"></option></select>
+            </label>
+            <label th:if="${preview.kind.name().startsWith('SET_') or preview.kind.name() == 'ADJUST_HIT_POINTS'}">
+                <span th:text="${preview.kind.name() == 'ADJUST_HIT_POINTS' ? 'Change in hit points' : 'New value'}"></span>
+                <input name="amount" type="number" required th:value="${draftCorrection?.amount}">
+            </label>
+            <label>Reason <input name="reason" maxlength="200" required th:value="${draftCorrection?.reason}"></label>
+            <label>Who sees this
+                <select name="visibility"><option value="players">Players see a correction</option>
+                    <option value="quiet" th:disabled="${!preview.quietAllowed}">Only me</option>
+                </select>
+            </label>
+            <p th:unless="${preview.quietAllowed}">Players can see this value, so they will see the correction.</p>
+            <button type="submit">Apply correction</button>
+        </form>
+    </section>
+    <section id="result" th:fragment="result" th:if="${result != null}">
+        <h2>Result</h2>
+        <pre th:text="${result.toPrettyString()}"></pre>
+    </section>
+    <section id="log" th:fragment="log">
+        <h2>Combat log</h2>
+        <ol><li th:each="event : ${fight.events}">
+            <span th:text="|${event.type}, round ${event.round}, ${event.gameSeconds} s|"></span>
+            <p th:if="${event.type == 'CorrectionApplied'}"
+               th:text="${event.payload.path('quiet').asBoolean() ? 'Only the DM (quiet)' : 'Shown to players'}"></p>
+            <pre th:text="${event.displayPayload().toPrettyString()}"></pre>
+            <a th:if="${event.type == 'AttackResolved' and fight.table.phase.name() == 'ACTIVE'}"
+               th:href="@{${commandPath + '/overrides/new'}(kind='set-hit-points',combatantId=${event.payload.path('targetId').asString()},entryId=${event.id})}">Correct this entry</a>
+            <span th:if="${event.annotation != null}" th:text="${event.annotation}"></span>
+            <a th:if="${event.id == fight.reversible}"
+                th:href="@{${commandPath + '/overrides/new'}(kind='undo-last',entryId=${event.id})}">Undo latest change</a>
+        </li></ol>
+    </section>
+</main>
+<th:block th:fragment="command">
+    <input type="hidden" name="actionId" th:value="${actionId}">
+    <input type="hidden" name="expectedVersion" th:value="${expectedVersion}">
+</th:block>
+<th:block th:fragment="turn-command" th:if="${acting != null}">
+    <th:block th:replace="~{demo-encounter :: command}"></th:block>
+    <input type="hidden" name="actorId" th:value="${acting.id}">
+</th:block>
+<label th:fragment="target" th:if="${acting != null}">Target <select name="targetId" required>
+    <option th:each="creature : ${fight.combatants}" th:unless="${creature.id == acting.id}"
+        th:value="${creature.id}" th:text="${creature.name}"></option>
+</select></label>
+<footer th:replace="~{demo-footer :: help}"></footer></body>
+</html>

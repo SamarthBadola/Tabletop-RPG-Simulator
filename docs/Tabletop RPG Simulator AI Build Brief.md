@@ -1,4 +1,4 @@
-# Tabletop RPG Simulator: AI Build Brief (v1.10.2)
+# Tabletop RPG Simulator: AI Build Brief (v1.31)
 
 Oct 15, 2026 · @Samarth
 
@@ -6,8 +6,8 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 
 ## 1. Rules for working on this project
 
-1. Read this brief end to end before writing code. Companion documents, if provided: Requirements Specification, `Architecture (v5.1)`, Decision Log. If they disagree with this brief, tell the human.
-2. The ruleset specification is the source of truth for D&D mechanics and is **partly written: Parts A (foundations) and B (combat and conditions) exist, Parts C to H do not**. Do not implement game rules from memory. Follow the build order in section 12: each step names the parts of the specification it may use (Steps 2 and 3 use Part A only; combat starts at Step 6 and uses Part B). Do not implement rules from a part before the step that needs it.
+1. Read this brief end to end before writing code. Companion documents, if provided: Requirements Specification, `Architecture`, Decision Log. The Content Schema Specification is a companion document too, and it is the authority for the format of content. The UX and API Specification is a companion document too, and it is the authority for routes, screens, the error responses of the web layer and the threat model. Its section 4.11 sets the look: Material 3 colour roles and type as CSS custom properties in a served stylesheet, and the components as our own CSS with no component library. If any of them disagree with this brief, tell the human.
+2. The ruleset specification is the source of truth for D&D mechanics and is **written in parts; its roadmap table says which parts exist and which are decided**. Do not implement game rules from memory. Follow the build order in section 12: each step names the parts of the specification it may use (Steps 2 and 3 use Part A only; combat starts at Step 7 and uses Part B). Do not implement rules from a part before the step that needs it.
 3. Keep it simple. Build the simplest thing that meets the current step. Add a seam only if it is in the seams register (5.6). Do not build deferred features.
 4. Work in small tasks, each with a done-when you can demonstrate by running it. Commit per task using Conventional Commits.
 5. Tests first for the engine. Never weaken, skip or edit a test to make it pass; fix the code. Report failures honestly instead of leaving them red or faking green.
@@ -18,6 +18,7 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 10. Use only SRD 5.1 content (CC-BY-4.0) with its attribution notice. No 2024-rules content, no non-SRD official text or artwork.
 11. When something is ambiguous or blocked, stop and ask. When you finish a task, report what is done, what is left, and anything you added beyond the brief, so the human can update the Decision Log and Progress Tracker.
 12. Prefer boring technology. If a new dependency seems necessary, justify it in one paragraph and ask first.
+13. Build the backend and only demo elements of the frontend. Claude writes the real frontend from the Figma designs, in this same repository, so you never design a screen, style a page or edit a file in templates/ or static/. You build the engine, persistence, services, routes, form handling, fragment endpoints, view models and the demo elements of section 5.7. When the UX and API Specification gives no name for a route, fragment, field or view model that you need, stop and ask.
 
 ## 2. The project in one page
 
@@ -29,8 +30,8 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 
 | Release | Scope |
 | --- | --- |
-| v1 (MVP, milestone A) | DM-driven play for Fighter, Rogue, Paladin, Bard, Wizard at levels 1 to 5; multiclass-ready schema; dice; combat with reactions; curated tier-2 spells; SRD monster subset with per-encounter rosters and artwork upload; square grid with distance-metric setting and movement; rests; sessions, scenes, game clock and audience in the schema with basic UI; LAN accounts with invites; single-step Docker |
-| v1.5 (achievable) | Live player view (SSE) with audience filtering; journal and quests; checkpoints; campaign export and import; JSON pack import; custom monsters and homebrew spells; levels 6 to 12 |
+| v1 (MVP, milestone A) | DM-driven play for Fighter, Rogue, Paladin, Bard, Wizard at levels 1 to 5; multiclass-ready schema; dice; combat with reactions; curated tier-2 spells; SRD monsters as seed data with the stat block rules of Ruleset Specification Part G, the environment rules of version 1 in Ruleset Specification Part H (scene light, senses, cover chosen by the DM, fall damage, hazards, poisons and the madness and disease tracker), per-encounter rosters and monster image upload; square grid with distance-metric setting and movement; rests; sessions, scenes, game clock and audience in the schema with basic UI; LAN accounts with invites; single-step Docker |
+| v1.5 (achievable) | Live player view (SSE) with audience filtering; journal and quests; checkpoints; campaign export and import with the campaign's access data; map upload with obstacle detection, creature placement and start areas, and the full-screen map; JSON pack import; custom monsters and homebrew spells; levels 6 to 12 |
 | v2 (stretch) | Vision phases; players submitting actions; homebrew editor UI; Sorcerer and Warlock; multiclass rules and UI; hex geometry |
 
 **Non-goals:** job queue (Redis, Kafka), gRPC, multi-instance deployment, Kubernetes, caching beyond static content, mobile app, 2024 rules, arbitrary non-5e game systems.
@@ -48,7 +49,7 @@ Read this first. It tells an AI coding assistant what the project is, what is al
 | Observability | Micrometer, Actuator, JSON logs | logstash-logback-encoder. Trace ID in the MDC. |
 | Testing | JUnit 5, AssertJ, Testcontainers (PostgreSQL), ArchUnit, MockMvc |  |
 | Formatting | Spotless or Checkstyle | Enforced in CI. |
-| Pathfinder | C++17, CMake, cpp-httplib, nlohmann/json | Vendor the single headers in `third_party/`. GoogleTest or Catch2. |
+| Pathfinder | C++20, CMake, cpp-httplib, nlohmann/json | Vendor the single headers in `third_party/`. GoogleTest or Catch2. |
 | Containers | Docker, Compose v2, buildx | Multi-stage builds, non-root users, images for amd64 and arm64. |
 | CI/CD | GitHub Actions, GHCR |  |
 | Passwords | BCrypt or Argon2 | Through Spring Security. |
@@ -66,21 +67,23 @@ rpg/
     src/main/resources/
       application.yml
       db/migration/                      Flyway V1__, V2__ ...
-      templates/, static/                Thymeleaf, htmx.js, css
+      templates/, static/                real frontend, written by Claude from Figma (5.7)
+      templates-demo/, static-demo/      demo elements, written by the coding AI (5.7)
       content/srd-5.1/                   seed data for the SRD pack
+      content-schema/                    JSON Schema files and vocabulary.json (CS-VAL-008, CS-VAL-010)
     src/test/java/...
   pathfinder/               C++ service
-    CMakeLists.txt, Dockerfile, src/, tests/, third_party/
+    CMakeLists.txt, Dockerfile, src/, include/, test/, contract/ (the shared corpus)
   deploy/
     docker-compose.yml, docker-compose.build.yml, .env.example
     scripts/init-env.sh, scripts/smoke.sh
   docs/                     requirements, architecture, decision log export
   .github/workflows/        ci.yml, release.yml, dependabot.yml
-  NOTICE                    SRD 5.1 attribution, copied verbatim from the SRD
+  NOTICE                    Creative Commons BY 4.0 attribution statement (CS-SRD-012)
   LICENSE, README.md
 ```
 
-The group id and root package are a placeholder (`com.yourteam.rpg`). Ask the human for the real one before creating the project.
+The group id and root package are a placeholder (`com.yourteam.rpg`). Use the real ones from the repository's pom.xml and architecture decision record; do not rename them.
 
 ## 5. Architecture the code must follow
 
@@ -98,8 +101,14 @@ engine/        PURE rules (JDK only)
   action/      sealed Action types and resolvers
   feature/     trigger points, built-in effect types
   spell/       spell resolution, slots, concentration
-  grid/        GridGeometry, DistanceMetric, area shapes, cost maps
-  vision/      VisionModel (FullVision by default)
+  item/        ItemCatalog, Inventory, ArmorClassCalculator, HandsModel, AttackOptionBuilder, AttunementService, ChargeService, CurrencyLedger, EncumbranceCalculator, PlayerViewFilter (Ruleset Specification 11.12)
+  monster/     MonsterCatalog, StatBlockValidator, MonsterSpawner, ZeroHitPointHook, TraitHandlers, LegendaryActions, EncounterXp (Architecture 4.17)
+  grid/        GridGeometry, DistanceMetric, area shapes, cost maps; grid/geometry holds LineOfSight and CoverCalculator
+  light/       LightModel (SceneAmbientLight, then SourcesAndZonesLight), emitters, zone flags (Architecture 4.18)
+  vision/      VisionModel (FullVision by default), SightResolver
+  fall/        fall events, FallDistanceProvider
+  hazard/      hazard definitions, HazardTrigger
+  affliction/  AfflictionTracker (madness and disease)
 encounter/     web, application, persistence for combat
 campaign/      campaigns, membership, invites, sessions, scenes, clock (simple layered CRUD)
 character/     creation, level-up, derived sheet
@@ -123,26 +132,28 @@ Hexagonal style applies only to the engine. Campaigns, characters and users stay
 
 ### 5.3 Request lifecycle for a state-changing action (for example a move)
 
-1. Controller authenticates and validates the request (bean validation on a form DTO, never an entity). Every request carries `actionId` (client UUID) and `expectedVersion`.
+1. Controller authenticates and validates the request (bean validation on a form DTO, never an entity). Every `form carries actionId (minted by the server when it renders the form`) and `expectedVersion`.
 2. Application service reads an encounter snapshot (short read-only transaction).
 3. If the action needs a path, call the `Pathfinder` port now, with no transaction open. Build the per-mover cost map first (section 6).
 4. Open the write transaction. Load the encounter. If its version differs from `expectedVersion`, fail with `ENCOUNTER_VERSION_CONFLICT`. If `actionId` already exists for the encounter, return the stored result.
 5. Call `RuleEngine.resolve(...)`. The engine **re-validates** the path against the grid and remaining movement.
 6. Save state and append events (with dice results and audience). Commit.
 7. After commit (`@TransactionalEventListener(AFTER_COMMIT)`), notify SSE viewers.
-8. Return an HTML fragment. A result of `AwaitingReaction` is persisted on the encounter and resolved by a later `ReactionDecision` request.
+8. Return an HTML fragment. A result of `AwaitingReaction` is persisted in the pending\_reaction table (for an encounter or a scene) and resolved by a later ReactionDecision request; the engine resumes by replaying the action from its recorded dice and decisions.
 
 ### 5.4 Error contract
 
-Caller faults are 4xx, not logged at ERROR. System faults are 5xx, logged with the trace ID. One `@ControllerAdvice` maps them; HTMX requests receive an error fragment with the right status, other clients `application/problem+json`.
+Caller faults are 4xx, not logged at ERROR. System faults are 5xx, logged with the trace ID. One `@ControllerAdvice` maps them; HTMX requests receive an error fragment with the right status, other clients `application/problem+json`. The cause of each code is in Architecture section 9, and the response bodies are in the UX and API Specification (3.3).
 
 | Code | HTTP | Meaning |
 | --- | --- | --- |
 | `NOT_YOUR_TURN`, `NO_ACTIONS_LEFT`, `TARGET_OUT_OF_RANGE`, `INVALID_PATH` | 422 | rule violations |
-| `REACTION_NOT_AVAILABLE`, `CONTENT_INVALID`, `PACK_NOT_ENABLED`, `ASSET_INVALID` | 422 | invalid request content |
-| `ENCOUNTER_VERSION_CONFLICT`, `REACTION_PENDING`, `SESSION_NOT_ACTIVE` | 409 | stale or conflicting state |
+| `REACTION_NOT_AVAILABLE`, `REACTION_OPTION_INVALID`, `CONTENT_INVALID`, `PACK_NOT_ENABLED`, `ASSET_INVALID`, `PLACEMENT_INVALID`, `SETTING_INVALID`, `REST_NOT_ALLOWED`, `REST_TOO_SHORT`, `HIT_DICE_UNAVAILABLE` | 422 | invalid request content |
+| `ENCOUNTER_VERSION_CONFLICT`, `CAMPAIGN_VERSION_CONFLICT`, `IDEMPOTENCY_KEY_CONFLICT`, `REACTION_PENDING`, `SESSION_NOT_ACTIVE`, `ENCOUNTER_ACTIVE`, `ENCOUNTER_STARTED`, `SETTING_DECISION_REQUIRED`, `PACK_REVIEW_STALE`, `MAP_IN_USE`, `LAST_ADMINISTRATOR` | 409 | stale or conflicting state |
 | `VALIDATION_FAILED` | 400 | malformed input with field details |
-| `INVITE_INVALID` | 403 | invite unknown, expired or used up |
+| `INVITE_INVALID`, `FORBIDDEN`, `CSRF_INVALID`, `REACTION_NOT_PERMITTED` | 403 | invite unknown, expired or used up; the role does not allow the route; the form token is missing or wrong; the principal does not control the decider |
+| UNAUTHENTICATED | 401 | no valid session |
+| RATE\_LIMITED | 429 | too many requests; the Retry-After header and retryAfterSeconds say when to try again |
 | `NOT_FOUND` | 404 | also returned for resources in other campaigns |
 | `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR` | 503, 500 | system faults |
 
@@ -151,11 +162,11 @@ Caller faults are 4xx, not logged at ERROR. System faults are 5xx, logged with t
 - Every route requires authentication except register, login, static assets and health.
 - Authorization lives in the application layer. Repository queries take the principal and filter by campaign membership. Foreign IDs return `NOT_FOUND`. Write negative tests for every per-ID route.
 - Separate view models for DM and player. Player responses and SSE events are filtered by `audience` on the server; never send data and hide it in the template.
-- CSRF enabled (HTMX sends the token in a header). Cookies `HttpOnly`, `SameSite=Lax`, `Secure` controlled by `APP_COOKIE_SECURE` (default false for LAN HTTP). Strict CSP without inline scripts. Login throttling.
+- CSRF enabled (HTMX sends the token in a header). Cookies `HttpOnly`, `SameSite=Lax`, `Secure` controlled by `APP_COOKIE_SECURE` (default false for LAN HTTP). Strict CSP without inline scripts. Login throttling. Sessions are stored in PostgreSQL (Spring Session JDBC) with an 8 hour idle limit and a 14 day absolute limit, and a password change ends the user's other sessions. A form that creates something carries a single-use form token. Rate limits apply to login, invite redemption, pack import, image upload and obstacle detection; the numbers are in the UX and API Specification (3.8).
 - Invite codes are random, hashed at rest, expiring, limited-use and rate-limited.
-- Uploaded images: check declared and sniffed type (PNG, JPEG, WebP), cap 5 MB and dimensions, decode and re-encode to strip metadata, name by content hash, store outside the web root, serve through an authenticated endpoint with `X-Content-Type-Options: nosniff`.
+- Uploaded images: check declared and sniffed type (PNG, JPEG, WebP), cap a monster image at 5 MB and 4096 pixels on a side and a map at 20 MB, 8192 pixels on a side and 40 million pixels in all, read the header dimensions before any decode, refuse SVG and animated images, decode and re-encode to strip metadata, name by content hash, store outside the web root, serve through an authenticated endpoint with `X-Content-Type-Options: nosniff`.
 - Imported packs and homebrew are data only: validate against the schema, cap size, depth and counts, never fetch URLs inside them, never execute anything, escape on output.
-- Exports and checkpoints are DM-only.
+- Exports and checkpoints are DM-only. An export names people: it holds the campaign's access data by username and never a password hash, a session, an account id or an invite code (SEC-022), and each export is entered in the campaign log (SEC-021).
 
 ### 5.6 Seams register (add a seam only if it is listed here)
 
@@ -175,6 +186,27 @@ Caller faults are 4xx, not logged at ERROR. System faults are 5xx, logged with t
 | Trigger points and effect-type catalog | MVP class features | richer homebrew |
 | Feature flags | a few config switches | merge unfinished work |
 
+### 5.7 Frontend ownership and the seam
+
+The coding AI and Claude work in the same repository, and each owns a separate area. The coding AI builds the backend and only demo elements of the frontend. Claude has the Figma designs and writes the real frontend from them: the templates, fragments, stylesheet, scripts and htmx wiring that people see. Neither of you edits the other's area (Decision Log DEC-108).
+
+| Area | Owner | What is in it |
+| --- | --- | --- |
+| app/src/main/java, db/migration, content, content-schema, application.yml, tests | Coding AI | Everything that decides, stores or sends: the engine, services, controllers, form objects, view models and the SSE hub. A controller returns a view name and a model and contains no markup. |
+| app/src/main/resources/templates-demo/ and static-demo/ | Coding AI | Demo elements: plain HTML that exercises a route so the human can click through it. |
+| app/src/main/resources/templates/ and static/ | Claude | The real screens and fragments, the stylesheet with the Material 3 roles (UX and API Specification 4.11), the htmx wiring and the accessibility work (UXD-9). |
+
+The rules of the seam:
+
+- The seam is the UX and API Specification: its routes, fragment ids, form field names, view model names and fields, error responses and audience rules. A template name is the view name that the controller returns. Use the names that the specification gives.
+- There are two template locations. A view name is rendered from templates/ when the file exists there, and from templates-demo/ otherwise. Configure the two Thymeleaf resolvers in that order, so a real screen takes over from its demo element with no change to Java code.
+- A demo element is plain, semantic HTML with the browser's own look: a form with its fields, a list, a table, the fragment target with its id. It has no CSS framework, no layout work and no script except the htmx file. It needs enough to run the route's success path and its refusals by hand, and no more. Do not polish it.
+- The server mints the CSRF token, the action id and the expected version (UXD-5), and puts them in the model under the names the specification gives. Both a demo element and the real template render them as hidden fields.
+- Controller and fragment tests check the status, the headers, the fragment id, the model contents and the form field names. No test depends on CSS classes, layout or page chrome, because the real templates will change all of that.
+- Text that the server builds in Java, such as the standard sentences, the validation messages and the audience labels, is yours and follows the UX writing rules of the UX and API Specification. Text that sits in a template is Claude's.
+- If a route needs data that the specification's view model does not list, add it to the model, report it, and let the specification be updated. Do not work around it in a template.
+- When the real template for a view name lands, Claude deletes the demo element of the same name in the same pull request.
+
 ## 6. Kernel and engine contracts
 
 These are the shapes to implement. Names may be refined, but the behavior is fixed.
@@ -189,12 +221,13 @@ public final class AbilityScores {                      // the only accessor
 
 public enum ModOp { SET, ADD, MULTIPLY, MIN, MAX, ADVANTAGE, DISADVANTAGE }
 
-public record Modifier(String targetStat, ModOp op, int value,
-                       Condition activeWhen,   // nullable; reads scene or actor state
-                       DurationSpec duration, String source) {}
+public record Modifier(String targetStat, ModOp op, Ratio value,
+                       String activeWhen,   // optional condition key
+                       DurationSpec duration, String stackKey, String source,
+                       int potency, long applicationSequence) {}
 ```
 
-**Stat computation.** A stat is computed, never stored: base value, then `SET`, then `ADD`, then `MULTIPLY` (fractions round down, as in the SRD), then `MIN` and `MAX`. Advantage and disadvantage are collected separately: extra sources of the same kind never stack, and any advantage together with any disadvantage cancels to a normal roll. Skill, save and attack totals are formulas with a separate proficiency component, floor(proficiency bonus x multiplier); MULTIPLY targets that multiplier, never the total (Ruleset Specification, Part A). Maximum HP is derived from stored raw hit die results and the current Constitution modifier, then adjusted by modifiers; current HP is clamped to it. There are two modifier types: stat modifiers (persistent integers) and roll bonuses (applied when a roll is made; fixed or dice; may be consumed). Modifiers carry a stack key and a potency: the same source does not stack with itself (most potent, then most recent) and different sources add. Suppressed instances are kept and resume if the applying one ends first, and the rule covers every modifier source with the same name. Advantage and disadvantage sources carry a scope (roll kind, ability, conditions). See Ruleset Specification section 3.9. Kernel stats: AC, initiative, speed, max HP, attack bonus, save bonuses, skill bonuses, spell save DC, `sense:sight`, `sense:darkvision`, `sense:blindsight`, `sense:truesight`.
+**Stat computation.** A stat is computed, never stored. Resolve each `stackKey` by potency, then application sequence. Across different keys the `SET` with the highest application sequence wins, even if it lowers the value; losing `SET`s remain stored as suppressed and resume when the winner ends. The sequence is a monotonic counter on the modifier instance, not game or wall-clock time. Apply that `SET`, all `ADD`s, all exact `MULTIPLY` operands with one `floorDiv`, then `MIN` and `MAX`; the breakdown names the winning `SET` and lists overridden ones. `Modifier.value` is a normalized `Ratio(int numerator, int denominator)` with a positive denominator and no floating point. `SET`, `ADD`, `MIN` and `MAX` on integer stats reject non-integer operands at construction. Only `skill:<skill>:prof_multiplier` is ratio-valued and is never rounded; its component is `floor(proficiency bonus x multiplier)`. Use `long` with `Math.multiplyExact`; zero remains zero. Maximum HP is derived from stored raw hit die results and the current Constitution modifier, then adjusted by modifiers; current HP is clamped to it. Roll bonuses remain a separate type (applied when a roll is made; fixed or dice; may be consumed). Advantage and disadvantage sources carry a scope (roll kind, ability, conditions). See Ruleset Specification section 3.9.
 
 **Ability scores (DEC-074).** An ability score is a stat: the stored base plus recorded improvements, then the ability stat's modifiers, clamped to a ruleset ceiling (default 30) and a floor of 0. Each ability also has a maximum (default 20, raised by some effects together with the score) that caps level-up and feat improvements when they are chosen; any excess is lost. A score of 0 records an ability-at-zero event and the causing effect decides the consequence. The stored base stays between 1 and 30; extra points come from modifiers. Feats are content (DEC-073): a character can hold any number, each stored with its source and choices. An improvement that would pass the maximum shows a warning before it is applied, with the excess that would be lost. Ability score generation at creation uses a registry of built-in methods (standard array, point buy, roll 4d6 drop lowest, roll 3d6, manual entry) that the DM selects per campaign; DM-created methods are version 2.
 
@@ -202,15 +235,15 @@ public record Modifier(String targetStat, ModOp op, int value,
 
 **Resources.** `Resource(key, current, max, recharge)` with recharge in `TURN, SHORT_REST, LONG_REST, DAWN, NEVER`. `SlotPool` holds slots by spell level; only the used counts are stored, totals derive from class levels.
 
-**Durations.** `ROUNDS(n, start or end of a named turn)`, `UNTIL_END_OF_TURN`, `GAME_TIME(seconds)`, `UNTIL_REST(short or long)`, `PERMANENT`. A round is 6 seconds of game time. Game time advances only through the DM, a rest or travel, never with real time. In combat, each completed round advances the clock by a DM-set amount (default 6 seconds; decision E-9). The rules constant of 6 seconds per round (10 rounds per minute) does not change.
+**Durations.** One `DurationKind` has 13 exact names: `INSTANT`, `ROUNDS(amount)`, `CLOCK(amount, seconds)`, `CONCENTRATION(max)`, `UNTIL_TURN_START`, `UNTIL_TURN_END` (for a named creature), `UNTIL_DISPELLED`, `UNTIL_SHORT_OR_LONG_REST`, `UNTIL_LONG_REST`, `UNTIL_USED`, `PERMANENT`, `WHILE_EQUIPPED`, `WHILE_ATTUNED`. Store an absolute end or end condition, never a counter (E-82). `ROUNDS` and turn kinds store an end round and creature; `CLOCK` stores absolute seconds. When an encounter ends, `ROUNDS` becomes `CLOCK` at 6 seconds per remaining round. Rest kinds end on `RestResolver` events. `INSTANT` is never active. `UNTIL_USED` ends when its roll bonus is consumed. A timed and consumed bonus such as Bardic Inspiration is `CLOCK` plus consumed on use; its second end condition is decided in Step 7. A round is 6 seconds of game time. Game time advances only through the DM, a rest or travel, never with real time. In combat, each completed round advances the clock by a DM-set amount (default 6 seconds; decision E-9). The rules constant of 6 seconds per round (10 rounds per minute) does not change.
 
 **Dice.**
 
 ```java
 public interface RandomSource { int nextInt(int bound); }   // 0..bound-1, uniform; production: SecureRandom
 
-public record DieRoll(int rolled, Integer rerollFace, int value, boolean kept, boolean rerolled, boolean floored) {}
-public record RollTerm(String label, String source, int sign, String expression, List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit) {}  // RollResult holds List<RollTerm>, total, naturalD20, mode
+public record DieRoll(int rolled, Integer rerollFace, int value, boolean kept, boolean rerolled, boolean floored, boolean critical) {}
+public record RollTerm(String label, String source, int sign, String expression, List<DieRoll> dice, int fixed, int subtotal, boolean doublesOnCrit, boolean criticalNotApplied) {}  // D-16 runtime REJECT marker; Step 7 reads it. RollResult holds List<RollTerm>, total, naturalD20, mode
 
 public final class DiceExpression {
     public static DiceExpression parse(String s);            // throws on malformed or over-limit input
@@ -224,7 +257,7 @@ Grammar: `NdX` plus optional keep or drop (`kh`, `kl`, `dh`, `dl` with a count),
 
 ```java
 public sealed interface Action
-    permits AttackAction, CastSpellAction, MoveAction, EndTurnAction, ReactionDecision {}
+    permits AttackAction, CastSpellAction, MoveAction, EndTurnAction, CheckAction, SaveAction, ReactionDecision, CancelReaction {}
 
 public sealed interface ResolutionResult permits Completed, AwaitingReaction {}
 
@@ -235,9 +268,13 @@ public interface RuleEngine {   // pure: no I/O. MoveAction carries a path the e
 
 `resolve` throws `RuleViolation` (with a stable error code) for illegal actions. A miss or a failed save is a normal result. Every `CombatEvent` records dice results and an `Audience` (`DM_ONLY`, `ALL`, or a player set).
 
-**Combat state machine.** Setup, RollingInitiative, TurnStart, AwaitingAction, Resolving, AwaitingReaction (persisted), TurnEnd, Finished. A pending reaction rejects other actions with `REACTION_PENDING`.
+**Combat state machine.** Setup, RollingInitiative, TurnStart, AwaitingAction, Resolving, AwaitingReaction (persisted), TurnEnd, Finished. A pending reaction rejects other actions in its encounter or scene with `REACTION_PENDING`.
 
-**Trigger points.** `ON_ATTACK_ROLL`, `ON_DAMAGE_ROLL`, `ON_DAMAGE_TAKEN`, `ON_SAVE`, `ON_CAST`, `ON_MOVE`, `ON_TURN_START`, `ON_TURN_END`, `ON_SHORT_REST`, `ON_LONG_REST`. A feature is data: trigger, conditions, an effect type with parameters, an optional resource cost, a usage limit. The engine ships a catalog of effect types in Java (`add_damage_dice`, `grant_advantage`, `grant_resistance`, `add_modifier`, `spend_resource`, `apply_condition`, `heal`, `grant_reaction`). Data may only combine known effect types; a genuinely new mechanic is a new effect type in code.
+**The reaction window (one mechanism, decided 2026-11-16, ADR-31).** The reaction window is the engine's only pause. Build it to Ruleset Specification RS-REA-001 to RS-REA-010 and Architecture 5.4: it opens at defined points of an action only when someone has an eligible option; options carry a cost (the reaction, a resource, nothing) and an effect (change the roll or damage, start an action, cancel); several creatures can decide in one window; the order is acting side, then defending side, then damage changes; windows nest to depth 6 and the cap is logged; it works in encounters and scenes (`CheckAction` and `SaveAction` for scene-level rolls); the engine resumes by replay with a `ReplayingRandomSource` that returns the recorded draws first; a cancel keeps the dice in the log; eligibility never depends on information the decider lacks; answers are authorized per decider (`REACTION_NOT_PERMITTED`). The open window is stored in the `pending_reaction` table, not as a column on the encounter. `RuleEngine.resolve` takes the pre-action snapshot, the action, the continuation so far (recorded draws and decisions) and a `RandomSource`. Do not add a second kind of window. The step that builds it is done only when the reaction window suite T-22 to T-39 of Architecture 12.1 passes.
+
+**Reaction window details (decided 2026-11-16).** Use one list of point names everywhere, in the engine and in the `pending_reaction` check: `ON_MOVE_STEP`, `BEFORE_ATTACK_ROLL`, `AFTER_ATTACK_ROLL`, `AFTER_HIT`, `AFTER_DAMAGE_ROLL`, `AFTER_SAVE_ROLL`, `AFTER_SAVE_FAIL`, `AFTER_CHECK_ROLL`, `ON_CAST`, `AFTER_DAMAGE_TAKEN`, `ON_READIED_TRIGGER`. The list is owned by the Ruleset Specification (E-68); ON\_FALL joins it in version 1.5 under E-84 and E-142, when the engine runs falling (Ruleset Specification 13.6). ON\_TURN\_END joins it with the monster step; the Ruleset Specification owns it (E-119). Legendary actions are spent under the cost kind LEGENDARY\_ACTION between other creatures' turns (Ruleset Specification 12.6). The older trigger names above are aliases (`ON_ATTACK_ROLL` is `AFTER_ATTACK_ROLL`, `ON_DAMAGE_ROLL` is `AFTER_DAMAGE_ROLL`, `ON_SAVE` is `AFTER_SAVE_ROLL`, `ON_MOVE` is `ON_MOVE_STEP`, `ON_DAMAGE_TAKEN` is `AFTER_DAMAGE_TAKEN`). A window at a point runs in four ordered steps (acting side raises its result; defending side lowers it or changes the outcome; acting side changes damage; defending side changes damage), and a decider is asked at each step where it has an eligible option, so passing Shield does not forfeit Uncanny Dodge; within the defending side's step the order of options is E-83 (Ruleset Specification 10.11). An option can carry a mandatory follow-up choice by the same decider (Savage Attacker's choice of total). While a window is open, reject any level-up, rest, clock advance, DM edit or other action touching a creature in it with `REACTION_PENDING`; the continuation pins the settings and content definition versions the action has read. An action spawned by a reaction that needs an undecided setting after dice were rolled uses the default and leaves the setting undecided; never ask after a die is rolled. The orders of a saving throw (roll, WS1, outcome, WS2 on a failed roll, final outcome, then Evasion and similar adjustments; an automatic failure opens no window, except that with the setting legendaryResistanceOverridesAutoFail on, it opens a window at AFTER\_SAVE\_FAIL for Legendary Resistance only (Ruleset Specification 12.12)) and of an ability check are RS-REA-013 in Ruleset Specification Part B.
+
+**Trigger points.** The reaction window points of Ruleset Specification RS-REA-001 (such as `ON_MOVE_STEP`, `AFTER_ATTACK_ROLL`, `AFTER_DAMAGE_ROLL`, `AFTER_SAVE_ROLL`, `ON_CAST`, `AFTER_DAMAGE_TAKEN` and `ON_TURN_END`), together with `ON_DAWN` and `START_OF_OWN_TURN`. The full list is in the Content Schema Specification, section 7, and the older names such as `ON_ATTACK_ROLL` are aliases (Ruleset Specification section 7.2). Resources refresh through recharge rules on rests, not through a trigger. A feature is data: trigger, conditions, an effect type with parameters, an optional resource cost, a usage limit. The engine ships a catalog of effect types in Java (`add_damage_dice`, `grant_advantage`, `grant_resistance`, `modifier`, `spend_resource`, `condition`, `heal`, `reaction_option` and more; the registry of the Content Schema Specification, section 7, is the authority for names and fields). Data may only combine known effect types; a genuinely new mechanic is a new effect type in code.
 
 **Grid and movement.**
 
@@ -260,7 +297,7 @@ public interface GridGeometry {
 
 Costs are scaled integers (100 per 5 ft) so budgets are deterministic: speed 30 ft is 600. Fractions round down. **Reach and adjacency always use the 8 neighbors** under every metric; movement cost, ranges and area radii use the chosen metric. Diagonal steps past blocked corners are disallowed by default (a setting).
 
-**Per-mover cost map** (built by the engine, not the pathfinder): difficult terrain costs double; another creature's space counts as difficult terrain; a hostile creature's space is blocked unless the size difference is at least two steps; non-hostile spaces can be passed through but not stopped in (`noStop`); walls are blocked.
+**Per-mover cost map** (built by the engine, not the pathfinder): difficult terrain costs double; another creature's space counts as difficult terrain; a hostile creature's space is blocked unless the size difference is at least two steps; non-hostile spaces can be passed through but not stopped in (`noStop`); walls are blocked. The map is sent as digits (0 blocked, 1 to 9 the cost multiplier); extra costs add (E-16); creatures larger than Medium get an anchor-cell map. The exact format is in the Grid and Pathfinder Specification.
 
 **Vision seam.** `VisionModel.visibleCells(viewer, scene, map)` returns a `Visibility`. Only `FullVision` exists in v1. The data model already has sense stats, scene ambient light (`BRIGHT`, `DIM`, `DARK`) and per-cell `blocksSight`.
 
@@ -270,12 +307,12 @@ PostgreSQL, Flyway migrations (never edit an applied migration; prefer additive 
 
 | Group | Tables |
 | --- | --- |
-| Identity | `app_user`, `campaign`, `campaign_member (role DM or PLAYER)`, `invite`, `campaign_pack` |
-| World | `game_clock`, `game_session (ACTIVE, PAUSED, ENDED)`, `scene (map as arrays, ambient_light)`, `zone` |
+| Identity | `app_user`, `campaign`, `campaign_member (role DM or PLAYER)`, `invite`, `campaign_pack`, the Spring Session JDBC tables |
+| World | `game_clock`, `game_session (ACTIVE, PAUSED, ENDED)`, `scene (ambient_light), map (Architecture 6.1)`, `zone` |
 | Content | `content_pack`, `class_def`, `subclass_def`, `class_level_def`, `feature_def`, `spell_def`, `item_def`, `monster_def`. Common columns: `id`, `pack_id`, `key`, `ruleset`, `name`, `definition` (JSONB), `license`, `attribution`; UNIQUE (`pack_id`, `key`) |
 | Characters | `player_character`, `pc_ability` (one row per ability), `pc_class` (one row per class), `pc_hit_dice` (per die size), `pc_asi` (by class and class level), `pc_proficiency`, `pc_resource`, `pc_slot`, `pc_spell`, `inventory_item` |
-| Encounters | `encounter` (round, turn index, `version`, pending reaction), `encounter_roster`, `combatant`, `active_effect`, `readied_action`, `combat_event` (`seq`, `action_id`, type, payload JSONB, `audience`) |
-| Support | `asset` (metadata; files on the volume), `checkpoint`, `journal_entry` (v1.5) |
+| Encounters | `encounter` (round, turn index, `version`), pending\_reaction (the open reaction window; Architecture 5.4), `encounter_roster` (with the placement of each group), `combatant`, `active_effect`, `readied_action`, `combat_event` (`seq`, `action_id`, type, payload JSONB, `audience`) |
+| Support | `asset` (metadata and the kind MONSTER or MAP; files on the volume), rolled\_set, form\_token, `checkpoint`, `journal_entry` (v1.5) |
 
 Character state lives on the character (HP, temp HP, hit dice spent, death saves, conditions, resources, slots used, spells, inventory). A combatant for a player character references it and holds only encounter state (initiative, position, reaction used, concentration, active effects). Monster combatants hold their own HP.
 
@@ -318,8 +355,18 @@ CREATE UNIQUE INDEX one_open_session ON game_session (campaign_id)
 ALTER TABLE scene
   ADD CONSTRAINT valid_light CHECK (ambient_light IN ('BRIGHT', 'DIM', 'DARK'));
 ALTER TABLE asset
-  ADD CONSTRAINT asset_size CHECK (size_bytes > 0 AND size_bytes <= 5242880);
+  ADD CONSTRAINT asset_size CHECK (size_bytes > 0 AND ((kind = 'MONSTER' AND size_bytes <= 5242880) OR (kind = 'MAP' AND size_bytes <= 20971520)));
 ```
+
+Schema constraints for inventory, created in the equipment step's migration (Architecture 4.16): quantity above zero; charges and every currency amount never negative; the hand or slot position from the fixed set of Ruleset Specification 11.4; an item held by a character or on the ground, never both. Do not constrain the equipment slot limits in the schema, because the DM can override them (E-111); the engine enforces them. Test the constraints on a real database.
+
+**Schema additions for monsters**, created in the monster step's migration (Architecture 4.17): `combatant` gains `form` (text), `legendary_points` (smallint, not null, default 0, at least 0), `controller_user_id` (uuid referencing `app_user`; empty means the DM), `created` (boolean, not null, default false) and the trait flags `regen_suppressed`, `dying_by_trait` and `in_sunlight` (boolean, not null, default false). `encounter` gains `in_lair` (boolean, not null, default false). `inventory_item` gains `corrosion` (smallint, not null, default 0, at most 0). The item material lives in the definition JSON, not in a column. Do not encode the corrosion and destruction limits of Ruleset Specification Part G in the schema; the engine enforces them. Test the constraints on a real database.
+
+**Schema additions for the environment.** The tables and columns, their constraints and the version in which each arrives are in the schema sketch of Ruleset Specification 13.9 (Architecture 4.18). Create each in the migration of the step that needs it: the scene and combatant columns and the tables `hazard_instance`, `hazard_trigger_log` and `affliction` in the version 1 step, the map cell columns and the tables `zone_flag` and `fall_event` in the version 1.5 step, and `map_cell.floor_ft` and `combatant.altitude_ft` in the version 2 step. Give every added column a constant default so that no table is rewritten, put every enumeration in a CHECK constraint, and test the constraints on a real database. The engine enforces the rules, and the schema enforces only what the sketch lists.
+
+**The environment packages and the pure-engine boundary.** `engine.light`, `engine.vision`, `engine.fall`, `engine.hazard`, `engine.affliction` and `engine.grid.geometry` follow the rule of the rest of the engine: the JDK and the engine core only, with no Spring, web or persistence. `LightModel`, `SightResolver`, `FallDistanceProvider` and `HazardTrigger` are Java interfaces in the pure engine, and their adapters live in the application layer. Write the import-boundary test T-100 with the first of the six packages, so that it fails on the first forbidden import.
+
+Schema additions for maps, placement and access (Architecture 6.1; the names are suggestions). Create each in the migration of the step that needs it. A map belongs to a campaign: name, state (DRAFT or READY), the asset of kind MAP, the square size and offset in pixels, the width and height in squares (each from 1 to 200), the per-square flags as compact arrays with the source of each obstacle or difficult square (DETECTED or CONFIRMED), and a version that rises with every save of the squares. Only confirmed squares count in play. encounter gains a nullable reference to a map, and a map in use cannot be deleted (MAP\_IN\_USE). Each roster group stores its placement choice (BY\_HAND, ANYWHERE or AREA), its area, the start area for the player characters and the preview layout. Preview positions bind nothing until the encounter starts, and the layout chosen at the start is written to the log so that a replay places the same squares. player\_character gains held (boolean, not null, default false) and intended\_owner (the username an import named, empty unless held). rolled\_set holds, for one player in one campaign, the ability score method, the six values, who rolled and when, and is removed when a character is created from it. form\_token holds a single-use token for a creation that is not in the action log. asset gains kind (MONSTER or MAP); a monster image is mapped by the monster's content key, so one image serves every copy. Test the constraints on a real database.
 
 Query discipline: one explicit fetch graph for an encounter with combatants and effects; projections for list pages; indexes on every foreign key and on `combat_event (encounter_id, seq)`; a connection pool of about 10; the event log is cursor-paginated by `seq`.
 
@@ -344,7 +391,7 @@ Cell characters: `#` blocked, `.` normal (cost 100), `~` difficult (200). `metri
 
 **Limits (reject or cut off, never hang or crash).** Body at most 1 MB; grid at most 200 by 200; a node-expansion cap; a per-request deadline of 200 ms; strict JSON validation with bounds checks. Run as a non-root user. The binary supports `--healthcheck` (calls its own `/health`, exits 0 or 1) so the image needs no `curl`. Log JSON lines including the `X-Request-Id` header as `trace_id`.
 
-**C++ conventions.** C++17, CMake, cpp-httplib and nlohmann/json vendored as single headers in `third_party/`, GoogleTest or Catch2. CI builds tests with `-fsanitize=address,undefined`. Prefer static linking of the C++ runtime in the final image.
+**C++ conventions.** C++20, CMake, cpp-httplib and nlohmann/json vendored as single headers in `third_party/`, GoogleTest or Catch2. CI builds tests with `-fsanitize=address,undefined`. Prefer static linking of the C++ runtime in the final image.
 
 **Java side.**
 
@@ -355,13 +402,13 @@ public interface Pathfinder {
 }
 ```
 
-`JavaPathfinder` implements the same algorithm and is always available. `CppPathfinderClient` uses one shared `HttpClient` with keep-alive, connect timeout 100 ms, read timeout 250 ms, a Resilience4j circuit breaker, no retry, and falls back to `JavaPathfinder` on timeout, error or an open circuit. `pathfinder.mode` is `java`, `cpp` or `auto` (default `auto`). Forward the trace ID as `X-Request-Id`. Metrics: `pathfinder.call.duration`, `pathfinder.fallback`, breaker state. Readiness must not depend on the pathfinder (the fallback keeps the app healthy). Contract tests run the same cases against both implementations; they must agree on cost and validity. A benchmark (Java in-process versus C++ over HTTP at 30x20, 100x100 and 500x500 grids) runs nightly and its results go in the project report.
+`JavaPathfinder` implements the same algorithm and is always available. `CppPathfinderClient` uses one shared `HttpClient` with keep-alive, connect timeout 100 ms, read timeout 250 ms, a Resilience4j circuit breaker, no retry, and falls back to `JavaPathfinder` on timeout, error or an open circuit. `pathfinder.mode` is `java`, `cpp` or `auto` (default `auto`). Forward the trace ID as `X-Request-Id`. Metrics: `pathfinder.call.duration`, `pathfinder.fallback`, breaker state. Readiness must not depend on the pathfinder (the fallback keeps the app healthy). Settings carries the metric, the corner rule and the starting parity. The Grid and Pathfinder Specification is the authoritative contract for the service, the cost-map format, the search algorithm and the client policy. Contract tests run the shared corpus in pathfinder/contract against both implementations; they must return identical paths, costs and expansion counts. A benchmark (Java in-process versus C++ over HTTP at 30x20, 100x100 and 200x200 grids) runs nightly and its results go in the project report.
 
 ## 9. Environment and setup
 
 ### 9.1 Prerequisites
 
-JDK 25, Git, Docker with Compose v2 and buildx. CMake and a C++17 compiler only if you work on the pathfinder.
+JDK 25, Git, Docker with Compose v2 and buildx. CMake 3.25 or newer and a C++20 compiler (GCC 13 or Clang 17) only if you work on the pathfinder.
 
 ### 9.2 First run and dev loop
 
@@ -613,7 +660,7 @@ Branch protection on `main`: no direct pushes, pull request required with one re
 | Architecture | ArchUnit rules from 5.2. |
 | Persistence | `@DataJpaTest` with Testcontainers PostgreSQL, including constraint violations and the encounter fetch graph. Never H2. |
 | Web and security | MockMvc: unauthenticated access, cross-campaign access denied, CSRF, duplicate `actionId`, stale version, audience filtering, upload rejection. |
-| Reactions and resume | Pending reactions, readied actions and zones survive a simulated restart; pause, restart and resume reproduce identical state and legal actions. |
+| Reactions and resume | Pending reactions, readied actions and zones survive a simulated restart; pause, restart and resume reproduce identical state and legal actions. The reaction window suite T-22 to T-39 (Architecture 12.1) is part of done for the reaction window. |
 | Pathfinder | Contract tests against both implementations; C++ unit tests under sanitizers. |
 | Smoke | CI compose job from 10.1. |
 
@@ -621,27 +668,124 @@ Every bug fix starts with a failing regression test. Do not test getters or fram
 
 ## 12. Build order
 
-**Step 0, from the human before coding:** repository name, group id and root package; GitHub owner for GHCR; chosen Java and Spring Boot versions; the SRD 5.1 attribution text (copied verbatim from the SRD) for `NOTICE`.
+**Step 0, nothing to ask the human before coding.** The values are settled. Java 25 (Temurin 25.0.4.1), Spring Boot 4.1.1 and PostgreSQL 16.15 are fixed by Decision Log DEC-084. The GitHub owner for GHCR is `samarthbadola`, with images at version 0.1.0. The repository name, group id and root package are already in the repository's `pom.xml` and its architecture decision record; use them as they are and do not rename them. The Creative Commons attribution statement of the Content Schema Specification (CS-SRD-012) is verified against the SRD 5.1 Creative Commons PDF (Ruleset Specification, section 1; Decision Log OQ-07); copy its first paragraph, which is the official text, word for word into `NOTICE`.
+
+Frontend in every step. Every step that has a screen is built as routes, fragment endpoints, view models and demo elements (section 5.7). The real screen is written separately by Claude from the Figma designs. So a done-when that names a screen is met by the demo element: the route works, authorization and validation hold, and the fragment carries the fields and ids that the UX and API Specification names.
 
 **Step 1, walking skeleton.** Maven project with wrapper; Spring Boot app with health endpoints; PostgreSQL via Compose; Flyway baseline; register and login (the first user is the instance admin); Dockerfile; compose file; CI with the required checks; README quick start. *Done when:* a fresh clone runs `init-env.sh` then `docker compose up`, the first account registers at `http://localhost:8080`, and CI is green on the pull request.
 
-**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass. The notation, limits, error codes, composition API and test contract are in Ruleset Specification section 3.10; its decisions D-1 to D-13 are decided (DEC-085 and DEC-086), so implement them as written.
+**Step 2, dice engine.** Grammar, limits, `RandomSource`, `RollResult`. *Done when:* parser, property and uniformity tests pass, over-limit or malformed input is rejected, and the Ruleset Specification section 3.8 examples (term lists, bonus and penalty dice, natural d20, reroll once, d20 floor) pass. The notation, limits, error codes, composition API and test contract are in Ruleset Specification section 3.10; D-1 to D-16 are decided (DEC-085, DEC-086, DEC-097, DEC-098 and DEC-109), so implement them as written. D-15 marks dice added by critical doubling; D-16 marks only a flagged keep/drop term that D-14 REJECT leaves undoubled. Step 2 emits no event or log; Step 7 consumes `criticalNotApplied` for the dice-event marker and warning.
 
-**Step 3, kernel and architecture tests.** `Ability`, `AbilityScores`, `Stat` and `Modifier` computation with the order and rounding rules, durations, ArchUnit rules active, and the Ruleset Specification Part A rules (RS-ABL, RS-PRF, RS-D20, RS-ADV, RS-CHK, RS-SAV, RS-LVL, RS-MOD, RS-TIM) with their worked examples as tests. *Done when:* tests prove the modifier order (`SET`, `ADD`, `MULTIPLY` with floor, `MIN`/`MAX`) and a deliberate violation of each ArchUnit rule fails the build.
+**Step 2 additions (decided, DEC-095).** Build these with the dice engine; Step 2 is not done until they exist. They run on every push unless noted.
 
-**Step 4, campaign, session and access.** Migrations for campaigns, members, invites, sessions, scenes, game clock and audience columns; the invite flow; per-campaign authorization. *Done when:* a second user can join only with a valid invite, cannot read another campaign (404), and a paused session blocks actions with `SESSION_NOT_ACTIVE`.
+- **Seeded random source:** `SeededRandom` uses an explicitly specified algorithm written in the project (for example SplitMix64), not a JDK class whose sequence could change, with golden-vector tests for several seeds and bounds.
+- **Test vectors as data:** the cases of Ruleset Specification 3.10 as JSON in the engine's test resources, run by parameterized tests; one test asserts that every `DiceErrorCode` is produced by at least one case.
+- **Differential test:** enumerate every outcome of small dice groups (up to 3d4, with each modifier) through `ForcedDice` and compare with a naive reference implementation inside the test (keep, drop, reroll, floor, ties).
+- **Parser robustness:** property and fuzz tests asserting that only `DiceParseException` is thrown, within a time bound, and that every valid expression round-trips through its canonical form; a short run on every push and a longer run nightly.
+- **Locale and platform independence:** parse with ASCII-only checks and `Locale.ROOT`; run the engine tests a second time under the Turkish locale and an unusual time zone (the CI job below).
+- **Forbidden APIs:** engine code and game-logic application code cannot call `Math.random`, `java.util.Random`, `ThreadLocalRandom`, `UUID.randomUUID`, `System.currentTimeMillis`, `Instant.now`, `LocalDateTime.now`, `LocalDate.now`, `new Date()`, or `toLowerCase` and `toUpperCase` without a locale. Use the forbiddenapis Maven plugin for the `engine` module and ArchUnit rules for the game-logic packages; the web layer may still generate action ids.
+- **Distribution and bias:** exact distribution tests (for example advantage on a d20 against the enumerated probabilities) and bias tests of `nextInt` at awkward bounds (powers of two plus one, 1000).
+- **Immutability and concurrency:** returned collections cannot be changed; one plan evaluated from several threads with separate sources gives the sequential results.
+- **Test hygiene:** random test order, no `Thread.sleep`, no `@Disabled` without an issue link.
+- **Spec drift:** a test fails if the limit constants or the error code names differ from Ruleset Specification 3.10.
+- **Compiler strictness:** `-Xlint:all -Werror` for the `engine` module.
+- **Nightly:** PIT mutation testing of the dice package (minimum score 80%), the longer fuzz run, a non-blocking build on the newest JDK, and a non-blocking timing guard at the dice limits.
 
-**Step 5, content pack skeleton.** `content_pack` and definition tables, JSON schema validation, immutable in-memory loading, the attribution page, an empty SRD pack manifest. No game data yet.
+Starting points for the CI jobs (adapt the names and paths):
 
-**Stop here.** Steps 6 onward need more specifications. The Ruleset Specification now has Part A (foundations) and Part B (combat and conditions, section 7); Parts C to H, the content schema specification, the grid and geometry specification, and the UX and API specification with the threat model are still needed before the matching steps. Ask the human for them. After that the order is: character creation (Fighter) with the derived sheet; combat core; Rogue, Paladin and Bard features with trigger points; reaction window; rests, pause and resume; spells and concentration; grid UI, movement and the Java pathfinder; monster roster and artwork upload; the C++ pathfinder with fallback and contract tests; then the live player view.
+```yaml
+  engine-locale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '25', cache: maven }
+      - name: Engine tests under the Turkish locale and an unusual time zone
+        run: ./mvnw -q -pl engine test -DargLine="-Duser.language=tr -Duser.country=TR -Duser.timezone=Pacific/Kiritimati"
+
+  migration-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Lint changed migrations with squawk
+        run: |
+          npm install --global squawk-cli
+          git diff --name-only origin/main...HEAD -- 'app/src/main/resources/db/migration/*.sql' | xargs -r squawk
+
+  mutation:   # in the nightly workflow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '25', cache: maven }
+      - run: ./mvnw -q -pl engine org.pitest:pitest-maven:mutationCoverage -DtargetClasses='com.yourteam.rpg.engine.dice.*' -Dthreshold=80
+```
+
+Signature file for the forbidden-API check of the `engine` module (the plugin's built-in unsafe-JDK signatures already forbid locale-less case conversion):
+
+```
+java.lang.Math#random() @ Use RandomSource
+java.util.Random @ Use RandomSource
+java.util.concurrent.ThreadLocalRandom @ Use RandomSource
+java.util.UUID#randomUUID() @ Use an injected id source
+java.lang.System#currentTimeMillis() @ Use the injected clock
+java.time.Instant#now() @ Use the injected clock
+java.time.LocalDateTime#now() @ Use the injected clock
+java.time.LocalDate#now() @ Use the injected clock
+java.util.Date#<init>() @ Use the injected clock
+```
+
+**Tests and checks for later steps (decided, DEC-093).** Build them with the step that creates the thing they test. The full list is Architecture section 12.1 (T-14 to T-21): clock and time-of-day tests and the rest conformance tests (T-14, T-15) with the rest step; the rest transaction, save/resume, determinism replay and audience tests on a real database (T-16 to T-18); the migration upgrade test, JPA schema validation and migration lint (T-19) from the first migration in Step 4; the settings tests (T-21) when the settings registry lands; and a short rest and a long rest in the compose smoke test (T-20). The required status checks gain `architecture-tests`, `migration-lint` and the contract corpus job. The spell tests T-40 to T-47 (defined in Ruleset Specification 10.13, listed in Architecture 12.1) are built with the spells step, which is done only when they pass. The equipment tests T-48 to T-61 (defined in Ruleset Specification 11.11, listed in Architecture 12.1) are built with the equipment step, which is done only when they pass; T-61 is also run at the player endpoint on a real database, where the response body must not contain the hidden properties. The monster tests T-62 to T-79 (defined in Ruleset Specification 12.14, listed in Architecture 12.1) are built with the monster step, which is done only when they pass; T-62 runs in the content build, and T-69 includes a restart test on a real database. The environment tests T-80 to T-100 (defined in Ruleset Specification 13.14, listed in Architecture 12.1) are built with the environment steps, each step done only when its tests pass; T-83 compares the geometry with a slow reference, T-98 also runs at the player endpoint on a real database, where the body must not contain the hidden facts, T-99 is a benchmark job that reports a missed budget, and T-100 checks the imports of the six pure packages.
+
+**Step 3, kernel and architecture tests.** `Ability`, `AbilityScores`, `Stat` and `Modifier` computation with the order and rounding rules, durations, ArchUnit rules active, and the Ruleset Specification Part A rules (RS-ABL, RS-PRF, RS-D20, RS-ADV, RS-CHK, RS-SAV, RS-LVL, RS-MOD, RS-TIM) with their worked examples as tests. *Done when:* tests prove same-key potency-before-recency selection; cross-key SET recency and resumption (10 then 14 gives 14, ending 14 restores 10, ADD +2 gives 16/12, and a later SET 1 beats SET 14); SET then MAX; exact ratio multiplication and one floor (`5 x 1/2 x 3 = 7`, max HP `31 x 1/2 = 15`, proficiency `3 x 1/2 = 1`, `3 x 2 = 6`, negative `-3 x 1/2 = -2`, zero remains zero); non-integer integer-stat operands are rejected; and a deliberate violation of each ArchUnit rule fails the build.
+
+**Step 4, campaign, session and access.** Migrations for campaigns, members, invites, sessions, scenes, game clock and audience columns; the invite flow; per-campaign authorization; the settings registry with defaults and the campaign\_setting table (Architecture 4.15), with the House rules panel data and the settings event log. Settings are not a JSON column on the campaign. The spell settings of Ruleset Specification 10.11 join the registry when the spells step lands, and the equipment settings of Ruleset Specification 11.9 join it when the equipment step lands, and the two monster settings of Ruleset Specification 12.12 join it when the monster step lands, and the four environment settings of Ruleset Specification 13.12.1 join it when the environment step lands. *Done when:* a second user can join only with a valid invite, cannot read another campaign (404), and a paused session blocks actions with `SESSION_NOT_ACTIVE`.
+
+**Step 5, content pack skeleton.** Implement the Content Schema Specification: the `content_pack`, `campaign_pack`, `content_pack_dependency` and `content_definition` tables with the guards of CS-STO-003 to CS-STO-005; the pack loader and its nine validation stages (CS-VAL-001 to CS-VAL-011), using networknt json-schema-validator 3.x on Jackson 3 (confirm the exact release when the step starts); the registries in Java, with `vocabulary.json` generated and checked in (CS-VAL-008); the conformance tests T-101 to T-116 that apply at this step; immutable in-memory loading as one content set per campaign (CS-STO-008, CS-STO-009); the attribution page; and a shipped SRD pack at version `0.1.0` with a manifest, a NOTICE file and exactly one real SRD definition. Use Prone unless it requires a registry name the engine does not yet have, in which case use the simplest definition without references. Preserve the SRD text verbatim and verify it against the Creative Commons source. Seed the pack at startup through the same loader and validation stages as all other packs. On later starts compare the shipped and stored hashes for that version and refuse startup if they differ. Tests verify startup loads exactly one definition and the loader refuses zero definitions. The first full SRD build (CS-SRD-008) is a later task, uses the Creative Commons edition as its source and ships under a higher version.
+
+**Steps 6 to 20, the rest of the build.** Every specification the steps need now exists: Ruleset Specification Parts A to H, the Grid and Pathfinder Specification, the Content Schema Specification and the UX and API Specification (companion versions above). Do the steps in this order. The weeks in Architecture section 18 are a guide to pace; the order here is binding, and a step is finished only when its done-when is shown by running it. For every step: build only engine decisions marked decided in the Ruleset Specification; the routes, errors and screens come from the UX and API Specification; each screen named below is built as a demo element (section 5.7) and Claude writes the real one from Figma; and a screen marked B or V2 in the UX and API Specification is not built before its step here.
+
+**Step 6, character creation and the derived sheet (Fighter).** Ruleset Specification Part D, sections 9.1 to 9.3 (Fighter, levels 1 to 5), with Requirements Specification 3.4 and 3.5 (FR-CHR and the classes). The character model is multiclass-ready from the start. Derived values (armor class, hit points, proficiency, saves, skills, attack and damage lines) come from the kernel, never from stored copies. Routes for characters, level-up and the party, with the access rules of FR-CHR-010 to FR-CHR-016. Screens: SCR-PLY-002, SCR-PLY-003, SCR-PLY-004 (six steps), SCR-PLY-005 (four steps, with the lost-points warning) and SCR-DM-007. Tests: the Part D worked examples and the Part A tests that the sheet reuses. *Done when:* a player creates a Fighter, levels it from 1 to 5, and the derived sheet equals the Part D worked examples to the point; a player cannot read or edit another player's character in the same campaign (403); a character outside their campaign returns 404, and the DM can edit any character in the campaign.
+
+**Step 7, combat core.** Ruleset Specification Part B (section 7, all of 7.1 to 7.11) and Architecture sections 4 and 5 for encounters, the event log with audience, idempotency keys and optimistic versioning. Initiative, turn order, the action economy, attacks, critical hits, damage with resistance, death saves, conditions, cover chosen by the DM, and the error contract. DM overrides follow UX-059 to UX-061 and API-ENC-015 of the UX and API Specification: the server sets who sees a correction, and a quiet correction is refused when a player can see the value. the requirements FR-ENC, FR-ACT and FR-AUD (Requirements Specification 3.7, 3.8, 3.13 and 12.2). Screens: SCR-DM-008, SCR-DM-009 (monsters come from a test pack until Step 12), SCR-DM-010 and SCR-DM-012. *Done when:* a scripted fight between two Fighters and a test creature runs from setup to a death, every Part B worked example passes, a repeated request with the same idempotency key changes nothing, a stale version is rejected with the documented error, and a DM-only event never appears in a player's response.
+
+**Step 8, class features and the reaction window.** Ruleset Specification Part D section 9.3 (Rogue, Paladin, Bard, and the level 3 subclass features) and section 9.4, with the reaction window of Ruleset Specification 7.2 and Architecture section 5.4: one window, the trigger points named there, nesting to depth 6, resume by replay, cancel keeps the dice. Features are data with trigger points; do not hard-code a class in the engine. Opportunity attacks use the window. Screen: SCR-DM-011 (the player side, SCR-PLY-007, waits for Step 16). Tests: T-22 to T-39 and the PIT mutation job on the reaction package (Architecture 12.1), each also run as a restart-in-the-middle test on a real database. *Done when:* an opportunity attack, a class-feature reaction and a Divine Smite timing case from Ruleset Specification 9.4 each run through the window, a restart in the middle of a window resumes to the same result, and T-22 to T-39 pass.
+
+**Step 9, rests, pause and resume, the clock and scenes.** Ruleset Specification Part C (section 8) and Requirements Specification 3.9 (FR-RST) and the session, clock and scene requirements FR-SES, FR-CLK and FR-SCN (section 12.2). Short and long rests with hit dice and recharge, session pause and resume with the basic recap, the game clock, and scenes with ambient light as a value only (what light does comes in Step 13). Screens: SCR-DM-003, SCR-DM-013 and SCR-DM-014 (SCR-PLY-008 waits for Step 16). Tests: T-14 to T-18, T-20 and T-21 as listed in the tests paragraph above, and the Part C edge cases E-32 to E-45. *Done when:* a short rest and a long rest in the compose smoke test restore exactly what Part C says, a paused game resumes mid-encounter to the same state after a restart, and the event log records each rest.
+
+**Step 10, spells.** Ruleset Specification Part E (section 10) and Requirements Specification 3.6: slots, preparation, concentration, areas as shapes (drawn on the grid in Step 14), the curated tier-2 list, Wizard preparation and Bard casting. The spell settings of 10.11 join the settings registry now. Screen: SCR-DM-016 (spells tab). Tests: T-40 to T-47. *Done when:* T-40 to T-47 pass and a Wizard casts a concentration spell, loses it on a failed save, and the slot is spent exactly as 10.13 states.
+
+**Step 11, equipment and items.** Ruleset Specification Part F (section 11) and Requirements Specification 3.15: armor, weapons and weapon properties, armor class, the hidden-property rule, and the equipment settings of 11.9. Screens: the equipment step of SCR-PLY-004, the inventory on SCR-PLY-003 and the items tab of SCR-DM-016. Tests: T-48 to T-61; T-61 also runs at the player endpoint on a real database, where the body must not contain the hidden properties. *Done when:* T-48 to T-61 pass and a player's response for an unidentified item carries no hidden property.
+
+**Step 12, monsters and encounters.** Ruleset Specification Part G (section 12) and Requirements Specification 3.16: the SRD roster as decided in 12.10, stat blocks, challenge rating and experience, level bands for encounter building, legendary actions at the turn-end window, lair actions, and the two monster settings of 12.12. Monster image upload for stat blocks (FR-AST-001, FR-AST-003; the placement images of FR-AST-004 come in Step 18). Screens: SCR-DM-009 with the roster, SCR-DM-016 (monsters tab) and the monster pick in SCR-DM-012. Tests: T-62 to T-79; T-62 runs in the content build, and T-69 includes a restart test on a real database. *Done when:* T-62 to T-79 pass, the full SRD 5.1 monster roster loads from the pack, and an encounter built from the roster runs through Step 7's flow including a legendary action.
+
+**Step 13, the environment of version 1.** Ruleset Specification Part H (section 13) with Requirements Specification 3.17 and Architecture 4.18, in the version 1 phase only: scene light and the DM's overrides, senses as data, cover chosen by the DM, the fall calculator, hazards and the seed traps, breath, poisons, and the madness and disease tracker, with the four environment settings of 13.12.1. Everything that needs the map waits for Step 14. Screens: the light and hazard parts of SCR-DM-014 and SCR-DM-010. Tests: the tests of 13.14 that need no grid, and T-100 (the imports of the six pure packages). *Done when:* those tests pass, a DM sets a scene to dim light and the check helper shows the right result, and a hazard and an affliction survive a restart.
+
+**Step 14, grid, movement and the Java pathfinder.** The Grid and Pathfinder Specification and Ruleset Specification section 7.3 (movement) with the rest of Part H that needs the map: emitters and zones, sight, line of sight and cover, reach checked on every step, the fall event, and hazards triggered by movement. The grid in feet with the metric setting, movement with `JavaPathfinder`, reach highlighting, area shapes for spells. Requirements Specification 3.10 (FR-GRD, the version 1 items). Screens: the map area of SCR-DM-010. Tests: T-80 to T-100 not yet run (T-83 compares the geometry with a slow reference; T-99 is a benchmark job that reports a missed budget). *Done when:* those tests pass, a creature moves along a path that avoids walls and costs the right movement, and an opportunity attack fires when it leaves reach (through the Step 8 window).
+
+**Step 15, the C++ pathfinder, observability and Milestone A.** The `pathfinder` service from the Grid and Pathfinder Specification with limits, the client adapter, the circuit breaker, the Java fallback and the contract tests run against both implementations; C++ unit tests under sanitizers. A second person can build the C++ service in parallel from the specification once Step 14 has fixed the contract. Observability and the install and operate requirements (Requirements Specification 3.14, FR-OPS), the screens SCR-ADM-001 and SCR-ADM-002, the README quick start with LAN setup, the attribution page and the release tag with the compose bundle. *Done when:* the contract tests pass against both implementations, stopping the `pathfinder` container makes movement fall back with no error to the player, the compose smoke test passes from a clean machine, and every release A item in the release table of the UX and API Specification has a route that works. This is **Milestone A (version 1)**.
+
+**Step 16, the live player view.** Release B. Server-sent events behind the feature flag, with audience filtering, the DM and player view models, and the player side of the table: SCR-PLY-006 (without the full-screen mode until Step 18), SCR-PLY-007 (my reaction), SCR-PLY-008 (my rest) and SCR-PLY-009 (rules, read only), with SCR-DM-017 (the setting decision flow). Requirements Specification 3.12 (FR-LIV-001 to FR-LIV-003). Tests: the release B tests of UX and API Specification section 7.2 that belong to these routes (T-132, T-133 for the player side, T-136, T-151 and T-155), and the benchmark of Architecture section 18 week 7. *Done when:* a second browser session sees only what its audience allows, a dropped connection resumes without missing an event, and the player side of a reaction and a rest works end to end.
+
+**Step 17, journal, checkpoints, export and import, pack upload.** Release B. SCR-DM-018 and SCR-PLY-010 (journal and quests, with the candidate events the DM keeps or dismisses, DEC-108), SCR-DM-019 (checkpoints, export and import, with the campaign's access data and the held characters shown on SCR-DM-004) and pack upload on SCR-DM-005. Requirements Specification FR-JRN, FR-CHK, FR-EXP and FR-CHR-017. A checkpoint restore is atomic and logged; an export carries its own format version; an import creates a new campaign owned by the importer. Tests: the release B tests of UX and API Specification section 7.2 for these routes (T-167, T-169 and the others listed there). *Done when:* an exported campaign imports into a fresh database and plays on, a restore returns the exact earlier state, and a malformed or oversized file is rejected with `CONTENT_INVALID` or `RATE_LIMITED`.
+
+**Step 18, maps: upload, obstacle detection, placement, full-screen map.** Release B. Requirements Specification FR-GRD-010 to FR-GRD-015 and FR-AST-004, the Grid and Pathfinder Specification for the obstacle grid, and the rate limits decided for detection. Detection runs inside the request, with no job queue (D-09); keep it within the limits that the specification states and return `RATE_LIMITED` beyond them. Screens: SCR-DM-020 (upload, set the grid, review obstacles), SCR-DM-021 (place creatures by hand, at random, or at random inside a start area, with monster images) and the full-screen map mode of SCR-PLY-006. Tests: T-166 (for maps), T-171 to T-174 and the others of section 7.2 for these routes. *Done when:* a DM uploads a map image, sets the grid, edits the detected obstacles, places a start area and creatures at random inside it, and a player sees the full-screen map with only what the audience allows.
+
+**Step 19, levels 6 to 12.** Release B, last. Ruleset Specification Part D tables for levels 6 to 12 as content, with their tests. Ask the human before starting; this step is cut first if time runs out.
+
+**Step 20, release.** README, attribution, the release tag and the compose bundle for version 1.5, a final benchmark, and the report of what is done and left.
+
+**Stop and ask.** Do not build player action submission (SCR-PLY-011, API-LIV-001), the vision phases and automatic environment effects of version 2, or anything the Ruleset Specification marks as proposed. If a step needs a decision that no document records, stop at that step, report it, and ask the human.
 
 ## 13. Definition of done, commits and pull requests
 
 A task is done when:
 
-- its done-when is demonstrated by running it, and new behavior has tests that failed before the change;
+- its done-when is demonstrated by running it, new behavior has tests that failed before the change, and the tests this brief lists for the step pass;
 - all CI checks, including ArchUnit, pass;
-- new endpoints have authentication, authorization at the data layer, input validation and audience handling, each with a negative test;
+- new endpoints have authentication, authorization at the data layer, input validation and audience handling, each with a negative test, and the route and error codes match the UX and API Specification;
+- every route that returns a page or a fragment has a demo element in templates-demo/, and nothing in templates/ or static/ was changed by you;
 - migrations are additive and run on a fresh database;
 - no secret, TODO without an issue, or unformatted code is committed;
 - you reported what is done, what is left, and anything beyond the brief.
@@ -650,16 +794,16 @@ Commits use Conventional Commits, for example `feat(engine): parse keep-highest 
 
 ## 14. Open items to confirm with the human
 
-- Which spells form the tier-2 set, and which SRD monsters go in each level band.
-- How DM overrides are shown to players, the corner-cutting default and final upload limits (surprise handling is decided: Ruleset Specification E-14).
-- Exact SRD 5.1 lists (spells, monsters, conditions) and the attribution text, verified against the SRD document.
+- Nothing about monsters is open: the roster is decided (Ruleset Specification 12.10), as is the tier-2 spell list (Ruleset Specification 10.9).
+- The SRD 5.1 lists and the attribution text are verified (Decision Log OQ-07, Ruleset Specification section 1); nothing to confirm.
 - Versions are decided (DEC-084): Java 25, Spring Boot 4.1.1 and PostgreSQL 16.15; nothing to confirm.
-- Which events are captured automatically for the journal (v1.5).
-- Anything in this brief that conflicts with a more specific document. Dice-engine decisions D-1 to D-13 are decided (DEC-085 and DEC-086). E-6 and E-7 are decided, E-22 is decided, and verification debts V-1, V-2 and V-3 are cleared (DEC-087 to DEC-089).
+- The journal captures the events of FR-JRN-002 as candidates that the DM keeps or dismisses (decided, DEC-108); nothing to confirm.
+- Anything in this brief that conflicts with a more specific document. Engine decisions (the E-numbers) are recorded in the Ruleset Specification with their status; implement only the decided ones.
+- First-build time (tracked, not part of any step): the first cold Docker build took about 198 seconds, of which Maven dependency resolution took about 146, and it will grow as the engine, the pathfinder service and the rulesets are added. Optimizing build and startup time is a later item in the Decision Log; do not trade correctness or the build steps for it.
 
 ## 15. Version and revision history
 
-Current version: **1.10.2**. Companion document versions this brief was written against: Ruleset Specification 0.12.1, Requirements Specification 1.7.1, Decision Log 1.11.1, Architecture 5.1.
+Current version: **1.29**. Companion document versions this brief was written against: Ruleset Specification 1.4, Content Schema Specification 1.2, Grid and Pathfinder Specification 0.4, UX and API Specification 1.5, Requirements Specification 1.20, Decision Log 1.35, Architecture 5.17.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -676,4 +820,30 @@ Current version: **1.10.2**. Companion document versions this brief was written 
 | 1.9.1 | 2026-10-30 | Correction: companion versions updated (Ruleset Specification 0.10, which clears verification debt V-1; Decision Log 1.9); no change to the build steps or contracts |
 | 1.10 | 2026-11-14 | New campaign setting for duplicate proficiency replacement (E-22); the stacking rule keeps suppressed instances and covers same-named features; companion versions updated |
 | 1.10.1 | 2026-11-14 | Correction: companion versions updated (Ruleset Specification 0.12, Requirements 1.7, Decision Log 1.11); no change to the build steps or contracts |
-| 1.10.2 | 2026-11-14 | Correction: Architecture reference updated to v5.1; companion versions updated to Requirements 1.7.1, Ruleset Specification 0.12.1 and Decision Log 1.11.1; resolved Part A and Part B verification statuses aligned; no build-step changes |
+| 1.11 | 2026-11-15 | Pathfinder contract moved to the Grid and Pathfinder Specification: cost map as digits, anchor-cell maps, determinism and identical-path contract tests, benchmark sizes corrected, C++ toolchain (C++20) and repository layout; the stop-here note now says the specification exists |
+| 1.11.1 | 2026-11-15 | Correction: companion versions updated (Grid and Pathfinder Specification 0.2, whose decisions are now decided; Decision Log 1.13); no change to the build steps or contracts |
+| 1.11.2 | 2026-11-16 | Correction: companion versions updated (Ruleset Specification 0.13 with the Part C draft, Decision Log 1.14) and the stop-here note says Part C exists as a draft; no change to the build steps or contracts |
+| 1.11.3 | 2026-11-16 | Correction: companion versions updated (Ruleset Specification 0.14, Requirements 1.8, Decision Log 1.15, Architecture 5.3); Part C is no longer marked draft; no change to the build steps or contracts |
+| 1.11.4 | 2026-11-16 | Correction: companion versions updated (Ruleset Specification 0.15, Decision Log 1.16); no change to the build steps or contracts. The proposed Step 2 test and CI additions (DEC-095) and the proposed dice decision D-14 are not part of the brief until accepted |
+| 1.12 | 2026-11-16 | Step 2: dice decision D-14 (critical dice mode) is decided and D-15 is proposed; Step 4: the settings registry and the campaign\_setting table replace a settings column (Architecture 4.15); companion versions updated |
+| 1.13 | 2026-11-16 | Step 2 additions (tests and CI checks, DEC-095) and the later-step tests (DEC-093) added with CI job starting points and the forbidden-API list; DieRoll gains the critical flag (D-15, decided); companion versions updated |
+| 1.13.1 | 2026-11-16 | Correction: companion versions updated (Ruleset Specification 0.18 with the Part D draft, Decision Log 1.19); no change to the build steps or contracts. Part D decisions E-46 to E-60 are proposed and not part of the brief until accepted |
+| 1.13.2 | 2026-11-16 | Correction: companion versions updated (Ruleset Specification 0.19, Decision Log 1.20); no change to the build steps or contracts |
+| 1.14 | 2026-11-16 | The reaction window is one generalized mechanism (ADR-31): new paragraph in the combat description, pending\_reaction table instead of an encounter column, two new error codes, CheckAction, SaveAction and CancelReaction, replay-based resume, and the T-22 to T-36 suite as part of done; companion versions updated |
+| 1.15 | 2026-11-16 | Reaction window rectifications: canonical point names, ordered steps, follow-up choices, frozen state and pins, settings during a chain, the order of saves and checks; the suite is now T-22 to T-39; companion versions updated |
+| 1.16 | 2026-11-18 | Spells (Ruleset Specification Part E, section 10) added to the build order by reference, with tests T-40 to T-47 part of done for the spells step; rule 2 and the stop-here note no longer list which Ruleset parts exist (its roadmap does) and the open items are brought up to date; first-build time recorded as a tracked item; the cross-reference to Architecture no longer carries a version number; companion versions updated (Ruleset Specification 0.23, Requirements 1.13, Decision Log 1.24, Architecture 5.8) |
+| 1.17 | 2026-11-19 | Equipment and items (Ruleset Specification Part F, section 11) added to the build order by reference, after spells, with tests T-48 to T-61 part of done for the equipment step (T-61 also at the player endpoint); the engine package item/ added; the equipment settings join the registry with that step; schema constraints for inventory added after the constraint block; companion versions updated (Ruleset Specification 0.24, Requirements 1.14, Decision Log 1.25, Architecture 5.9) |
+| 1.18 | 2026-11-19 | Monsters and encounters (Ruleset Specification Part G, section 12) added to the build order by reference, after equipment, with tests T-62 to T-79 part of done for the monster step; the engine package monster/ added; the two monster settings join the registry with that step; the reaction window list gains ON\_TURN\_END and the Legendary Resistance window at AFTER\_SAVE\_FAIL; schema additions for monsters added after the inventory constraint block; the monster roster question removed from the open items; companion versions updated (Ruleset Specification 0.25, Requirements 1.15, Decision Log 1.26, Architecture 5.10) |
+| 1.19 | 2026-11-19 | Ruleset Specification Part H applied by reference: the environment build steps (the version 1 part now, the parts that need the map after the grid UI and the Java pathfinder), the pure-engine boundary for the six environment packages, the tests T-80 to T-100, a pointer to the schema sketch of Ruleset Specification 13.9, the ON\_FALL note, the environment settings in Step 4, the package tree and the release scope; companion versions updated (Ruleset Specification 1.0, Requirements Specification 1.16, Decision Log 1.27, Architecture 5.11) |
+| 1.20 | 2026-11-21 | Content Schema Specification, accepted by the owner on 2026-11-21, applied by reference: Step 5 now implements it (tables, loader with nine validation stages, JSON Schema library, registries with the generated vocabulary file, conformance tests), the stop-here note no longer lists it as missing, the repository layout names the schema folder and describes NOTICE as the Creative Commons BY 4.0 statement instead of text copied from the SRD, Step 0 asks for that statement, and the first full SRD build uses the Creative Commons edition as its source. The trigger points and effect type names of the combat description now follow the registry. Companion versions updated (Ruleset Specification 1.1, Content Schema Specification 1.0, Requirements Specification 1.17, Decision Log 1.28, Architecture 5.12). |
+| 1.21 | 2026-11-21 | UX and API Specification, accepted by the owner on 2026-11-21, applied by reference: it joins the companion documents and the stop-here note no longer lists it as missing; the build order marks monster image upload for version 1 and map upload, placement, export and import for version 1.5; the error table follows Architecture section 9 (the codes of the web layer added, and the statuses of REACTION\_OPTION\_INVALID and REACTION\_NOT\_PERMITTED corrected); the security rules gain stored sessions, form tokens, rate limits, the image limits of 5 MB and 20 MB and the access data of an export; the data model gains maps, placement, held characters, rolled sets and form tokens; the action id is minted by the server; the C++ convention reads C++20, as in the Grid and Pathfinder Specification; the open items no longer list the corner-cutting default and the upload limits. Companion versions updated (Ruleset Specification 1.1, Content Schema Specification 1.1, Grid and Pathfinder Specification 0.3, UX and API Specification 1.0, Requirements Specification 1.18, Decision Log 1.29, Architecture 5.13). |
+| 1.22 | 2026-11-21 | Companion versions updated (UX and API Specification 1.1, Architecture 5.14) after the detection limits were raised: the numbers stay in the UX and API Specification (3.8), which this brief points to. No other change. |
+| 1.23 | 2026-11-22 | The frontend is split (Decision Log DEC-108): the coding AI builds the backend and only demo elements of the frontend, and Claude writes the real frontend from the Figma designs in the same repository. New section 5.7 sets the two areas and the seam, with rule 12 of section 1, the repository layout, a build order note and the definition of done following it. The open items lose the SRD verification (done, OQ-07) and the journal events (decided, DEC-108), and the override item now points to the proposal in the UX and API Specification. Step 0 notes that the attribution text is verified. Companion versions updated (Ruleset Specification 1.2, UX and API Specification 1.2, Grid and Pathfinder Specification 0.4, Decision Log 1.30). |
+| 1.24 | 2026-11-22 | Companion version updated (UX and API Specification 1.3, which draws the Figma frames for the proposed override correction and fixes one screen reference). No build rule changed. |
+| 1.25 | 2026-11-22 | Steps 6 to 20 written (character creation and the derived sheet, combat core, class features and the reaction window, rests and sessions, spells, equipment, monsters, the version 1 environment, grid and Java pathfinder, the C++ pathfinder and Milestone A, then the version 1.5 steps: live player view, journal, checkpoints and export, maps, levels 6 to 12, release). Each names its specification sections, screens (built as demo elements), tests and a done-when. The old stop-here note is replaced by a stop-and-ask rule for version 2 and for anything not decided. No contract or earlier step changed. Companion versions unchanged. |
+| 1.26 | 2026-11-22 | Document review fixes. The stack table now names C++20, as the Architecture and the Grid and Pathfinder Specification do. Step 0 no longer asks the human for values that are settled (Java, Spring Boot and PostgreSQL versions, GHCR owner, attribution text, and the repository name, group id and root package that the repository already records), and the group id placeholder note points to the repository instead. The 1.25 history row, which had been left blank, is filled. Companion versions updated (UX and API Specification 1.4, Requirements Specification 1.19, Decision Log 1.31, Architecture 5.15). No build rule or contract changed. |
+| 1.27 | 2026-11-22 | The owner accepted how DM overrides are shown to players (UXD-11, UXQ-24, UX-059 to UX-061). The open item that told the coding AI to wait is removed, and Step 7 now says the server sets who sees a correction and refuses a quiet correction when a player can see the value. Companion versions updated (UX and API Specification 1.5, Requirements Specification 1.20, Decision Log 1.32, Architecture 5.16). No other build rule changed. |
+| 1.28 | 2026-11-22 | Companion Decision Log and Progress Tracker updated to 1.33 for the accepted UXD-11 citation correction. D-16 is recorded in the Step 2 result model and done-when guidance; the companion Ruleset and Decision Log versions are now 1.3 and 1.34. Step 2 is complete; implementation proceeds to Step 3. |
+| 1.29 | 2026-11-22 | Step 3 decisions E-154 and E-155 are applied: SET precedence and suppression, exact Ratio arithmetic, pack ratio limits, and all 13 duration kinds and end conditions. Companion versions updated (Ruleset Specification 1.4, Content Schema Specification 1.2, Decision Log 1.35, Architecture 5.17). |
+| 1.30 | 2026-11-22 | Step 5 ships one verbatim SRD seed definition at version 0.1.0 and loads it through the ordinary loader. The tests cover the at-least-one-definition rule and startup hash verification. The full SRD build uses a higher version. |
+| 1.31 | 2026-11-23 | Step 6 uses 403 for attempts to read or edit another player's character within the campaign, follows the Ruleset for Fighter choices, and keeps existing campaigns on their installed content until a DM confirms the upgrade. The build-order note now places combat in Step 7. The Step 6 sheet lists main-hand attacks and shows the chosen Fighting Style's text. |

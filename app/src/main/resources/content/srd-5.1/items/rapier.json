@@ -1,0 +1,21 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:rapier",
+  "name": "Rapier",
+  "text": {
+    "file": "text/items/rapier.md"
+  },
+  "cost": 2500,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d8",
+    "damageType": "piercing",
+    "properties": [
+      "finesse"
+    ]
+  }
+}

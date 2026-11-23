@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16.15
+    image: postgres:16.16
     environment:
       POSTGRES_DB: rpg
       POSTGRES_USER: rpg
@@ -25,6 +25,7 @@ services:
       SPRING_DATASOURCE_USERNAME: rpg
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?run deploy/scripts/init-env.sh first}
       APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
+      APP_INSTANCE_KEY: ${APP_INSTANCE_KEY:?run deploy/scripts/init-env.sh first}
       PATHFINDER_MODE: ${PATHFINDER_MODE:-java}
     ports:
       - "8080:8080"

@@ -1,0 +1,390 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/monster.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "vocabulary.json#/$defs/size",
+          "x-visibility": "revealed"
+        },
+        "type": {
+          "$ref": "vocabulary.json#/$defs/creatureType",
+          "x-visibility": "revealed"
+        },
+        "alignment": {
+          "$ref": "vocabulary.json#/$defs/alignment",
+          "x-visibility": "dm"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "ac": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "source": {
+              "$ref": "common.schema.json#/$defs/text",
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "hp": {
+          "type": "object",
+          "properties": {
+            "dice": {
+              "$ref": "common.schema.json#/$defs/roll",
+              "x-visibility": "dm"
+            },
+            "average": {
+              "type": "integer",
+              "minimum": 1,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "dice",
+            "average"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "speeds": {
+          "type": "object",
+          "properties": {
+            "walk": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "fly": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "swim": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "climb": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "burrow": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "hover": {
+              "type": "boolean",
+              "x-visibility": "dm"
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "abilities": {
+          "type": "object",
+          "properties": {
+            "str": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "x-visibility": "dm"
+            },
+            "dex": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "x-visibility": "dm"
+            },
+            "con": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "x-visibility": "dm"
+            },
+            "int": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "x-visibility": "dm"
+            },
+            "wis": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "x-visibility": "dm"
+            },
+            "cha": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "str",
+            "dex",
+            "con",
+            "int",
+            "wis",
+            "cha"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "saves": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "vocabulary.json#/$defs/ability"
+          },
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "x-visibility": "dm"
+        },
+        "skills": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "vocabulary.json#/$defs/skill"
+          },
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "x-visibility": "dm"
+        },
+        "damageModifiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "vulnerability",
+                  "resistance",
+                  "immunity"
+                ],
+                "x-visibility": "dm"
+              },
+              "types": {
+                "type": "array",
+                "items": {
+                  "$ref": "vocabulary.json#/$defs/damageType"
+                },
+                "minItems": 1,
+                "x-visibility": "dm"
+              },
+              "unless": {
+                "enum": [
+                  "magical",
+                  "silvered",
+                  "adamantine"
+                ],
+                "x-visibility": "dm"
+              }
+            },
+            "required": [
+              "kind",
+              "types"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "conditionImmunities": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "condition"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "senses": {
+          "type": "object",
+          "properties": {
+            "blindsight": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "darkvision": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "tremorsense": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "truesight": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "passivePerception": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "languages": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "dm"
+        },
+        "challenge": {
+          "type": "object",
+          "properties": {
+            "cr": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 30
+                },
+                {
+                  "enum": [
+                    "1/8",
+                    "1/4",
+                    "1/2"
+                  ]
+                }
+              ],
+              "x-visibility": "dm"
+            },
+            "xp": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            },
+            "proficiencyBonus": {
+              "type": "integer",
+              "minimum": 0,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "cr",
+            "xp",
+            "proficiencyBonus"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/action"
+          },
+          "minItems": 0,
+          "x-visibility": "revealed"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/action"
+          },
+          "minItems": 0,
+          "x-visibility": "revealed"
+        },
+        "bonusActions": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/action"
+          },
+          "minItems": 0,
+          "x-visibility": "revealed"
+        },
+        "reactions": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/action"
+          },
+          "minItems": 0,
+          "x-visibility": "revealed"
+        },
+        "legendaryActions": {
+          "type": "object",
+          "properties": {
+            "uses": {
+              "type": "integer",
+              "minimum": 1,
+              "x-visibility": "dm"
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/action"
+              },
+              "minItems": 1,
+              "x-visibility": "dm"
+            }
+          },
+          "required": [
+            "uses",
+            "entries"
+          ],
+          "additionalProperties": false,
+          "x-visibility": "dm"
+        },
+        "lairActions": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "dm"
+        },
+        "regionalEffects": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "monster",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "revealed"
+        }
+      },
+      "required": [
+        "size",
+        "type",
+        "alignment",
+        "ac",
+        "hp",
+        "speeds",
+        "abilities",
+        "challenge"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

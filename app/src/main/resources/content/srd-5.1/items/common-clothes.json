@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:common-clothes",
+  "name": "Common Clothes",
+  "text": {
+    "file": "text/items/common-clothes.md"
+  },
+  "cost": 50,
+  "weight": 300,
+  "tier": 0,
+  "category": "gear"
+}

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "step7-test",
+  "name": "Step 7 combat test pack",
+  "version": "1.0.0",
+  "ruleset": "srd-5.1",
+  "vocabulary": 2,
+  "license": {"id": "custom", "url": "https://example.invalid/test-license", "attributionRequired": false}
+}

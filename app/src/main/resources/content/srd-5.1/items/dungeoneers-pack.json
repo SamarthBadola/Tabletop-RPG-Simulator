@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:dungeoneers-pack",
+  "name": "Dungeoneer's Pack",
+  "text": {
+    "file": "text/items/dungeoneers-pack.md"
+  },
+  "cost": 1200,
+  "weight": 0,
+  "tier": 0,
+  "category": "gear"
+}

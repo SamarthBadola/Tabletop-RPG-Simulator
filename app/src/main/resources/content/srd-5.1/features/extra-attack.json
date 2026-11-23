@@ -1,0 +1,16 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:extra-attack",
+  "name": "Extra Attack",
+  "text": {
+    "file": "text/features/extra-attack.md"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "attacks_per_action",
+      "operation": "MAX",
+      "value": 2
+    }
+  ]
+}

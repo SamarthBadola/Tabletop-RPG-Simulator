@@ -1,0 +1,16 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:leather-armor",
+  "name": "Leather Armor",
+  "text": {
+    "file": "text/items/leather-armor.md"
+  },
+  "cost": 1000,
+  "weight": 1000,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 11,
+    "dexterity": "full"
+  }
+}

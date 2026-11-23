@@ -1,0 +1,16 @@
+{
+  "kind": "feat",
+  "key": "srd-5.1:grappler",
+  "name": "Grappler",
+  "text": {
+    "file": "text/feats/grappler.md"
+  },
+  "prerequisite": "score:str >= 13",
+  "effects": [
+    {
+      "type": "grant_advantage",
+      "roll": "attack",
+      "activeWhen": "target_grappled_by_attacker"
+    }
+  ]
+}

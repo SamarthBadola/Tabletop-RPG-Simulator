@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:holy-symbol",
+  "name": "Holy Symbol",
+  "text": {
+    "file": "text/items/holy-symbol.md"
+  },
+  "cost": 500,
+  "weight": 100,
+  "tier": 0,
+  "category": "gear"
+}
