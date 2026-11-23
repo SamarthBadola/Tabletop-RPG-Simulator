@@ -497,7 +497,7 @@ This section lists the fields of each kind. What a field means in play is the Ru
 | `monster` | `monsters/` | A stat block | 12.2 |
 | `hazard` | `hazards/` | A trap or environmental hazard | 13.7 |
 | `poison` | `poisons/` | A poison | 13.7 |
-| `affliction` | `afflictions/` | A madness effect or a disease | 13.8 |
+| `affliction` | `afflictions/` | A madness effect, a disease or a lasting poison | 13.8 |
 | `afflictionTable` | `affliction-tables/` | A d100 table of afflictions | 13.8 |
 
 | Id | Rule |
@@ -656,8 +656,8 @@ Fields follow Part H (13.7, 13.8).
 |  | `resets` | bool | No |  |
 | `poison` | `delivery` | `ingested`, `inhaled`, `injury` or `contact` | Yes |  |
 |  | `save`, `effects`, `duration` | `Save`, `Effect[]`, `Duration` | Yes | The duration runs on the game clock |
-| `affliction` | `afflictionKind` | `MADNESS_SHORT`, `MADNESS_LONG`, `MADNESS_INDEFINITE` or `DISEASE` | Yes |  |
-|  | `text`, `effects`, `duration` |  | Yes | A disease adds `save` for resisting it |
+| `affliction` | `afflictionKind` | `MADNESS_SHORT`, `MADNESS_LONG`, `MADNESS_INDEFINITE`, `DISEASE` or `POISON` | Yes |  |
+|  | `text`, `effects`, `duration` |  | Yes | DISEASE and POISON also require `save` for resisting them |
 | `afflictionTable` | `afflictionKind` | as above | Yes |  |
 |  | `die` | `Dice` | Yes | The roll that picks a row, such as a d100 |
 |  | `rows` | list | Yes | Entries of `from`, `to` and `affliction` (`Ref<affliction>`), covering every face of the die once |

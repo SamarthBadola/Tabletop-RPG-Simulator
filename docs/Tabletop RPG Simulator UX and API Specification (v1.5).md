@@ -695,6 +695,8 @@ Each command is its own controller method and its own template. None is a switch
 | `attacks` | An attack roll and, on a hit, damage | FR-ACT-001, FR-ACT-002 |
 | `spells` | A spell cast and its effects | UC-05 |
 | `moves` | A move along a path the pathfinder has checked | FR-ACT-006, FR-ACT-009 |
+| `manual-moves` | A DM-supplied move in an encounter with no map | RS-ATK-008, E-158 |
+| `feature-uses` | The use of an active class feature | Ruleset 9.3 |
 | `dashes`, `dodges`, `disengages`, `helps`, `hides`, `readies`, `object-uses`, `grapples`, `shoves` | The matching action | FR-ACT-004 |
 | `saving-throws`, `ability-checks` | A save against a DC, or a check. Also valid in a scene as `~/scenes/{sceneId}/{command}` with the campaign's key and version. | FR-ACT-003 |
 | `death-saves` | A death save for a creature at 0 hit points | FR-ENC-005 |
@@ -1029,9 +1031,11 @@ One route is added to 5.4. The DM needs the opportunity-attack list before confi
 
 | Command | Fields besides actorId |
 | --- | --- |
-| attacks | attackKey (key, one of the attacks the actor has); targetId (uuid) |
+| attacks | attackKey (key, one of the attacks the actor has); targetId (uuid); smiteSlotLevel (optional int, 1 to 9). Accepted only with the E-48 predeclare setting, a melee weapon attack by a paladin with Divine Smite, and an unspent slot of that level. An undecided setting gives SETTING\_DECISION\_REQUIRED. In the default mode the DM chooses Divine Smite through API-RXN-001. |
 | spells | spellKey (key); slotLevel (int, 0 to 9, default the spell's level); targetIds (uuid, multi-valued, at most 30); targetCell (cell, for a spell with an area) |
-| moves | destination (cell, required). The server finds the path and the engine checks it again (Architecture 4.3) |
+| moves | destination (cell, required). The server finds the path and the engine checks it again (Architecture 4.3). On a mapped encounter it computes reach exits from the grid and passes them to the same movement resolver as manual-moves. |
+| manual-moves | distanceFeet (int, 1 to 1000); leavesReachOf (uuid, multi-valued, zero to 30). DM only. Rejected on encounters with a map. An empty list still records movement. The engine determines reaction eligibility and opens any RS-ATK-008 window before applying movement under E-158. |
+| feature-uses | featureKey (key); the inputs required by the selected feature below. A player may propose this for a creature they own where proposals are supported. |
 | dashes, dodges, disengages, hides | None |
 | helps | targetId (uuid); helpKind (choice: attack, ability-check) |
 | readies | trigger (text, required, 1 to 200); actionKind (choice: attack, spell, move, other) |
@@ -1041,6 +1045,8 @@ One route is added to 5.4. The DM needs the opportunity-attack list before confi
 | saving-throws | ability (choice: strength, dexterity, constitution, intelligence, wisdom, charisma); dc (int, 1 to 40); targetIds (uuid, multi-valued, at most 30); reason (text, optional, at most 120) |
 | ability-checks | ability (choice as above); skillKey (key, optional); dc (int, 1 to 40, optional); subjectIds (uuid, multi-valued, at most 30) |
 | death-saves | None |
+
+For feature-uses, Bardic Inspiration requires targetId (uuid, another creature). The DM adjudicates range and hearing. Action Surge takes no additional fields. Lay on Hands requires targetId (uuid of self or a creature within touch range) and healPoints (nonnegative int), and accepts cureIds (uuid, multi-valued, zero to 20). The grid determines touch range on mapped encounters. The DM adjudicates it without a map. A cure id must name an active DISEASE or POISON on the target (Ruleset 9.3 and 13.8). Undead and constructs are invalid targets. The cost is healPoints plus five for each cure id and must be between one and the remaining pool. Missing, invalid or unexpected feature inputs return FEATURE\_INPUT\_INVALID with the field in details. FEATURE\_NOT\_AVAILABLE means the actor lacks the active feature and FEATURE\_USES\_EXHAUSTED means its pool is spent. Action economy uses the common combat errors.
 
 In a scene, saving-throws and ability-checks go to \~/scenes/{sceneId}/{command} with the same fields, no actorId, and the campaign's key and version.
 
