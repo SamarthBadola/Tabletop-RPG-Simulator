@@ -388,8 +388,13 @@ public class Characters {
           }
           var rawHealth = new ArrayList<>(state.rawHealth());
           rawHealth.add(raw);
-          int oldMax = CharacterRules.maximumHp(oldScores, state.rawHealth());
-          int newMax = CharacterRules.maximumHp(newScores, rawHealth);
+          int oldMax =
+              com.github.sbadolankaur.rpg.engine.combat.Exhaustion.maximumHp(
+                  CharacterRules.maximumHp(oldScores, state.rawHealth()),
+                  state.combat().exhaustion());
+          int newMax =
+              com.github.sbadolankaur.rpg.engine.combat.Exhaustion.maximumHp(
+                  CharacterRules.maximumHp(newScores, rawHealth), state.combat().exhaustion());
           int hp = HitPointRules.afterMaximumChange(state.header().hp(), oldMax, newMax);
           store.advance(
               id,
@@ -523,8 +528,10 @@ public class Characters {
             case "hit-points" -> {
               requireDm(rights);
               int maximum =
-                  CharacterRules.maximumHp(
-                      CharacterSheets.scores(state, catalog), state.rawHealth());
+                  com.github.sbadolankaur.rpg.engine.combat.Exhaustion.maximumHp(
+                      CharacterRules.maximumHp(
+                          CharacterSheets.scores(state, catalog), state.rawHealth()),
+                      state.combat().exhaustion());
               if (form.currentHp() == null
                   || form.temporaryHp() == null
                   || form.currentHp() < 0
@@ -541,8 +548,10 @@ public class Characters {
               requireDm(rights);
               var allocated = CharacterCreation.allocate(form.abilityScores());
               int oldMaximum =
-                  CharacterRules.maximumHp(
-                      CharacterSheets.scores(state, catalog), state.rawHealth());
+                  com.github.sbadolankaur.rpg.engine.combat.Exhaustion.maximumHp(
+                      CharacterRules.maximumHp(
+                          CharacterSheets.scores(state, catalog), state.rawHealth()),
+                      state.combat().exhaustion());
               AbilityScores updated;
               try {
                 updated =
@@ -554,7 +563,10 @@ public class Characters {
               } catch (IllegalArgumentException error) {
                 throw invalid();
               }
-              int maximum = CharacterRules.maximumHp(updated, state.rawHealth());
+              int maximum =
+                  com.github.sbadolankaur.rpg.engine.combat.Exhaustion.maximumHp(
+                      CharacterRules.maximumHp(updated, state.rawHealth()),
+                      state.combat().exhaustion());
               store.updateAbilities(id, allocated);
               store.hitPoints(
                   id,

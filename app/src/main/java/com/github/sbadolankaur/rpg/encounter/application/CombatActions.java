@@ -16,6 +16,8 @@ import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
 import com.github.sbadolankaur.rpg.engine.combat.CombatRolls;
 import com.github.sbadolankaur.rpg.engine.combat.CombatRolls.Cover;
+import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
+import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.combat.TurnBudget;
 import com.github.sbadolankaur.rpg.engine.dice.CriticalDiceMode;
 import com.github.sbadolankaur.rpg.engine.dice.RollMode;
@@ -56,7 +58,6 @@ public class CombatActions {
           var target = target(context, request.target());
           if (request.actor().equals(request.target()))
             throw new CampaignException(Code.INVALID_TARGET);
-          var budgetBefore = context.table.budget();
           var weapon =
               attacker.attacks().stream()
                   .filter(option -> option.key().equals(request.key()))
@@ -80,12 +81,13 @@ public class CombatActions {
               CombatConditions.canSee(
                   attacker.conditions(),
                   target.conditions(),
-                  target.entry().tactics().hidden() || request.targetObscured());
+                  target.entry().tactics().hiddenFrom(request.actor()) || request.targetObscured());
           boolean seenByTarget =
               CombatConditions.canSee(
                   target.conditions(),
                   attacker.conditions(),
-                  attacker.entry().tactics().hidden() || request.attackerObscured());
+                  attacker.entry().tactics().hiddenFrom(request.target())
+                      || request.attackerObscured());
           var helper =
               context.entries.values().stream()
                   .filter(Encounters::present)
@@ -112,12 +114,23 @@ public class CombatActions {
                   request.fearSourceVisible()
                       && attacker.conditions().contains("srd-5.1:frightened"),
                   request.mode());
-          RollMode mode = sources.mode();
-          if (weapon.ranged() && request.distance() > weapon.normalRange()) {
-            var penalties = new ArrayList<>(sources.disadvantages());
+          var opponentSources =
+              CombatEffects.rollSources(
+                  context, target, "attack", "against_holder", request.distance(), seenByTarget);
+          var ownSources =
+              CombatEffects.rollSources(
+                  context, attacker, "attack", "holder", request.distance(), seeTarget);
+          var advantages = new ArrayList<>(sources.advantages());
+          advantages.addAll(opponentSources.advantages());
+          advantages.addAll(ownSources.advantages());
+          var penalties = new ArrayList<>(sources.disadvantages());
+          penalties.addAll(opponentSources.disadvantages());
+          penalties.addAll(ownSources.disadvantages());
+          if (weapon.ranged() && request.distance() > weapon.normalRange())
             penalties.add("Long range");
-            mode = new AdvantageSources(sources.advantages(), penalties).mode();
-          }
+          if (Exhaustion.disadvantagesAttacksAndSaves(attacker.vitals().exhaustion()))
+            penalties.add("Exhaustion");
+          RollMode mode = new AdvantageSources(advantages, penalties).mode();
 
           var preflight = new ArrayList<String>();
           if (weapon.damage().stream().anyMatch(dice -> dice.notation().contains("d")))
@@ -140,8 +153,10 @@ public class CombatActions {
                   mode,
                   context.random());
           context.dice("Attack", request.actor(), attack.roll());
+          if (request.targetAbsent())
+            attack = new CombatRolls.Attack(attack.roll(), attack.target(), false, false);
           context.result("attack", attack);
-          if (attacker.entry().tactics().hidden()) {
+          if (attacker.entry().tactics().hidden() || attacker.entry().tactics().stealth() != null) {
             Tactics flags = attacker.entry().tactics();
             context.update(
                 attacker
@@ -160,16 +175,7 @@ public class CombatActions {
                 helper.tactics(
                     flags.flags(flags.dodging(), flags.hidden(), null, null, flags.readied())));
           }
-          boolean hit = attack.hit() && !request.targetAbsent();
-          var undo =
-              new AttackUndo(
-                  budgetBefore,
-                  attacker.entry(),
-                  target.entry(),
-                  helper,
-                  target.vitals(),
-                  context.equipment(target),
-                  hit);
+          boolean hit = attack.hit();
           context.result("actorId", request.actor());
           context.result("action", "attack");
           context.result("outcome", hit ? (attack.critical() ? "critical-hit" : "hit") : "miss");
@@ -252,10 +258,64 @@ public class CombatActions {
                   "hit",
                   hit,
                   "critical",
-                  hit && attack.critical(),
-                  "undo",
-                  undo));
+                  hit && attack.critical()));
         });
+  }
+
+  public Reply hide(UUID campaign, UUID id, UUID actor, Envelope envelope, Hide form) {
+    return commands.run(
+        campaign,
+        id,
+        actor,
+        envelope,
+        "hides",
+        form,
+        true,
+        context -> {
+          if (context.table.phase() == EncounterState.Phase.ACTIVE)
+            spendAfterActor(context, form.actor());
+          else if (context.table.phase() != EncounterState.Phase.SETUP) throw invalid();
+          CombatStealth.hide(
+              context,
+              target(context, form.actor()),
+              form.obscuredFrom(),
+              form.opponents().isEmpty() ? form.obscuredFrom() : form.opponents());
+        });
+  }
+
+  public Reply stealthTies(UUID campaign, UUID id, UUID actor, Envelope envelope, StealthTie form) {
+    return commands.run(
+        campaign,
+        id,
+        actor,
+        envelope,
+        "stealth-ties",
+        form,
+        true,
+        context -> {
+          if (context.table.phase() != EncounterState.Phase.SETUP
+              && context.table.phase() != EncounterState.Phase.ACTIVE) throw invalid();
+          CombatStealth.resolveTies(context, target(context, form.actor()), form.noticed());
+        });
+  }
+
+  private static Creature spendAfterActor(Context context, UUID actor) {
+    var creature = context.canAct(actor);
+    spend(context, TurnBudget::action);
+    return creature;
+  }
+
+  public record Hide(UUID actor, List<UUID> obscuredFrom, List<UUID> opponents) {
+    public Hide {
+      obscuredFrom = List.copyOf(obscuredFrom);
+      opponents = List.copyOf(opponents);
+    }
+  }
+
+  public record StealthTie(UUID actor, List<UUID> noticed) {
+    public StealthTie {
+      noticed = List.copyOf(noticed);
+    }
   }
 
   public Reply simple(
@@ -287,27 +347,6 @@ public class CombatActions {
                               flags.helpedTarget(),
                               flags.readied())));
             }
-            case HIDE -> {
-              spend(context, TurnBudget::action);
-              var roll =
-                  CombatRolls.d20(
-                      "Stealth",
-                      acting.skills().getOrDefault("stealth", acting.abilities().get(Ability.DEX)),
-                      checkMode(acting),
-                      context.random());
-              context.dice("Hide", creature, roll);
-              context.update(
-                  acting
-                      .entry()
-                      .tactics(
-                          flags.flags(
-                              flags.dodging(),
-                              true,
-                              flags.helping(),
-                              flags.helpedTarget(),
-                              flags.readied())));
-              context.dm("HideResolved", Map.of("combatantId", creature, "stealth", roll.total()));
-            }
             case STAND -> {
               if (!acting.conditions().contains(CombatConditions.PRONE) || acting.speed() == 0)
                 throw invalid();
@@ -333,6 +372,8 @@ public class CombatActions {
         context -> {
           var helping = context.canAct(form.actor());
           target(context, form.recipient());
+          if (form.actor().equals(form.recipient()) || form.recipient().equals(form.target()))
+            throw invalid();
           if (form.target() != null) {
             target(context, form.target());
             if (form.distance() < 0 || form.distance() > 5)
@@ -406,6 +447,25 @@ public class CombatActions {
         });
   }
 
+  public Reply releaseGrapple(UUID campaign, UUID id, UUID actor, Envelope envelope, Help form) {
+    return commands.run(
+        campaign,
+        id,
+        actor,
+        envelope,
+        "grapple-releases",
+        form,
+        true,
+        context -> {
+          var holder = target(context, form.actor());
+          var grabbed = target(context, form.recipient());
+          if (!sourced(grabbed, CombatConditions.GRAPPLED, holder.entry().id())) throw invalid();
+          CombatEffects.remove(context, grabbed, CombatConditions.GRAPPLED, holder.entry().id());
+          context.dm(
+              "GrappleReleased", Map.of("actorId", form.actor(), "targetId", form.recipient()));
+        });
+  }
+
   public Reply contest(UUID campaign, UUID id, UUID actor, Envelope envelope, Contest form) {
     return commands.run(
         campaign,
@@ -439,7 +499,7 @@ public class CombatActions {
                 CombatRolls.d20(
                     "Athletics",
                     first.skills().getOrDefault("athletics", first.abilities().get(Ability.STR)),
-                    checkMode(first),
+                    checkSources(context, first, null).mode(),
                     context.random());
             String defense = form.acrobatics() ? "acrobatics" : "athletics";
             Ability ability = form.acrobatics() ? Ability.DEX : Ability.STR;
@@ -447,7 +507,7 @@ public class CombatActions {
                 CombatRolls.d20(
                     defense,
                     second.skills().getOrDefault(defense, second.abilities().get(ability)),
-                    checkMode(second),
+                    checkSources(context, second, null).mode(),
                     context.random());
             context.dice("Contest", form.actor(), check);
             context.dice("Contest defense", form.target(), opposed);
@@ -461,7 +521,9 @@ public class CombatActions {
                   addCondition(context, second, CombatConditions.GRAPPLED, first.entry().id());
               case SHOVE_PRONE -> addCondition(context, second, CombatConditions.PRONE, null);
               case SHOVE_PUSH -> context.result("pushedFeet", 5);
-              case ESCAPE -> removeCondition(context, first, CombatConditions.GRAPPLED);
+              case ESCAPE ->
+                  CombatEffects.remove(
+                      context, first, CombatConditions.GRAPPLED, second.entry().id());
             }
           }
           context.dm(
@@ -496,13 +558,33 @@ public class CombatActions {
               || new HashSet<>(form.combatants()).size() != form.combatants().size()
               || (form.dc() == null && form.save())
               || (form.dc() != null && (form.dc() < 1 || form.dc() > 40))) throw invalid();
+          if (!form.combatants().containsAll(form.cover().keySet())
+              || !form.cover().isEmpty() && (!form.save() || form.ability() != Ability.DEX))
+            throw invalid();
+          if (form.cover().containsValue(Cover.TOTAL))
+            throw new CampaignException(Code.TOTAL_COVER);
+          if (form.searchTarget() != null) {
+            if (form.save()
+                || form.ability() != Ability.WIS
+                || !"perception".equals(form.skill())
+                || !form.combatants().equals(List.of(form.actor()))
+                || form.dc() != null) throw invalid();
+            var subject = target(context, form.searchTarget());
+            if (!subject.entry().tactics().hiddenFrom(form.actor())
+                || subject.entry().tactics().stealth() == null) throw invalid();
+            spendAfterActor(context, form.actor());
+          }
           if (form.dc() != null
               && form.combatants().stream()
                   .map(context::creature)
                   .anyMatch(
                       subject ->
                           !form.save()
-                              || !CombatConditions.forcedSaveFailure(
+                              ? !CombatConditions.forcedCheckFailure(
+                                  subject.conditions(),
+                                  form.requiresSight(),
+                                  form.requiresHearing())
+                              : !CombatConditions.forcedSaveFailure(
                                   subject.conditions(), form.ability())))
             context.preflight(List.of("autoOutcomeOnNat20Checks"));
           var outcome = new ArrayList<Map<String, Object>>();
@@ -510,7 +592,9 @@ public class CombatActions {
             var creature = target(context, subject);
             boolean forced =
                 form.save()
-                    && CombatConditions.forcedSaveFailure(creature.conditions(), form.ability());
+                    ? CombatConditions.forcedSaveFailure(creature.conditions(), form.ability())
+                    : CombatConditions.forcedCheckFailure(
+                        creature.conditions(), form.requiresSight(), form.requiresHearing());
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("combatantId", subject);
             result.put("automaticFailure", forced);
@@ -533,18 +617,29 @@ public class CombatActions {
                   form.save()
                       && form.ability() == Ability.DEX
                       && creature.conditions().contains("srd-5.1:restrained");
+              var authored =
+                  CombatEffects.rollSources(context, creature, "save", "holder", null, null);
+              var saveAdvantages = new ArrayList<>(authored.advantages());
+              var savePenalties = new ArrayList<>(authored.disadvantages());
+              if (dodge) saveAdvantages.add("Dodge");
+              if (restraint) savePenalties.add("Restrained");
+              if (Exhaustion.disadvantagesAttacksAndSaves(creature.vitals().exhaustion()))
+                savePenalties.add("Exhaustion");
               var sources =
                   form.save()
-                      ? new AdvantageSources(
-                          dodge ? List.of("Dodge") : List.of(),
-                          restraint ? List.of("Restrained") : List.of())
-                      : new AdvantageSources(
-                          List.of(),
-                          checkMode(creature) == RollMode.DISADVANTAGE
-                              ? List.of("Poisoned")
-                              : List.of());
-              var roll =
-                  CombatRolls.d20("Ability modifier", bonus, sources.mode(), context.random());
+                      ? new AdvantageSources(saveAdvantages, savePenalties)
+                      : assistedCheck(context, creature, form.skill(), form.fearSourceVisible());
+              Cover cover = form.cover().getOrDefault(subject, Cover.NONE);
+              var roll = CombatRolls.coveredSave(bonus, cover, sources.mode(), context.random());
+              if (form.searchTarget() != null)
+                result.put(
+                    "detected",
+                    CombatStealth.search(
+                        context,
+                        context.creature(form.searchTarget()),
+                        creature,
+                        roll.total(),
+                        form.noticedOnTie()));
               context.dice(form.save() ? "Saving throw" : "Ability check", subject, roll);
               result.put("roll", roll);
               if (form.dc() != null)
@@ -585,7 +680,7 @@ public class CombatActions {
               CombatRolls.d20(
                   "Medicine",
                   helper.skills().getOrDefault("medicine", helper.abilities().get(Ability.WIS)),
-                  checkMode(helper),
+                  checkSources(context, helper, "medicine").mode(),
                   context.random());
           context.dice("Stabilize", form.actor(), roll);
           boolean success = roll.total() >= 10;
@@ -596,44 +691,17 @@ public class CombatActions {
   }
 
   static void addCondition(Context context, Creature creature, String key, UUID source) {
-    if (creature.immunities().contains(key)) return;
-    if (source == null) {
-      var state = creature.vitals();
-      var conditions = new HashSet<>(state.conditions());
-      if (conditions.add(key)) {
-        context.vitals(creature, new Vitals(state.health(), state.recoveryAt(), conditions));
-      }
-      return;
-    }
-    var entries = new ArrayList<>(creature.entry().tactics().conditions());
-    var condition = new Condition(key, source);
-    if (!entries.contains(condition)) {
-      entries.add(condition);
-      context.update(creature.entry().tactics(creature.entry().tactics().conditions(entries)));
-    }
+    CombatEffects.add(context, creature, new ConditionInstance(key, source));
   }
 
   static void removeCondition(Context context, Creature creature, String key) {
-    var entry = creature.entry();
-    context.update(
-        entry.tactics(
-            entry
-                .tactics()
-                .conditions(
-                    entry.tactics().conditions().stream()
-                        .filter(condition -> !condition.key().equals(key))
-                        .toList())));
-    var state = creature.vitals();
-    if (state.conditions().contains(key)) {
-      var conditions = new HashSet<>(state.conditions());
-      conditions.remove(key);
-      context.vitals(
-          context.creature(entry.id()), new Vitals(state.health(), state.recoveryAt(), conditions));
-    }
+    CombatEffects.remove(context, creature, key, null);
   }
 
   static boolean sourced(Creature creature, String condition, UUID source) {
-    return creature.entry().tactics().conditions().contains(new Condition(condition, source));
+    return creature.entry().tactics().conditions().contains(new Condition(condition, source))
+        || creature.vitals().effects().stream()
+            .anyMatch(effect -> effect.sameSource(new ConditionInstance(condition, source)));
   }
 
   static Creature target(Context context, UUID target) {
@@ -643,10 +711,38 @@ public class CombatActions {
     return creature;
   }
 
-  private static RollMode checkMode(Creature creature) {
-    return creature.conditions().contains("srd-5.1:poisoned")
-        ? RollMode.DISADVANTAGE
-        : RollMode.NORMAL;
+  private static AdvantageSources assistedCheck(
+      Context context, Creature creature, String skill, boolean fearSourceVisible) {
+    var sources = checkSources(context, creature, skill);
+    var bonuses = new ArrayList<>(sources.advantages());
+    var penalties = new ArrayList<>(sources.disadvantages());
+    if (fearSourceVisible && creature.conditions().contains("srd-5.1:frightened"))
+      penalties.add("Frightened");
+    context.entries.values().stream()
+        .filter(Encounters::present)
+        .filter(
+            entry ->
+                creature.entry().id().equals(entry.tactics().helping())
+                    && entry.tactics().helpedTarget() == null)
+        .findFirst()
+        .ifPresent(
+            helper -> {
+              bonuses.add("Help");
+              var flags = helper.tactics();
+              context.update(
+                  helper.tactics(
+                      flags.flags(flags.dodging(), flags.hidden(), null, null, flags.readied())));
+            });
+    return new AdvantageSources(bonuses, penalties);
+  }
+
+  static AdvantageSources checkSources(Context context, Creature creature, String skill) {
+    var authored = CombatEffects.rollSources(context, creature, "check", "holder", null, null);
+    var penalties = new ArrayList<>(authored.disadvantages());
+    if (creature.conditions().contains("srd-5.1:poisoned")) penalties.add("Poisoned");
+    if (Exhaustion.disadvantagesChecks(creature.vitals().exhaustion())) penalties.add("Exhaustion");
+    if ("stealth".equals(skill) && creature.noisyArmor()) penalties.add("Armor");
+    return new AdvantageSources(authored.advantages(), penalties);
   }
 
   private static boolean defense(Creature target, String kind, String type, boolean magical) {
@@ -677,7 +773,6 @@ public class CombatActions {
     DASH,
     DODGE,
     DISENGAGE,
-    HIDE,
     STAND,
     DROP_PRONE
   }
@@ -707,9 +802,21 @@ public class CombatActions {
       UUID actor, UUID target, int distance, ContestKind kind, boolean acrobatics) {}
 
   public record Check(
-      UUID actor, List<UUID> combatants, Ability ability, String skill, Integer dc, boolean save) {
+      UUID actor,
+      List<UUID> combatants,
+      Ability ability,
+      String skill,
+      Integer dc,
+      boolean save,
+      Map<UUID, Cover> cover,
+      UUID searchTarget,
+      Boolean noticedOnTie,
+      boolean requiresSight,
+      boolean requiresHearing,
+      boolean fearSourceVisible) {
     public Check {
       combatants = List.copyOf(combatants);
+      cover = java.util.Collections.unmodifiableMap(new java.util.TreeMap<>(cover));
     }
   }
 

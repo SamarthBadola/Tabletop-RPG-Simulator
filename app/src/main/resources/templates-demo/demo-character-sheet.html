@@ -60,7 +60,10 @@
         <button type="submit">Equip items</button>
     </form>
     <h2>Conditions</h2>
-    <ul><li th:each="condition : ${sheet.conditions}" th:text="${condition.label}"></li></ul>
+    <ul>
+        <li th:each="condition : ${sheet.conditions}" th:text="${condition.label}"></li>
+        <li th:if="${sheet.exhaustion > 0}" th:text="|Exhaustion ${sheet.exhaustion}|"></li>
+    </ul>
     <form th:action="@{${base + '/edits'}}" method="post">
         <th:block th:replace="~{demo-character-sheet :: commandFields}"></th:block>
         <input type="hidden" name="section" value="details">

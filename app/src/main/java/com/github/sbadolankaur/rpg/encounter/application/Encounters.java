@@ -17,8 +17,11 @@ import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
 import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
+import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.DeathMode;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
 import com.github.sbadolankaur.rpg.engine.combat.CombatRolls;
+import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance.Boundary;
+import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.combat.TurnBudget;
 import com.github.sbadolankaur.rpg.engine.dice.RollMode;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
@@ -73,8 +76,9 @@ public class Encounters {
     campaigns.requireDm(campaign, actor);
     Table table = commands.require(campaign, id, false);
     var content = roster.content(campaign, actor);
+    var entries = store.entries(id);
     var rows =
-        store.entries(id).stream()
+        entries.stream()
             .filter(Encounters::present)
             .sorted(ORDER)
             .map(
@@ -86,6 +90,10 @@ public class Encounters {
                       entry.initiative(),
                       creature.vitals().health(),
                       creature.speed(),
+                      creature.vitals().exhaustion(),
+                      entry.tactics().stealth() == null
+                          ? Set.of()
+                          : entry.tactics().stealth().ties(),
                       entry.tactics().surprised(),
                       entry.tactics().deathSaveDue(),
                       creature.conditions().stream().sorted().toList(),
@@ -116,8 +124,11 @@ public class Encounters {
         players,
         monsters,
         events,
-        ties(store.entries(id)).stream().map(Entry::id).toList(),
-        store.latestReversible(id).map(EncounterStore.Event::id).orElse(null));
+        ties(entries).stream().map(Entry::id).toList(),
+        store.latestReversible(id).map(EncounterStore.Event::id).orElse(null),
+        CombatStealth.suggestions(entries),
+        conditionNames(content),
+        table.phase() == Phase.FINISHED ? store.latestRecap(id).orElse(null) : null);
   }
 
   public List<PlayerEvent> visibleEvents(UUID campaign, UUID id, UUID reader) {
@@ -147,10 +158,23 @@ public class Encounters {
           if ((form.character() == null) == (form.monster() == null)
               || form.count() < 1
               || form.count() > 20
-              || form.character() != null && form.count() != 1) throw EncounterCommands.invalid();
+              || form.character() != null && (form.count() != 1 || form.deathMode() != null))
+            throw EncounterCommands.invalid();
           if (context.table.phase() == Phase.FINISHED || context.table.phase() == Phase.INITIATIVE)
             throw new CampaignException(Code.ENCOUNTER_STARTED);
           boolean active = context.table.phase() == Phase.ACTIVE;
+          if (!form.caughtOffGuard().isEmpty()) {
+            if (!active
+                || new java.util.HashSet<>(form.caughtOffGuard()).size()
+                    != form.caughtOffGuard().size()) throw EncounterCommands.invalid();
+            context.preflight(List.of("midCombatSurprise"));
+            if (!context.setting("midCombatSurprise", Boolean.class))
+              throw EncounterCommands.invalid();
+            for (UUID surprised : form.caughtOffGuard()) {
+              var target = CombatActions.target(context, surprised).entry();
+              context.update(target.tactics(target.tactics().surprise(true)));
+            }
+          }
           if (active
               && campaigns.requireDm(campaign, actor).sessionState()
                   != com.github.sbadolankaur.rpg.campaign.application.CampaignView.SessionState
@@ -164,7 +188,7 @@ public class Encounters {
           var conditions =
               form.condition() == null
                   ? List.<Condition>of()
-                  : List.of(new Condition(conditionKey(form.condition()), null));
+                  : List.of(new Condition(conditionKey(context, form.condition()), null));
           int nextRound = active ? context.table.round() : 1;
           if (active && form.nextRound()) nextRound++;
           if (form.character() != null) characters.sheet(campaign, actor, form.character());
@@ -187,12 +211,17 @@ public class Encounters {
                   && context.setting("groupInitiative", Boolean.class);
           var added = new ArrayList<UUID>();
           for (int i = 0; i < form.count(); i++) {
-            var tactics = Tactics.initial(nextRound, form.surprised(), conditions);
+            var tactics =
+                Tactics.initial(nextRound, form.surprised(), conditions)
+                    .deathMode(form.deathMode());
             if (existing != null) {
               context.update(
                   existing.tactics(tactics.retainLastTurn(existing.tactics().lastTurn())));
               if (active && existing.initiative() != null)
                 scheduleArrival(context, existing.id(), form.nextRound());
+              if (!form.hiddenFrom().isEmpty())
+                CombatStealth.hide(
+                    context, context.creature(existing.id()), form.hiddenFrom(), form.hiddenFrom());
               added.add(existing.id());
               continue;
             }
@@ -224,6 +253,9 @@ public class Encounters {
               assignInitiative(context, entry, initiative);
               scheduleArrival(context, row, form.nextRound());
             }
+            if (!form.hiddenFrom().isEmpty())
+              CombatStealth.hide(
+                  context, context.creature(row), form.hiddenFrom(), form.hiddenFrom());
             added.add(row);
           }
           context.dm("CombatantsAdded", Map.of("ids", added));
@@ -257,7 +289,11 @@ public class Encounters {
                   != com.github.sbadolankaur.rpg.campaign.application.CampaignView.SessionState
                       .ACTIVE) throw new CampaignException(Code.SESSION_NOT_ACTIVE);
           if (context.table.phase() == Phase.SETUP) context.remove(combatant);
-          else context.update(entry.tactics(entry.tactics().assigned(REMOVED)));
+          else {
+            CombatEffects.leaveEncounter(context, context.creature(combatant));
+            var leaving = context.creature(combatant).entry();
+            context.update(leaving.tactics(leaving.tactics().assigned(REMOVED)));
+          }
           context.dm("CombatantRemoved", Map.of("combatantId", combatant));
           if (combatant.equals(context.table.acting())) nextTurn(context);
         });
@@ -304,10 +340,9 @@ public class Encounters {
                             initiative(context, entry.id(), creature.initiative(), RollMode.NORMAL))
                     : initiative(context, entry.id(), creature.initiative(), RollMode.NORMAL);
             var tactics =
-                Tactics.initial(
-                    1,
-                    entry.tactics().surprised() || surprised.contains(entry.id()),
-                    entry.tactics().conditions());
+                entry
+                    .tactics()
+                    .surprise(entry.tactics().surprised() || surprised.contains(entry.id()));
             context.update(entry.initiative(rolled, null).tactics(tactics));
           }
           context.dm("InitiativeRolled", Map.of("combatants", context.entries.size()));
@@ -394,6 +429,7 @@ public class Encounters {
           }
           var updated = context.entries.get(combatant);
           context.update(updated.tactics(updated.tactics().end().deathSave(false)));
+          CombatEffects.expire(context, combatant, Boundary.END);
           context.dm("TurnEnded", Map.of("combatantId", combatant));
           nextTurn(context);
         });
@@ -433,9 +469,22 @@ public class Encounters {
   }
 
   static void finish(Context context) {
+    for (var entry : List.copyOf(context.entries.values())) {
+      CombatEffects.leaveEncounter(context, context.creature(entry.id()));
+    }
     context.table =
         context.table.position(Phase.FINISHED, context.table.round(), null, TurnBudget.start());
-    context.dm("EncounterEnded", Map.of("rounds", context.table.round()));
+    var recap = context.recap();
+    context.dm(
+        "EncounterEnded",
+        Map.of(
+            "rounds",
+            recap.rounds(),
+            "fallen",
+            recap.fallen(),
+            "resourcesSpent",
+            recap.resourcesSpent()));
+    context.result("recap", recap);
   }
 
   static boolean present(Entry entry) {
@@ -478,12 +527,10 @@ public class Encounters {
     Entry next = possible.getFirst();
     context.update(next.tactics(next.tactics().start(round)));
     context.table = context.table.position(Phase.ACTIVE, round, next.id(), TurnBudget.start());
+    CombatEffects.expire(context, next.id(), Boundary.START);
     context.dm("TurnStarted", Map.of("combatantId", next.id()));
     var creature = context.creature(next.id());
-    if (creature.vitals().recoveryAt() != null
-        && creature.vitals().recoveryAt() <= context.seconds) {
-      context.health(creature, creature.vitals().health().heal(1));
-    } else if (creature.vitals().health().state() == State.DYING) {
+    if (creature.vitals().health().state() == State.DYING) {
       context.update(creature.entry().tactics(creature.entry().tactics().deathSave(true)));
     }
   }
@@ -496,7 +543,11 @@ public class Encounters {
   }
 
   static void resolveDeathSave(Context context, CombatRoster.Creature creature) {
-    var roll = CombatRolls.d20("Death save", 0, RollMode.NORMAL, context.random());
+    RollMode mode =
+        Exhaustion.disadvantagesAttacksAndSaves(creature.vitals().exhaustion())
+            ? RollMode.DISADVANTAGE
+            : RollMode.NORMAL;
+    var roll = CombatRolls.d20("Death save", 0, mode, context.random());
     context.dice("DeathSave", creature.entry().id(), roll);
     context.update(creature.entry().tactics(creature.entry().tactics().deathSave(false)));
     var after =
@@ -507,9 +558,20 @@ public class Encounters {
         Map.of("combatantId", creature.entry().id(), "health", after.health()));
   }
 
-  static String conditionKey(String key) {
-    if (!CombatConditions.names().containsKey(key)) throw EncounterCommands.invalid();
+  static String conditionKey(Context context, String key) {
+    if (key == null
+        || !CombatConditions.names().containsKey(key)
+            && context.content.find("condition", key).isEmpty()) throw EncounterCommands.invalid();
     return key;
+  }
+
+  private static Map<String, String> conditionNames(
+      com.github.sbadolankaur.rpg.engine.content.ContentSet content) {
+    var names = new java.util.TreeMap<>(CombatConditions.names());
+    content.index().values().stream()
+        .filter(definition -> "condition".equals(definition.kind()))
+        .forEach(definition -> names.put(definition.key(), definition.name()));
+    return names;
   }
 
   public record Join(
@@ -520,7 +582,15 @@ public class Encounters {
       Integer fixed,
       boolean nextRound,
       String condition,
-      boolean surprised) {}
+      boolean surprised,
+      DeathMode deathMode,
+      List<UUID> hiddenFrom,
+      List<UUID> caughtOffGuard) {
+    public Join {
+      hiddenFrom = List.copyOf(hiddenFrom);
+      caughtOffGuard = List.copyOf(caughtOffGuard);
+    }
+  }
 
   public record Tie(List<UUID> order, boolean rollOff) {
     public Tie {
@@ -535,7 +605,12 @@ public class Encounters {
       List<Choice> monsters,
       List<EncounterStore.Event> events,
       List<UUID> tieIds,
-      UUID reversible) {}
+      UUID reversible,
+      Set<UUID> surpriseSuggestions,
+      Map<String, String> conditionNames,
+      Recap recap) {}
+
+  public record Recap(int rounds, List<String> fallen, Map<String, Integer> resourcesSpent) {}
 
   public record Combatant(
       UUID id,
@@ -543,6 +618,8 @@ public class Encounters {
       Integer initiative,
       CombatHealth health,
       int speed,
+      int exhaustion,
+      Set<UUID> stealthTies,
       boolean surprised,
       boolean deathSaveDue,
       List<String> conditions,

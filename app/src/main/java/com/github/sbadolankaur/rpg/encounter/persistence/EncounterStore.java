@@ -5,6 +5,7 @@ import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Phase;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Table;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Tactics;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
+import com.github.sbadolankaur.rpg.encounter.application.Encounters.Recap;
 import com.github.sbadolankaur.rpg.engine.combat.TurnBudget;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.sql.ResultSet;
@@ -238,6 +239,44 @@ public class EncounterStore {
         .list();
   }
 
+  public List<JsonNode> committedPreimages(UUID encounter) {
+    return jdbc.sql(
+            """
+        SELECT e.payload->'actionPreimage'
+        FROM combat_event e
+        WHERE e.encounter_id = ? AND e.audience = 'DM' AND jsonb_exists(e.payload, 'actionPreimage')
+        AND NOT EXISTS (
+          SELECT 1 FROM combat_event u WHERE u.encounter_id = e.encounter_id
+          AND u.type IN ('ActionUndone', 'CorrectionUndone') AND u.payload->>'entryId' = e.id::text
+        )
+        ORDER BY e.seq
+        """)
+        .param(encounter)
+        .query((row, index) -> json.readTree(row.getString(1)))
+        .list();
+  }
+
+  public Optional<Recap> latestRecap(UUID encounter) {
+    return jdbc.sql(
+            """
+        SELECT payload FROM combat_event WHERE encounter_id = ? AND type = 'EncounterEnded'
+        ORDER BY seq DESC LIMIT 1
+        """)
+        .param(encounter)
+        .query(
+            (row, index) -> {
+              var payload = json.readTree(row.getString(1));
+              return new Recap(
+                  payload.path("rounds").asInt(),
+                  payload.path("fallen").valueStream().map(JsonNode::asString).toList(),
+                  payload.path("resourcesSpent").properties().stream()
+                      .collect(
+                          java.util.stream.Collectors.toMap(
+                              java.util.Map.Entry::getKey, item -> item.getValue().asInt())));
+            })
+        .optional();
+  }
+
   public boolean eventExists(UUID encounter, UUID event) {
     return jdbc.sql("SELECT EXISTS (SELECT 1 FROM combat_event WHERE encounter_id = ? AND id = ?)")
         .params(encounter, event)
@@ -257,7 +296,10 @@ public class EncounterStore {
         .query(this::event)
         .optional()
         .filter(
-            row -> row.type().equals("CorrectionApplied") || row.type().equals("AttackResolved"));
+            row ->
+                row.payload().has("actionPreimage")
+                    || row.type().equals("CorrectionApplied")
+                    || row.type().equals("AttackResolved"));
   }
 
   private Table table(ResultSet row, int index) throws SQLException {
@@ -294,5 +336,12 @@ public class EncounterStore {
       String type,
       String audience,
       JsonNode payload,
-      String annotation) {}
+      String annotation) {
+    public JsonNode displayPayload() {
+      if (!payload.has("actionPreimage")) return payload;
+      var display = (tools.jackson.databind.node.ObjectNode) payload.deepCopy();
+      display.remove("actionPreimage");
+      return display;
+    }
+  }
 }

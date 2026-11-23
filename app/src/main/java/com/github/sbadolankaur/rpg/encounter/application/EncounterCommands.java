@@ -17,10 +17,13 @@ import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
+import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
+import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.dice.DiceExpression;
 import com.github.sbadolankaur.rpg.engine.dice.RandomSource;
 import com.github.sbadolankaur.rpg.engine.dice.RollResult;
+import com.github.sbadolankaur.rpg.engine.kernel.HitPointRules;
 import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import com.github.sbadolankaur.rpg.platform.InstanceMac;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
@@ -127,10 +130,17 @@ public class EncounterCommands {
             table,
             actor,
             clock.gameSeconds(),
+            clock.version(),
             settings.effective(campaign, actor),
             roster.content(campaign, actor),
             store.entries(encounter));
+    if (!"overrides".equals(command)
+        || !(request instanceof CombatOverrides.Correction correction)
+        || correction.kind() != CombatOverrides.Kind.UNDO_LAST) {
+      CombatEffects.expire(context, null, ConditionInstance.Boundary.CLOCK);
+    }
     resolve.accept(context);
+    if (context.captureUndo) CombatEffects.expire(context, null, ConditionInstance.Boundary.CLOCK);
     long version = Math.incrementExact(table.version());
     JsonNode result = json.valueToTree(context.result);
     store.action(
@@ -141,7 +151,13 @@ public class EncounterCommands {
         result,
         json.valueToTree(context.settingsRead),
         version);
-    for (var event : context.events) {
+    int lastDmEvent = context.lastDmEvent();
+    for (int position = 0; position < context.events.size(); position++) {
+      var event = context.events.get(position);
+      var payload = json.<tools.jackson.databind.node.ObjectNode>valueToTree(event.payload());
+      if (position == lastDmEvent && context.captureUndo) {
+        payload.set("actionPreimage", json.valueToTree(context.undo(table, clock.gameSeconds())));
+      }
       store.event(
           encounter,
           envelope.actionId(),
@@ -150,7 +166,7 @@ public class EncounterCommands {
           event.type(),
           event.audience(),
           event.recipient(),
-          json.valueToTree(event.payload()));
+          payload);
     }
     store.update(context.table, version);
     if (context.seconds != clock.gameSeconds()) {
@@ -192,6 +208,9 @@ public class EncounterCommands {
   final class Context {
     Table table;
     long seconds;
+    final long clockVersion;
+    private final Map<UUID, EncounterUndo.Snapshot> originals = new LinkedHashMap<>();
+    private boolean captureUndo = true;
     private final UUID actor;
     private final SettingsView effective;
     final ContentSet content;
@@ -207,12 +226,14 @@ public class EncounterCommands {
         Table table,
         UUID actor,
         long seconds,
+        long clockVersion,
         SettingsView effective,
         ContentSet content,
         List<Entry> entries) {
       this.table = table;
       this.actor = actor;
       this.seconds = seconds;
+      this.clockVersion = clockVersion;
       this.effective = effective;
       this.content = content;
       entries.forEach(entry -> this.entries.put(entry.id(), entry));
@@ -252,24 +273,104 @@ public class EncounterCommands {
       return creature;
     }
 
+    private void remember(UUID id) {
+      if (captureUndo && !originals.containsKey(id)) originals.put(id, snapshot(id));
+    }
+
+    EncounterUndo.Snapshot snapshot(UUID id) {
+      if (!entries.containsKey(id)) return null;
+      var creature = creature(id);
+      return new EncounterUndo.Snapshot(
+          creature.entry(),
+          creature.name(),
+          creature.owner(),
+          creature.vitals(),
+          creature.resources(),
+          equipment(creature));
+    }
+
+    void disableUndo() {
+      captureUndo = false;
+    }
+
+    int lastDmEvent() {
+      for (int i = events.size() - 1; i >= 0; i--) {
+        if (events.get(i).audience().equals("DM")) return i;
+      }
+      return -1;
+    }
+
+    Encounters.Recap recap() {
+      var fallen = new LinkedHashMap<UUID, String>();
+      var resources = new java.util.TreeMap<String, Integer>();
+      for (var preimage : store.committedPreimages(table.id())) {
+        var action = json.treeToValue(preimage, EncounterUndo.class);
+        for (var change : action.changes()) {
+          var before = change.before();
+          var after = change.after();
+          if (before == null || after == null) continue;
+          if (before.vitals().health().current() > 0 && after.vitals().health().current() == 0)
+            fallen.put(change.id(), after.name());
+          after
+              .resources()
+              .forEach(
+                  (key, used) -> {
+                    int spent = used - before.resources().getOrDefault(key, 0);
+                    if (spent > 0) resources.merge(key, spent, Integer::sum);
+                  });
+        }
+      }
+      for (var id : entries.keySet()) {
+        var creature = creature(id);
+        if (creature.vitals().health().current() == 0) fallen.putIfAbsent(id, creature.name());
+      }
+      return new Encounters.Recap(table.round(), List.copyOf(fallen.values()), resources);
+    }
+
+    EncounterUndo undo(Table before, long elapsed) {
+      boolean publicOutput = events.stream().anyMatch(event -> event.audience().equals("ALL"));
+      return EncounterUndo.of(this, before, elapsed, originals, publicOutput);
+    }
+
     void update(Entry entry) {
+      remember(entry.id());
       entries.put(entry.id(), entry);
       profiles.remove(entry.id());
       store.update(entry);
     }
 
     void add(Entry entry) {
+      remember(entry.id());
       entries.put(entry.id(), entry);
       store.add(table.id(), entry);
     }
 
     void remove(UUID id) {
+      remember(id);
       entries.remove(id);
       profiles.remove(id);
       store.remove(table.id(), id);
     }
 
     Vitals health(Creature current, CombatHealth next) {
+      return health(current, next, current.vitals().exhaustion());
+    }
+
+    void exhaustion(Creature current, int level) {
+      if (level < 0 || level > 6) throw invalid();
+      var old = current.vitals().health();
+      int max = Exhaustion.maximumHp(current.baseMaximumHp(), level);
+      int hp = HitPointRules.afterMaximumChange(old.current(), old.maximum(), max);
+      var next =
+          Exhaustion.dead(level)
+              ? new CombatHealth(0, max, old.temporary(), State.DEAD, 0, 3)
+              : new CombatHealth(
+                  hp, max, old.temporary(), old.state(), old.successes(), old.failures());
+      health(current, next, level);
+    }
+
+    private Vitals health(Creature current, CombatHealth next, int exhaustion) {
+      remember(current.entry().id());
       var before = current.vitals();
       var conditions = new HashSet<>(before.conditions());
       Long recoveryAt = null;
@@ -288,12 +389,13 @@ public class EncounterCommands {
       } else if (before.health().state() != State.ALIVE) {
         conditions.remove(CombatConditions.UNCONSCIOUS);
       }
-      var vitals = new Vitals(next, recoveryAt, conditions);
+      var vitals = new Vitals(next, recoveryAt, conditions, before.effects(), exhaustion);
       vitals(current, vitals);
       return vitals;
     }
 
     void vitals(Creature current, Vitals next) {
+      remember(current.entry().id());
       if (current.entry().character() == null) update(current.entry().vitals(next));
       else {
         roster.writePlayer(current, next);
@@ -325,11 +427,13 @@ public class EncounterCommands {
     }
 
     void restoreEquipment(Creature creature, Map<UUID, String> slots) {
+      remember(creature.entry().id());
       roster.restoreEquipment(creature, slots);
       profiles.remove(creature.entry().id());
     }
 
     void resource(Creature creature, String key, int used) {
+      remember(creature.entry().id());
       roster.setResource(creature, key, used);
       profiles.remove(creature.entry().id());
     }

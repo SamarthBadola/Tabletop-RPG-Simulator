@@ -31,6 +31,12 @@ public final class CombatRolls {
     return RollPlan.builder().d20(mode).fixed(modifier, null, bonus).build().roll(random);
   }
 
+  public static RollResult coveredSave(int bonus, Cover cover, RollMode mode, RandomSource random) {
+    var plan = RollPlan.builder().d20(mode).fixed("Ability modifier", null, bonus);
+    if (cover.bonus() != 0) plan.fixed("Cover", null, cover.bonus());
+    return plan.build().roll(random);
+  }
+
   public static Attack attack(
       int bonus,
       int armorClass,

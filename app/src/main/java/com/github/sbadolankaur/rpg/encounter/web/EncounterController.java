@@ -11,12 +11,14 @@ import com.github.sbadolankaur.rpg.encounter.application.CombatActions;
 import com.github.sbadolankaur.rpg.encounter.application.CombatOverrides;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands;
 import com.github.sbadolankaur.rpg.encounter.application.Encounters;
-import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
+import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.DeathMode;
 import com.github.sbadolankaur.rpg.engine.combat.CombatRolls.Cover;
 import com.github.sbadolankaur.rpg.engine.dice.RollMode;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
+import com.github.sbadolankaur.rpg.engine.kernel.DurationKind;
 import com.github.sbadolankaur.rpg.identity.application.AccountDirectory;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.security.Principal;
 import java.util.List;
 import java.util.Locale;
@@ -128,7 +130,10 @@ class EncounterController {
                 form.integer("fixedInitiative"),
                 "end-of-round".equals(form.optional("joinMode")),
                 form.optional("conditionKey"),
-                form.flag("surprised")));
+                form.flag("surprised"),
+                form.choice("deathMode", DeathMode.class, null),
+                form.ids("obscuredFromIds"),
+                form.ids("caughtOffGuardIds")));
     return updated(campaign, id, actor, request, model, result, "turn-order");
   }
 
@@ -330,7 +335,47 @@ class EncounterController {
       Principal principal,
       HttpServletRequest request,
       Model model) {
-    return simple(campaign, id, fields, principal, request, model, CombatActions.Simple.HIDE);
+    UUID actor = dm(campaign, principal);
+    var form = new Fields(fields);
+    return updated(
+        campaign,
+        id,
+        actor,
+        request,
+        model,
+        combat.hide(
+            campaign,
+            id,
+            actor,
+            form.envelope(),
+            new CombatActions.Hide(
+                form.uuid("actorId"), form.ids("obscuredFromIds"), form.ids("opponentIds"))),
+        "workspace");
+  }
+
+  @PostMapping("/{id}/stealth-ties")
+  Object stealthTies(
+      @PathVariable UUID campaign,
+      @PathVariable UUID id,
+      @RequestParam MultiValueMap<String, String> fields,
+      Principal principal,
+      HttpServletRequest request,
+      Model model) {
+    UUID actor = dm(campaign, principal);
+    var form = new Fields(fields);
+    return updated(
+        campaign,
+        id,
+        actor,
+        request,
+        model,
+        combat.stealthTies(
+            campaign,
+            id,
+            actor,
+            form.envelope(),
+            new CombatActions.StealthTie(form.uuid("actorId"), form.ids("noticedIds"))),
+        "workspace");
   }
 
   @PostMapping("/{id}/stands")
@@ -387,10 +432,11 @@ class EncounterController {
     var form = new Fields(fields);
     UUID recipient = form.uuid("recipientId");
     UUID target = form.uuid("targetId");
-    if (recipient == null) {
-      recipient = target;
-      target = null;
-    }
+    var kind = form.optional("helpKind");
+    if (kind != null && !Set.of("attack", "ability-check").contains(kind)) throw invalid();
+    if ("attack".equals(kind) && (recipient == null || target == null)) throw invalid();
+    if (recipient == null) recipient = target;
+    if ("ability-check".equals(kind) || form.uuid("recipientId") == null) target = null;
     var result =
         combat.help(
             campaign,
@@ -444,6 +490,31 @@ class EncounterController {
                 java.util.Objects.toString(form.optional("note"), ""),
                 form.flag("usesAction")));
     return updated(campaign, id, actor, request, model, result, "workspace");
+  }
+
+  @PostMapping("/{id}/grapple-releases")
+  Object releaseGrapple(
+      @PathVariable UUID campaign,
+      @PathVariable UUID id,
+      @RequestParam MultiValueMap<String, String> fields,
+      Principal principal,
+      HttpServletRequest request,
+      Model model) {
+    UUID actor = dm(campaign, principal);
+    var form = new Fields(fields);
+    return updated(
+        campaign,
+        id,
+        actor,
+        request,
+        model,
+        combat.releaseGrapple(
+            campaign,
+            id,
+            actor,
+            form.envelope(),
+            new CombatActions.Help(form.uuid("actorId"), form.uuid("targetId"), null, 0)),
+        "workspace");
   }
 
   @PostMapping("/{id}/grapples")
@@ -590,7 +661,13 @@ class EncounterController {
                 form.ability(),
                 form.optional("skillKey"),
                 form.integer("dc"),
-                save));
+                save,
+                form.cover(),
+                form.uuid("searchTargetId"),
+                form.optional("noticedOnTie") == null ? null : form.flag("noticedOnTie"),
+                form.flag("requiresSight"),
+                form.flag("requiresHearing"),
+                form.flag("fearSourceVisible")));
     return updated(campaign, id, actor, request, model, result, "workspace");
   }
 
@@ -624,28 +701,53 @@ class EncounterController {
       @RequestParam MultiValueMap<String, String> fields,
       Principal principal,
       HttpServletRequest request,
+      HttpServletResponse response,
       Model model) {
     UUID actor = dm(campaign, principal);
     var form = new Fields(fields);
     String visibility = form.optional("visibility");
     if (visibility != null && !Set.of("players", "quiet").contains(visibility)) throw invalid();
-    var result =
-        overrides.apply(
-            campaign,
-            id,
-            actor,
-            form.envelope(),
-            new CombatOverrides.Correction(
-                form.choice("kind", CombatOverrides.Kind.class, null),
-                form.uuid("combatantId"),
-                form.uuid("entryId"),
-                form.integer("amount"),
-                form.optional("conditionKey"),
-                form.uuid("sourceId"),
-                form.optional("resourceKey"),
-                form.optional("reason"),
-                "quiet".equals(visibility)));
-    return updated(campaign, id, actor, request, model, result, "workspace");
+    var correction =
+        new CombatOverrides.Correction(
+            form.choice("kind", CombatOverrides.Kind.class, null),
+            form.uuid("combatantId"),
+            form.uuid("entryId"),
+            form.integer("amount"),
+            form.optional("conditionKey"),
+            form.uuid("sourceId"),
+            form.optional("resourceKey"),
+            form.optional("reason"),
+            "quiet".equals(visibility),
+            form.choice("durationKind", DurationKind.class, null),
+            form.integer("durationAmount"),
+            form.uuid("durationCreatureId"));
+    try {
+      return updated(
+          campaign,
+          id,
+          actor,
+          request,
+          model,
+          overrides.apply(campaign, id, actor, form.envelope(), correction),
+          "workspace");
+    } catch (CampaignException failure) {
+      var accept = request.getHeader("Accept");
+      if (accept != null && accept.contains("json")
+          || !failure
+              .fields()
+              .contains(new CampaignException.FieldError("visibility", "INCORRECT"))) throw failure;
+      response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+      populate(campaign, id, actor, model, Long.MAX_VALUE, 50);
+      model.addAttribute(
+          "preview",
+          overrides.preview(
+              campaign, id, actor, correction.kind(), correction.target(), correction.entryId()));
+      model.addAttribute("draftCorrection", correction);
+      model.addAttribute(
+          "correctionMessage",
+          "A player can now see this value, so the correction will be shown to them.");
+      return CampaignWeb.htmx(request) ? "demo-encounter :: override-panel" : "demo-encounter";
+    }
   }
 
   private Object updated(
@@ -676,9 +778,14 @@ class EncounterController {
     model.addAttribute("campaignId", campaign);
     model.addAttribute("commandPath", path(campaign, id));
     model.addAttribute("gameSeconds", campaignCommands.readClock(campaign, actor).gameSeconds());
-    model.addAttribute("conditions", new java.util.TreeMap<>(CombatConditions.names()));
+    model.addAttribute("conditions", view.conditionNames());
     model.addAttribute("covers", Cover.values());
     model.addAttribute("abilities", Ability.values());
+    model.addAttribute(
+        "durations",
+        java.util.Arrays.stream(DurationKind.values())
+            .filter(kind -> kind != DurationKind.INSTANT)
+            .toList());
     envelope(model, view.table().version());
   }
 
@@ -744,6 +851,18 @@ class EncounterController {
       return value == null || value.length() < 3
           ? null
           : parse(value.substring(0, 3), raw -> Ability.valueOf(raw.toUpperCase(Locale.ROOT)));
+    }
+
+    java.util.Map<UUID, Cover> cover() {
+      var cover = new java.util.TreeMap<UUID, Cover>();
+      for (String key : values.keySet()) {
+        if (!key.startsWith("cover[")) continue;
+        if (!key.endsWith("]")) throw invalid();
+        UUID target = parse(key.substring(6, key.length() - 1), UUID::fromString);
+        var value = choice(key, Cover.class, Cover.NONE);
+        if (value != Cover.NONE && cover.putIfAbsent(target, value) != null) throw invalid();
+      }
+      return cover;
     }
 
     boolean flag(String key) {

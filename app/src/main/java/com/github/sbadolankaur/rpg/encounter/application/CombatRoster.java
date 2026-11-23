@@ -3,7 +3,6 @@ package com.github.sbadolankaur.rpg.encounter.application;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
-import com.github.sbadolankaur.rpg.character.application.CharacterCatalog.Choice;
 import com.github.sbadolankaur.rpg.character.application.CharacterSheets.View;
 import com.github.sbadolankaur.rpg.character.application.Characters;
 import com.github.sbadolankaur.rpg.character.persistence.CharacterStore;
@@ -14,6 +13,7 @@ import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.DeathMode;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
 import com.github.sbadolankaur.rpg.engine.combat.CombatRolls;
+import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import java.util.ArrayList;
@@ -79,8 +79,7 @@ class CombatRoster {
             state,
             state == State.DYING ? details.successes() : 0,
             state == State.DYING ? details.failures() : state == State.DEAD ? 3 : 0);
-    var conditionKeys =
-        sheet.conditions().stream().map(Choice::key).collect(Collectors.toUnmodifiableSet());
+    var conditionKeys = Set.copyOf(sheet.baseConditionKeys());
     var abilities = new EnumMap<Ability, Integer>(Ability.class);
     var saves = new EnumMap<Ability, Integer>(Ability.class);
     sheet
@@ -104,18 +103,34 @@ class CombatRoster {
         details.owner(),
         sheet.armorClass(),
         sheet.initiative(),
-        sheet.speed(),
+        sheet.baseSpeed(),
+        sheet.baseMaximumHp(),
         sheet.attacksPerAction(),
         size,
-        new Vitals(health, details.recoveryAt(), conditionKeys),
+        new Vitals(
+            health, details.recoveryAt(), conditionKeys, details.effects(), details.exhaustion()),
         abilities,
         saves,
         sheet.skills(),
+        sheet.skills().getOrDefault("perception", abilities.get(Ability.WIS)),
+        wearsNoisyArmor(sheet, content),
         playerAttacks(sheet, content),
         resources,
         List.of(),
         Set.of(),
         DeathMode.PLAYER);
+  }
+
+  private boolean wearsNoisyArmor(View sheet, ContentSet content) {
+    return sheet.inventory().stream()
+        .filter(item -> "ARMOR".equals(item.slot()))
+        .flatMap(item -> content.find("item", item.key()).stream())
+        .anyMatch(
+            item ->
+                json.<JsonNode>valueToTree(item.fields())
+                    .path("armorData")
+                    .path("stealthDisadvantage")
+                    .asBoolean(false));
   }
 
   private List<AttackOption> playerAttacks(View sheet, ContentSet content) {
@@ -288,12 +303,19 @@ class CombatRoster {
         monster.path("ac").path("value").asInt(),
         abilities.get(Ability.DEX),
         monster.path("speeds").path("walk").asInt(),
+        monster.path("hp").path("average").asInt(),
         1,
         monster.path("size").asString(),
         entry.npcVitals(),
         abilities,
         saves,
         skills,
+        monster
+                .path("senses")
+                .path("passivePerception")
+                .asInt(10 + skills.getOrDefault("perception", abilities.get(Ability.WIS)))
+            - 10,
+        false,
         attacks,
         Map.of(),
         modifiers,
@@ -302,7 +324,7 @@ class CombatRoster {
             .valueStream()
             .map(JsonNode::asString)
             .collect(Collectors.toUnmodifiableSet()),
-        DeathMode.DIE_AT_ZERO);
+        entry.tactics().deathMode() == null ? DeathMode.DIE_AT_ZERO : entry.tactics().deathMode());
   }
 
   void writePlayer(Creature current, Vitals next) {
@@ -314,7 +336,9 @@ class CombatRoster {
         health.temporary(),
         health.successes(),
         health.failures(),
-        next.recoveryAt());
+        next.recoveryAt(),
+        next.exhaustion(),
+        next.effects());
     for (String key : current.vitals().conditions()) {
       if (!next.conditions().contains(key)) characterStore.condition(player, key, false);
     }
@@ -356,12 +380,15 @@ class CombatRoster {
       int armor,
       int initiative,
       int baseSpeed,
+      int baseMaximumHp,
       int attacksPerAction,
       String size,
       Vitals vitals,
       Map<Ability, Integer> abilities,
       Map<Ability, Integer> saves,
       Map<String, Integer> skills,
+      int passivePerceptionBonus,
+      boolean noisyArmor,
       List<AttackOption> attacks,
       Map<String, Integer> resources,
       List<Defense> defenses,
@@ -370,12 +397,13 @@ class CombatRoster {
     Set<String> conditions() {
       var keys = new HashSet<>(vitals.conditions());
       entry.tactics().conditions().forEach(condition -> keys.add(condition.key()));
+      vitals.effects().forEach(condition -> keys.add(condition.key()));
       if (vitals.health().state() != State.ALIVE) keys.add(CombatConditions.UNCONSCIOUS);
       return keys;
     }
 
     int speed() {
-      return CombatConditions.speed(baseSpeed, conditions());
+      return CombatConditions.speed(Exhaustion.speed(baseSpeed, vitals.exhaustion()), conditions());
     }
 
     boolean incapacitated() {

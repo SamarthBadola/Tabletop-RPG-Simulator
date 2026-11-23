@@ -81,6 +81,11 @@ public final class CombatConditions {
             || conditions.contains("srd-5.1:stunned"));
   }
 
+  public static boolean forcedCheckFailure(Set<String> conditions, boolean sight, boolean hearing) {
+    return sight && conditions.contains("srd-5.1:blinded")
+        || hearing && conditions.contains("srd-5.1:deafened");
+  }
+
   public static boolean canSee(Set<String> viewer, Set<String> target, boolean obscured) {
     return !obscured
         && !viewer.contains("srd-5.1:blinded")

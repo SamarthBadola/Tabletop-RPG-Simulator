@@ -8,8 +8,10 @@ import com.github.sbadolankaur.rpg.engine.dice.CriticalDiceMode;
 import com.github.sbadolankaur.rpg.engine.dice.DiceExpression;
 import com.github.sbadolankaur.rpg.engine.dice.RollMode;
 import com.github.sbadolankaur.rpg.engine.dice.RollPlan;
+import com.github.sbadolankaur.rpg.engine.kernel.DurationKind;
 import java.util.ArrayDeque;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class CombatRulesTest {
@@ -92,6 +94,9 @@ class CombatRulesTest {
     assertThat(dash.movementRemaining(15)).isEqualTo(30);
     assertThat(TurnBudget.start().move(15, 30).movementRemaining(30)).isEqualTo(15);
     assertThat(TurnBudget.movementCost(5, true, true, false)).isEqualTo(15);
+    var movement = TurnBudget.start().move(20, 60).move(10, 30);
+    assertThat(movement.movementRemaining(30)).isZero();
+    assertThat(movement.movementRemaining(60)).isEqualTo(30);
   }
 
   @Test
@@ -126,6 +131,32 @@ class CombatRulesTest {
     assertThat(attack.offHand().attack(2, false).attacksLeft()).isZero();
     org.assertj.core.api.Assertions.assertThatThrownBy(() -> attack.offHand().offHand())
         .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void exhaustionUsesCumulativeThresholdsAndRoundsDown() {
+    assertThat(Exhaustion.disadvantagesChecks(1)).isTrue();
+    assertThat(Exhaustion.disadvantagesAttacksAndSaves(2)).isFalse();
+    assertThat(Exhaustion.disadvantagesAttacksAndSaves(3)).isTrue();
+    assertThat(Exhaustion.maximumHp(31, 4)).isEqualTo(15);
+    assertThat(Exhaustion.speed(35, 2)).isEqualTo(17);
+    assertThat(Exhaustion.speed(35, 5)).isZero();
+    assertThat(Exhaustion.dead(6)).isTrue();
+  }
+
+  @Test
+  void conditionDurationChecksAbsoluteClockAndNamedTurnAndConvertsRemainingRounds() {
+    UUID actor = UUID.fromString("9b12e767-2991-4076-be03-d8497bec9445");
+    UUID other = UUID.fromString("9b12e767-2991-4076-be03-d8497bec9446");
+    var clock = ConditionInstance.End.clock(16);
+    assertThat(clock.expired(15, 6, actor, ConditionInstance.Boundary.START)).isFalse();
+    assertThat(clock.expired(16, 6, actor, ConditionInstance.Boundary.START)).isTrue();
+    var turn = ConditionInstance.End.turn(DurationKind.UNTIL_TURN_END, 3, actor);
+    assertThat(turn.expired(99, 5, other, ConditionInstance.Boundary.END)).isFalse();
+    assertThat(turn.expired(99, 3, actor, ConditionInstance.Boundary.START)).isFalse();
+    assertThat(turn.expired(99, 3, actor, ConditionInstance.Boundary.END)).isTrue();
+    assertThat(ConditionInstance.End.turn(DurationKind.ROUNDS, 5, actor).afterEncounter(30, 2))
+        .isEqualTo(ConditionInstance.End.clock(48));
   }
 
   private static com.github.sbadolankaur.rpg.engine.dice.RandomSource draw(Integer... values) {

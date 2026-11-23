@@ -15,6 +15,9 @@ import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Phase;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
 import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
+import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
+import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance.End;
+import com.github.sbadolankaur.rpg.engine.kernel.DurationKind;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -50,12 +53,23 @@ public class CombatOverrides {
       UUID campaign, UUID encounter, UUID actor, Kind kind, UUID combatant, UUID entryId) {
     campaigns.requireDm(campaign, actor);
     var table = commands.require(campaign, encounter, false);
-    if (table.phase() != Phase.ACTIVE) throw invalid();
-    if (kind == null) throw invalid();
+    if (kind == null || (table.phase() != Phase.ACTIVE && kind != Kind.UNDO_LAST)) throw invalid();
     Kind actual = kind;
     boolean undoAttack = false;
     if (kind == Kind.UNDO_LAST) {
       var event = latest(encounter, entryId);
+      if (event.payload().has("actionPreimage")) {
+        var undo = preimage(event);
+        return new Preview(
+            table.name(),
+            event.type(),
+            !undo.visible(),
+            undoSentence(event),
+            null,
+            entryId,
+            kind,
+            java.util.Set.of());
+      }
       undoAttack = event.type().equals("AttackResolved");
       if (undoAttack) {
         combatant = attackUndo(event).target().id();
@@ -96,13 +110,33 @@ public class CombatOverrides {
         form,
         true,
         context -> {
-          if (context.table.phase() != Phase.ACTIVE
+          if ((context.table.phase() != Phase.ACTIVE && form.kind() != Kind.UNDO_LAST)
               || form.reason() == null
               || form.reason().isBlank()
               || form.reason().codePointCount(0, form.reason().length()) > 200
               || form.kind() == null) throw invalid();
           if (form.kind() == Kind.UNDO_LAST) {
             var event = latest(encounter, form.entryId());
+            if (event.payload().has("actionPreimage")) {
+              var undo = preimage(event);
+              if (form.quiet() && undo.visible())
+                throw new CampaignException(new FieldError("visibility", "INCORRECT"));
+              if (undo.table().phase() == Phase.ACTIVE && store.hasRunning(campaign, encounter))
+                throw new CampaignException(Code.ENCOUNTER_ACTIVE);
+              undo.restore(context);
+              context.dm(
+                  "ActionUndone",
+                  Map.of(
+                      "entryId",
+                      form.entryId(),
+                      "reason",
+                      form.reason(),
+                      "quiet",
+                      !undo.visible()));
+              announceUndo(context, event, undo);
+              return;
+            }
+            context.disableUndo();
             if (event.type().equals("AttackResolved")) {
               undoAttack(context, form, attackUndo(event));
               return;
@@ -126,18 +160,13 @@ public class CombatOverrides {
           audience(form.quiet(), form.kind(), target);
           if (form.entryId() != null && !store.eventExists(encounter, form.entryId()))
             throw invalid();
-          var snapshot =
-              new Before(
-                  form.kind(),
-                  target.entry(),
-                  target.vitals(),
-                  context.equipment(target),
-                  form.resource(),
-                  form.resource() == null ? null : target.resources().get(form.resource()));
+          String previousValue = current(form.kind(), target);
           change(context, target, form);
 
           Map<String, Object> payload = new LinkedHashMap<>();
-          payload.put("before", snapshot);
+          payload.put("combatantId", target.entry().id());
+          payload.put("kind", form.kind());
+          payload.put("before", previousValue);
           payload.put("reason", form.reason());
           payload.put("entryId", form.entryId());
           payload.put("quiet", form.quiet());
@@ -161,10 +190,20 @@ public class CombatOverrides {
           context.health(target, CombatHealth.of((int) next, health.maximum(), health.temporary()));
       }
       case ADD_CONDITION ->
-          CombatActions.addCondition(
-              context, target, Encounters.conditionKey(form.condition()), form.source());
+          CombatEffects.add(
+              context,
+              target,
+              new ConditionInstance(
+                  Encounters.conditionKey(context, form.condition()),
+                  form.source(),
+                  conditionEnd(context, target, form)));
       case REMOVE_CONDITION ->
-          CombatActions.removeCondition(context, target, Encounters.conditionKey(form.condition()));
+          CombatEffects.remove(
+              context, target, Encounters.conditionKey(context, form.condition()), form.source());
+      case SET_EXHAUSTION -> {
+        if (form.amount() == null || form.amount() < 0 || form.amount() > 6) throw invalid();
+        context.exhaustion(target, form.amount());
+      }
       case SET_RESOURCE -> {
         if (form.amount() == null || form.resource() == null) throw invalid();
         context.resource(target, form.resource(), form.amount());
@@ -177,12 +216,84 @@ public class CombatOverrides {
     }
   }
 
+  private static End conditionEnd(Context context, Creature target, Correction form) {
+    DurationKind kind = form.duration() == null ? DurationKind.UNTIL_DISPELLED : form.duration();
+    UUID creature = form.durationCreature() == null ? target.entry().id() : form.durationCreature();
+    return switch (kind) {
+      case INSTANT -> throw invalid();
+      case CLOCK, CONCENTRATION ->
+          new End(kind, null, Math.addExact(context.seconds, durationAmount(form)), null);
+      case ROUNDS -> {
+        context.creature(creature);
+        yield End.turn(kind, (long) context.table.round() + durationAmount(form), creature);
+      }
+      case UNTIL_TURN_START, UNTIL_TURN_END -> {
+        var turn = context.creature(creature).entry();
+        if (!Encounters.present(turn)) throw invalid();
+        long current = context.table.round();
+        boolean currentEnd =
+            kind == DurationKind.UNTIL_TURN_END && creature.equals(context.table.acting());
+        yield End.turn(
+            kind,
+            !currentEnd && turn.tactics().lastTurn() >= current ? current + 1 : current,
+            creature);
+      }
+      default -> new End(kind, null, null, null);
+    };
+  }
+
+  private static int durationAmount(Correction form) {
+    if (form.durationAmount() == null || form.durationAmount() < 1) throw invalid();
+    return form.durationAmount();
+  }
+
   private EncounterStore.Event latest(UUID encounter, UUID entryId) {
     if (entryId == null) throw invalid();
     return store
         .latestReversible(encounter)
         .filter(row -> row.id().equals(entryId))
         .orElseThrow(() -> new CampaignException(Code.ENCOUNTER_VERSION_CONFLICT));
+  }
+
+  private EncounterUndo preimage(EncounterStore.Event event) {
+    return json.treeToValue(event.payload().path("actionPreimage"), EncounterUndo.class);
+  }
+
+  private static String undoSentence(EncounterStore.Event event) {
+    return event.type().equals("AttackResolved")
+        ? "The DM undid the last attack."
+        : "The DM undid the last action.";
+  }
+
+  private static void announceUndo(
+      Context context, EncounterStore.Event event, EncounterUndo undo) {
+    if (undo.publicChange()) {
+      var line = new StringBuilder(undoSentence(event));
+      for (var change : undo.changes()) {
+        var before = change.before();
+        var after = change.after();
+        if (before == null
+            || after == null
+            || before.owner() == null
+            || before.vitals().health().equals(after.vitals().health())) continue;
+        var hp = before.vitals().health();
+        line.append(" ")
+            .append(before.name())
+            .append(" now has ")
+            .append(hp.current())
+            .append(" of ")
+            .append(hp.maximum())
+            .append(" hit points.");
+      }
+      context.tell("PlayerCorrection", null, line.toString());
+    }
+    undo.privateChanges()
+        .forEach(
+            (owner, name) ->
+                context.tell(
+                    "PlayerCorrection",
+                    owner,
+                    undoSentence(event) + " " + name + "'s private state was restored."));
   }
 
   private Before before(EncounterStore.Event event) {
@@ -232,7 +343,8 @@ public class CombatOverrides {
   private static boolean visible(Kind kind, Creature creature) {
     return switch (kind) {
       case SET_INITIATIVE, ADD_CONDITION, REMOVE_CONDITION -> true;
-      case SET_HIT_POINTS, ADJUST_HIT_POINTS, SET_RESOURCE -> creature.owner() != null;
+      case SET_HIT_POINTS, ADJUST_HIT_POINTS, SET_RESOURCE, SET_EXHAUSTION ->
+          creature.owner() != null;
       case UNDO_LAST -> throw invalid();
     };
   }
@@ -246,7 +358,9 @@ public class CombatOverrides {
       line +=
           " " + after.name() + " now has " + hp.current() + " of " + hp.maximum() + " hit points.";
     }
-    context.tell("PlayerCorrection", kind == Kind.SET_RESOURCE ? after.owner() : null, line);
+    UUID recipient =
+        kind == Kind.SET_RESOURCE || kind == Kind.SET_EXHAUSTION ? after.owner() : null;
+    context.tell("PlayerCorrection", recipient, line);
   }
 
   private static String sentence(Kind kind, Creature creature) {
@@ -255,6 +369,7 @@ public class CombatOverrides {
           case SET_HIT_POINTS, ADJUST_HIT_POINTS -> "hit points";
           case ADD_CONDITION, REMOVE_CONDITION -> "conditions";
           case SET_RESOURCE -> "resources";
+          case SET_EXHAUSTION -> "exhaustion";
           case SET_INITIATIVE -> "initiative";
           case UNDO_LAST -> throw invalid();
         };
@@ -268,6 +383,7 @@ public class CombatOverrides {
       case ADD_CONDITION, REMOVE_CONDITION ->
           String.join(", ", creature.conditions().stream().sorted().toList());
       case SET_RESOURCE -> creature.resources().toString();
+      case SET_EXHAUSTION -> Integer.toString(creature.vitals().exhaustion());
       case SET_INITIATIVE -> Objects.toString(creature.entry().initiative(), "");
       case UNDO_LAST -> throw invalid();
     };
@@ -279,6 +395,7 @@ public class CombatOverrides {
     ADD_CONDITION,
     REMOVE_CONDITION,
     SET_RESOURCE,
+    SET_EXHAUSTION,
     SET_INITIATIVE,
     UNDO_LAST
   }
@@ -292,7 +409,10 @@ public class CombatOverrides {
       UUID source,
       String resource,
       String reason,
-      boolean quiet) {}
+      boolean quiet,
+      DurationKind duration,
+      Integer durationAmount,
+      UUID durationCreature) {}
 
   public record Preview(
       String name,

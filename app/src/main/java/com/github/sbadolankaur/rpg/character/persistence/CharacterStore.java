@@ -1,6 +1,7 @@
 package com.github.sbadolankaur.rpg.character.persistence;
 
 import com.github.sbadolankaur.rpg.engine.character.AbilityGeneration;
+import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -151,7 +152,8 @@ public class CharacterStore {
         resources,
         conditions,
         feats,
-        grantFor(id).orElse(null));
+        grantFor(id).orElse(null),
+        combatMetadata(id));
   }
 
   public void create(
@@ -304,8 +306,9 @@ public class CharacterStore {
   public CombatMetadata combatMetadata(UUID id) {
     return jdbc.sql(
             """
-        SELECT owner_id, death_successes, death_failures, stable_recovery_at
-        FROM player_character WHERE id = ?
+        SELECT p.owner_id, p.death_successes, p.death_failures, p.stable_recovery_at,
+            p.exhaustion, p.condition_effects::text, g.game_seconds
+        FROM player_character p JOIN game_clock g ON g.campaign_id = p.campaign_id WHERE p.id = ?
         """)
         .param(id)
         .query(
@@ -314,18 +317,37 @@ public class CharacterStore {
                     row.getObject(1, UUID.class),
                     row.getInt(2),
                     row.getInt(3),
-                    row.getObject(4, Long.class)))
+                    row.getObject(4, Long.class),
+                    row.getInt(5),
+                    json.readValue(
+                        row.getString(6), new TypeReference<List<ConditionInstance>>() {}),
+                    row.getLong(7)))
         .single();
   }
 
   public void combatVitals(
-      UUID id, int hp, int temporary, int successes, int failures, Long recoveryAt) {
+      UUID id,
+      int hp,
+      int temporary,
+      int successes,
+      int failures,
+      Long recoveryAt,
+      int exhaustion,
+      List<ConditionInstance> effects) {
     jdbc.sql(
             """
         UPDATE player_character SET hp_current=?, hp_temp=?, death_successes=?, death_failures=?,
-          stable_recovery_at=? WHERE id=?
+          stable_recovery_at=?, exhaustion=?, condition_effects=CAST(? AS jsonb) WHERE id=?
         """)
-        .params(hp, temporary, successes, failures, recoveryAt, id)
+        .params(
+            hp,
+            temporary,
+            successes,
+            failures,
+            recoveryAt,
+            exhaustion,
+            json.writeValueAsString(effects),
+            id)
         .update();
   }
 
@@ -365,7 +387,14 @@ public class CharacterStore {
         .single();
   }
 
-  public record CombatMetadata(UUID owner, int successes, int failures, Long recoveryAt) {}
+  public record CombatMetadata(
+      UUID owner,
+      int successes,
+      int failures,
+      Long recoveryAt,
+      int exhaustion,
+      List<ConditionInstance> effects,
+      long gameSeconds) {}
 
   public void equip(UUID id, Map<UUID, String> slots) {
     jdbc.sql("UPDATE inventory_item SET equipment_slot = NULL WHERE player_character_id = ?")
@@ -474,5 +503,6 @@ public class CharacterStore {
       List<Resource> resources,
       List<String> conditions,
       List<String> feats,
-      String grantedClass) {}
+      String grantedClass,
+      CombatMetadata combat) {}
 }
