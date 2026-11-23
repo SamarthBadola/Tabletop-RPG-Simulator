@@ -1,8 +1,8 @@
-# Tabletop RPG Simulator: Architecture (v5.17)
+# Tabletop RPG Simulator: Architecture (v5.19)
 
 Oct 16, 2026 · @Samarth
 
-How the system is built and why. Current version **5.17**; the revision history is at the end. Companion documents: Requirements Specification (what it must do), Ruleset Specification (the D&D mechanics), Decision Log and Progress Tracker (decisions and status), AI Build Brief (setup, CI/CD, compose and Dockerfiles, full DDL and the build order), Grid and Pathfinder Specification (the pathfinder contract), Project Design Guide (plain-language overview). This document holds the design and its reasons; code that the Build Brief already contains (CI workflows, compose file, schema DDL) is not repeated here, so there is one source of truth. Diagrams are written as Mermaid source.
+How the system is built and why. Current version **5.19**; the revision history is at the end. Companion documents: Requirements Specification (what it must do), Ruleset Specification (the D&D mechanics), Decision Log and Progress Tracker (decisions and status), AI Build Brief (setup, CI/CD, compose and Dockerfiles, full DDL and the build order), Grid and Pathfinder Specification (the pathfinder contract), Project Design Guide (plain-language overview). This document holds the design and its reasons; code that the Build Brief already contains (CI workflows, compose file, schema DDL) is not repeated here, so there is one source of truth. Diagrams are written as Mermaid source.
 
 ## 0. What changed in v5
 
@@ -148,7 +148,7 @@ public final class AbilityScores {                             // the only acces
 | --- | --- |
 | `Ability`, `AbilityScores` | six fixed abilities behind a single accessor |
 | `Stat` | a named computed number: AC, initiative, speed, max HP, attack bonus, save bonus, skill bonus, spell DC |
-| `Modifier` | target stat, operation (set, add, multiply, min, max, advantage, disadvantage), exact normalized `Ratio` value, optional `activeWhen` condition, duration, source, `stackKey`, potency and monotonic application sequence |
+| `Modifier` | target stat, operation (set, add, multiply, min, max, advantage, disadvantage), value (an exact ratio, Ruleset E-154), optional `activeWhen` condition, duration, source |
 | `Resource` | key, current, max, recharge (turn, short rest, long rest, dawn, never) |
 | `SlotPool` | spell slots by level (and later pact slots) |
 | `DiceExpression` | value type, see 4.5 |
@@ -158,11 +158,11 @@ public final class AbilityScores {                             // the only acces
 
 ### 4.2 Stats and modifiers
 
-A stat value is computed from a base plus the active modifiers, never stored. Combination order is fixed and documented in the Ruleset Specification: resolve same-key stacking by potency then application sequence; among the remaining active `SET`s, the highest application sequence wins across keys, while the others remain suppressed and can resume. Apply the winning `SET`, then `ADD`, then the product of every exact `MULTIPLY` operand with one `floorDiv`, then `MIN`, then `MAX`. The application sequence is a monotonic counter stored on the modifier instance, never game time or wall-clock time. The breakdown names the winning `SET` and lists overridden ones. Advantage and disadvantage are collected separately and cancel. Feats, magic items, spells, conditions and class features are all expressed as bundles of modifiers plus trigger points, which is why a small kernel can carry a large amount of flavor.
+A stat value is computed from a base plus the active modifiers, never stored. Combination order is fixed and documented in the Ruleset Specification: `set` first, then `add`, then `multiply` (rounding fractions down, as the SRD does), then `min`/`max`; advantage and disadvantage are collected separately and cancel. Feats, magic items, spells, conditions and class features are all expressed as bundles of modifiers plus trigger points, which is why a small kernel can carry a large amount of flavor.
 
 Two details from the Ruleset Specification:
 
-1. `Modifier.value` is a normalized exact `Ratio` with positive denominator. Integer-stat `SET`, `ADD`, `MIN` and `MAX` operands must be integers. A proficiency multiplier applies only to the proficiency component. The only ratio-valued stat is `skill:<skill>:prof_multiplier`, and its component is `floor(bonus x multiplier)`. Integer stats such as maximum HP can also have their own multipliers (RS-MOD-003).
+1. Skill, save and attack totals have a separate proficiency component, `floor(bonus x multiplier)`, and `multiply` targets that multiplier, never the total.
 2. There are two modifier types: stat modifiers (persistent) and roll bonuses (applied when a roll is made, fixed or dice, possibly consumed). The same source never stacks with itself (the most potent applies, then the most recent), while different sources add. Suppressed instances are kept and resume if the applying one ends first, and the rule covers every modifier source with the same name, including class features and items.
 
 Ability scores are themselves modifiable stats (DEC-074): base plus improvements plus modifiers, clamped to a ceiling (default 30) and a floor of 0, with a per-ability maximum (default 20) that caps improvements.
@@ -283,7 +283,7 @@ All three tiers share one cast record (Ruleset Specification 10.2, E-69); the ti
 - **Hierarchy:** Campaign, then Session (one real-world play night), then Scene (a place and time, with a map, ambient light and participants), then Encounter (combat inside a scene). Exploration and social scenes need no encounter.
 - **`GameClock`:** the campaign's in-game time, stored in seconds. It advances only when the DM advances it, a rest is taken, or travel is resolved, never with real time. In combat each completed round advances it by a DM-set amount (default 6 seconds). The rules constant of 6 seconds per round (10 rounds per minute) does not change; durations given in rounds count rounds, while time-based durations count on the clock. A scene's default light derives from the time of day, and the DM can override it. Time of day is derived (the campaign's start time of day plus the clock, modulo 86,400 seconds; a day is 24 hours) and the campaign has a dawn time. Advancing the clock (with a reason and a number of seconds) returns the effects that expired and the dawns crossed, in order. Rests (section 4.14) are the main source of clock advances.
 - **`Audience`:** `DM_ONLY`, `ALL`, or a set of players. Every combat event, journal entry, note, handout and chat message carries one. A secret roll is a roll with `DM_ONLY`. Player-facing responses are built by filtering on audience on the server.
-- **Duration kinds** on modifiers and effects: `INSTANT`, `ROUNDS(amount)`, `CLOCK(amount, seconds)`, `CONCENTRATION(max)`, `UNTIL_TURN_START`, `UNTIL_TURN_END` (both for a named creature), `UNTIL_DISPELLED`, `UNTIL_SHORT_OR_LONG_REST`, `UNTIL_LONG_REST`, `UNTIL_USED`, `PERMANENT`, `WHILE_EQUIPPED` and `WHILE_ATTUNED`. Store absolute ends or end conditions, never counters. `ROUNDS` and turn kinds store an end round and creature; `CLOCK` stores absolute seconds. When an encounter ends, `ROUNDS` becomes `CLOCK` at 6 seconds per remaining round. Rest kinds end on `RestResolver` events. `UNTIL_USED` ends when the roll bonus is consumed. `INSTANT` is never stored as active. A timed and consumed bonus such as Bardic Inspiration uses `CLOCK` plus consumption on use; its second end condition is Step 7.
+- **Duration kinds** on modifiers and effects: thirteen, listed in Ruleset E-155: `INSTANT`, `ROUNDS`, `CLOCK`, `CONCENTRATION`, `UNTIL_TURN_START` and `UNTIL_TURN_END` of a named creature, `UNTIL_DISPELLED`, `UNTIL_SHORT_OR_LONG_REST`, `UNTIL_LONG_REST`, `UNTIL_USED`, `PERMANENT`, `WHILE_EQUIPPED` and `WHILE_ATTUNED`. Game time is stored as an absolute end time in seconds. When an encounter ends, effects measured in rounds continue on the clock at 6 seconds per remaining round.
 - **`Zone`:** a persistent area effect on the map (shape, origin, source, duration, and the trigger points that fire when a creature enters or starts its turn inside).
 - **`ReadiedAction`:** the trigger, the held action or spell (with concentration), and the owner.
 
@@ -920,6 +920,10 @@ Every failure is either the **caller's fault** (4xx, no ERROR log, no alert) or 
 | MAP\_IN\_USE | 409 | caller | a map that an encounter uses cannot be deleted; details carry encounterCount |
 | PLACEMENT\_INVALID | 422 | caller | a creature cannot go there; details carry the reason (no-map, outside-map, outside-area, obstacle, occupied, too-few-squares or no-start-area) and the combatantId |
 | LAST\_ADMINISTRATOR | 409 | caller | deactivating or demoting the only administrator is refused |
+| FEATURE\_INPUT\_INVALID | 422 | caller | the inputs of a class feature use fail that feature's checks (target, points or cures); the field is named in details |
+| FEATURE\_NOT\_AVAILABLE | 422 | caller | the actor does not have that feature, or cannot use it now |
+| FEATURE\_USES\_EXHAUSTED | 422 | caller | the feature has no uses or pool points left |
+| MANUAL\_MOVE\_NOT\_ALLOWED | 409 | caller | a manual move was sent for an encounter that has a map |
 
 Rules: catch only what you have a plan for; every catch either logs structured context or rethrows with the cause preserved; validation happens at the boundary (bean validation on form DTOs), not scattered in business code. HTMX requests get an error fragment plus the correct status; JSON clients get `application/problem+json` with the stable `code`.
 
@@ -932,7 +936,7 @@ Rules: catch only what you have a plan for; every catch either logs structured c
 - **Authorization at the data layer.** Repository queries take the principal and filter by membership, so changing an ID in the URL cannot expose another campaign (IDOR). Foreign IDs return `NOT_FOUND`, not 403. Write negative tests for this.
 - **Form DTOs, not entities,** for input (no mass assignment of `role`, `hp`, `campaign_id`).
 - **SSE subscribe** re-checks campaign membership. Sessions are stored with Spring Session JDBC, so a restart signs nobody out, and a filter ends every session at an absolute timeout however active it is (SEC-004). A form that creates something carries a single-use form token, and the sign-in and registration forms, which have no session yet, carry a signed double-submit cookie.
-- **Passwords:** BCrypt (or Argon2). **CSRF** enabled; HTMX sends the token via header. **Cookies:** `HttpOnly`, `SameSite=Lax`, `Secure` controlled by a setting. **Headers:** CSP without inline scripts, `X-Content-Type-Options`, `Referrer-Policy`, HSTS when served over HTTPS.
+- **Passwords:** Argon2id only (DEC-112), through the Spring Security Argon2PasswordEncoder with memory 19 MiB, 2 iterations, parallelism 1, a 16-byte salt and a 32-byte hash; the full encoded string is stored. A password is 10 to 128 characters; a longer one is refused and never truncated. There is no BCrypt path. **CSRF** enabled; HTMX sends the token via header. **Cookies:** `HttpOnly`, `SameSite=Lax`, `Secure` controlled by a setting. **Headers:** CSP without inline scripts, `X-Content-Type-Options`, `Referrer-Policy`, HSTS when served over HTTPS.
 - **Rate limits** on login, invite redemption, pack import, image upload and obstacle detection; uploads share one counter per user.
 - **Secrets only via environment or secret store.** Never in the repo or logs; passwords and tokens redacted at the logger.
 - The **pathfinder is on an internal network only** and has the input limits from section 7.
@@ -1393,7 +1397,7 @@ Stays out of the 8 weeks unless time remains: the rest of v1.5 (journal, checkpo
 
 ## 19. Version and revision history
 
-Current version: **5.17**. Earlier versions were circulated as the file `architecture.md`; this Claude Doc replaces it, and 5.0 supersedes the file marked v4.
+Current version: **5.19**. Earlier versions were circulated as the file `architecture.md`; this Claude Doc replaces it, and 5.0 supersedes the file marked v4.
 
 | Version | Date | Changes |
 | --- | --- | --- |
@@ -1418,4 +1422,6 @@ Current version: **5.17**. Earlier versions were circulated as the file `archite
 | 5.14 | 2026-11-21 | Saved maps (7.1): at most three obstacle detections run at once, matching the UX and API Specification. Two wording fixes from the 5.13 pass are recorded here: the action id is minted by the server, and a map belongs to the campaign. |
 | 5.15 | 2026-11-22 | Section 19 stated the current version as 5.12 although the table lists 5.13 and 5.14; the line now matches the title. No design content changed. |
 | 5.16 | 2026-11-22 | The audience rule for events now states that an override event takes its audience from the value it changes, computed by the server, and that its stream signal goes to that audience only, so a quiet override sends no signal to players. Applies UXD-11 and UXQ-24, accepted by the owner. No other design content changed. |
-| 5.17 | 2026-11-22 | Step 3 applies E-154 and E-155: active SET precedence and suppression, exact Ratio arithmetic, the 13 duration kinds, and their absolute-end or end-condition semantics. |
+| 5.17 | 2026-11-22 | Ruleset Specification decisions E-154 and E-155 applied by reference. The duration kinds bullet had six kinds and left out several; it now lists the thirteen of E-155. The modifier row says that a modifier value is an exact ratio (E-154). No other change. |
+| 5.18 | 2026-11-22 | Password hashing is Argon2id only (DEC-112); the words BCrypt or Argon2 are removed. The security bullet gives the Spring Security encoder, the explicit parameters, the stored encoded string and the 10 to 128 character rule, and states that there is no BCrypt path. No other section changed. |
+| 5.19 | 2026-11-24 | Four error codes added for the Step 8 inputs of Ruleset E-158 (DEC-114): FEATURE\_INPUT\_INVALID, FEATURE\_NOT\_AVAILABLE and FEATURE\_USES\_EXHAUSTED (422, caller), and MANUAL\_MOVE\_NOT\_ALLOWED (409, caller). No other section changed. |
