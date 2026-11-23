@@ -283,7 +283,7 @@ public final class CharacterSheets {
         baseMaximum,
         header.temporaryHp(),
         armorClass,
-        scores.modifier(Ability.DEX),
+        scores.modifier(Ability.DEX) + (jack ? proficiency / 2 : 0),
         CombatConditions.speed(
             Exhaustion.speed(speed, state.combat().exhaustion()),
             conditions.stream().map(Choice::key).collect(java.util.stream.Collectors.toSet())),

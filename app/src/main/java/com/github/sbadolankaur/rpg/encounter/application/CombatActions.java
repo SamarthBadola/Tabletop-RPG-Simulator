@@ -163,7 +163,10 @@ public class CombatActions {
             && context.setting("temporaryHpAbsorbsDeathSaveFailure", Boolean.class);
     protection(context, request, target, penalties);
     RollMode mode = new AdvantageSources(advantages, penalties).mode();
-    boolean sacred = !weapon.offHand() && OathFeatures.sacredActive(context, attacker);
+    boolean sacred =
+        !"unarmed".equals(weapon.key())
+            && !weapon.offHand()
+            && OathFeatures.sacredActive(context, attacker);
     boolean magicalWeapon = weapon.magical() || sacred;
     var attack =
         CombatRolls.attack(

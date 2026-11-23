@@ -327,6 +327,48 @@ class ReactionConformanceTest {
     return roll >= 15 ? 0 : 5;
   }
 
+  @Test
+  void anIndomitableRerollChecksWhetherTheAuraSourceIsStillConscious() {
+    var initial =
+        ReactionReplay.run(
+            "aura-save",
+            Continuation.empty(),
+            new ForcedDice(8),
+            replay -> auraSave(replay, true, true));
+    assertThat(initial.pending().point()).isEqualTo(Point.AFTER_SAVE_FAIL);
+    var accepted = initial.continuation().answer(initial.pending(), "indomitable");
+
+    var fell =
+        ReactionReplay.run(
+            "aura-save", accepted, new ForcedDice(12), replay -> auraSave(replay, true, true));
+    var conscious =
+        ReactionReplay.run(
+            "aura-save", accepted, new ForcedDice(12), replay -> auraSave(replay, false, true));
+    var withheld =
+        ReactionReplay.run(
+            "aura-save",
+            Continuation.empty(),
+            new ForcedDice(8),
+            replay -> auraSave(replay, true, false));
+
+    assertThat(fell.completed()).isEqualTo(13);
+    assertThat(conscious.completed()).isEqualTo(16);
+    assertThat(withheld.pending()).isNull();
+    assertThat(withheld.completed()).isEqualTo(12);
+  }
+
+  private static int auraSave(ReactionReplay replay, boolean losesAura, boolean offerReroll) {
+    var reroll = new Option("indomitable", "Indomitable", false, "indomitable", 1);
+    int original = CombatRolls.d20("Wisdom", 4, RollMode.NORMAL, replay.random()).total();
+    if (original >= 15
+        || !offerReroll
+        || replay.choose(Point.AFTER_SAVE_FAIL, Step.ACTING_RESULT, DEFENDER, List.of(reroll), null)
+            == null) return original;
+    Set<String> source = losesAura ? Set.of(CombatConditions.UNCONSCIOUS) : Set.of();
+    int modifier = CombatConditions.incapacitated(source) ? 1 : 4;
+    return CombatRolls.d20("Wisdom", modifier, RollMode.NORMAL, replay.random()).total();
+  }
+
   private static final class AttackFixture {
     private int armor = 17;
     private boolean smite;

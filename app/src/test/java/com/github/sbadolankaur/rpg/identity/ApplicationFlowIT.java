@@ -1190,7 +1190,10 @@ class ApplicationFlowIT {
     mockMvc
         .perform(get(bardSheet).with(user("class-bard")))
         .andExpect(status().isOk())
-        .andExpect(content().string(org.hamcrest.Matchers.containsString("Cutting Words")));
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Cutting Words")))
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.containsString("<dt>Initiative</dt><dd>3</dd>")));
 
     UUID paladin =
         createClassCharacter(
@@ -1411,7 +1414,7 @@ class ApplicationFlowIT {
     var bout = combatFixture(false);
     devotion(bout);
     equipLongsword(bout.left());
-    forceCombatDice(18, 12, 15, 5);
+    forceCombatDice(18, 12, 15, 5, 15);
     submitBout(bout, "/start");
     settings.decide(
         bout.campaign(),
@@ -1450,6 +1453,37 @@ class ApplicationFlowIT {
                 "SELECT payload->>'magical' FROM combat_event WHERE type = 'DamageTaken'",
                 Boolean.class))
         .isTrue();
+
+    endBoutTurn(bout, bout.first());
+    endBoutTurn(bout, bout.second());
+    jdbcTemplate.update(
+        """
+        UPDATE inventory_item SET equipment_slot = NULL
+        WHERE player_character_id = ? AND item_key = 'srd-5.1:longsword'
+        """,
+        bout.left());
+    var unarmed =
+        result(
+            mockMvc
+                .perform(
+                    combatStrike(
+                        bout.url(),
+                        commands.newActionId(),
+                        combatVersion(bout.id()),
+                        bout.first(),
+                        bout.second(),
+                        "unarmed"))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(unarmed.path("attack").path("roll").path("total").asInt()).isEqualTo(19);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+        SELECT payload->>'magical' FROM combat_event WHERE type = 'DamageTaken'
+        ORDER BY seq DESC LIMIT 1
+        """,
+                Boolean.class))
+        .isFalse();
   }
 
   private void devotion(CombatFixture bout) throws Exception {
@@ -2057,6 +2091,40 @@ class ApplicationFlowIT {
     assertThat(jdbcTemplate.queryForObject("SELECT used FROM pc_slot", Integer.class)).isOne();
   }
 
+  @Test
+  void cancellingAndAnsweringTheSameReactionRaceToOneResolution() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "paladin", 2, "lay-on-hands-pool", 0);
+    equipLongsword(bout.left());
+    forceCombatDice(18, 12, 19, 2, 3, 4);
+    submitBout(bout, "/start");
+    var waiting = beginSmite(bout, commands.newActionId());
+    String route = reactionRoute(bout, waiting);
+    long version = combatVersion(bout.id());
+
+    var responses =
+        combatRace(
+            cancelReaction(route, commands.newActionId(), version),
+            chooseSmite(bout, route, commands.newActionId(), version));
+    int cancelledStatus = responses.getFirst().getResponse().getStatus();
+    int answeredStatus = responses.getLast().getResponse().getStatus();
+    assertThat(java.util.List.of(cancelledStatus, answeredStatus))
+        .containsExactlyInAnyOrder(200, 422);
+    var rejected = cancelledStatus == 422 ? responses.getFirst() : responses.getLast();
+    jsonPath("$.code").value("REACTION_OPTION_INVALID").match(rejected);
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT type FROM combat_event WHERE type IN ('ActionCancelled', 'ReactionAnswered')
+        """,
+                String.class))
+        .containsExactly(cancelledStatus == 200 ? "ActionCancelled" : "ReactionAnswered");
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pc_slot", Long.class))
+        .isEqualTo(answeredStatus == 200 ? 1L : 0L);
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pending_reaction", Long.class))
+        .isZero();
+  }
+
   private void endBoutTurn(CombatFixture bout, UUID actor) throws Exception {
     mockMvc
         .perform(
@@ -2387,23 +2455,7 @@ class ApplicationFlowIT {
     long version = combatVersion(bout.id());
     var restartDice = org.mockito.Mockito.mock(EncounterDice.class);
     org.mockito.Mockito.when(restartDice.nextInt(20)).thenReturn(19, 1);
-    try (var restarted =
-        new SpringApplicationBuilder(RpgApplication.class)
-            .initializers(
-                context -> {
-                  var fixedDice = new RootBeanDefinition(EncounterDice.class);
-                  fixedDice.setPrimary(true);
-                  fixedDice.setInstanceSupplier(() -> restartDice);
-                  ((BeanDefinitionRegistry) context.getBeanFactory())
-                      .registerBeanDefinition("restartDice", fixedDice);
-                })
-            .run(
-                "--server.port=0",
-                "--app.jdbc-sessions=false",
-                "--app.instance-key=" + INSTANCE_KEY,
-                "--spring.datasource.url=" + POSTGRES.getJdbcUrl(),
-                "--spring.datasource.username=" + POSTGRES.getUsername(),
-                "--spring.datasource.password=" + POSTGRES.getPassword())) {
+    try (var restarted = restartWithDice(restartDice)) {
       var reactions = restarted.getBean(EncounterCommands.class);
       assertThat(reactions.reaction(bout.campaign(), bout.id(), bout.dm()).id()).isEqualTo(window);
       var envelope =
@@ -2422,6 +2474,59 @@ class ApplicationFlowIT {
       org.mockito.Mockito.verify(restartDice, org.mockito.Mockito.times(2)).nextInt(20);
       assertThat(reactions.reaction(bout.campaign(), bout.id(), bout.dm())).isNull();
     }
+  }
+
+  @Test
+  void coldInstanceResumesSmiteWithoutRollingTheAttackAgain() throws Exception {
+    var bout = combatFixture(false);
+    stepEightClass(bout, "paladin", 2, "lay-on-hands-pool", 0);
+    equipLongsword(bout.left());
+    forceCombatDice(18, 12, 19);
+    submitBout(bout, "/start");
+
+    UUID attack = commands.newActionId();
+    var waiting = beginSmite(bout, attack);
+    UUID window = UUID.fromString(waiting.path("awaitingReaction").asString());
+    long version = combatVersion(bout.id());
+    var dice = org.mockito.Mockito.mock(EncounterDice.class);
+    org.mockito.Mockito.when(dice.nextInt(8)).thenReturn(1, 2, 3);
+
+    try (var restarted = restartWithDice(dice)) {
+      var service = restarted.getBean(EncounterCommands.class);
+      assertThat(service.reaction(bout.campaign(), bout.id(), bout.dm()).prompt().point().name())
+          .isEqualTo("AFTER_HIT");
+      var envelope =
+          new com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelope(
+              commands.newActionId(), version);
+      var answer = new ReactionAnswer(AnswerKind.ANSWER, bout.first(), "1", null);
+      var hit = service.answer(bout.campaign(), window, bout.dm(), envelope, answer);
+      assertThat(hit.data().path("attack").path("roll").path("naturalD20").asInt()).isEqualTo(19);
+      assertThat(hit.data().path("damage").path("radiant").asInt()).isEqualTo(7);
+      assertThat(service.answer(bout.campaign(), window, bout.dm(), envelope, answer).data())
+          .isEqualTo(hit.data());
+      org.mockito.Mockito.verify(dice, org.mockito.Mockito.times(3)).nextInt(8);
+      org.mockito.Mockito.verifyNoMoreInteractions(dice);
+    }
+  }
+
+  private org.springframework.context.ConfigurableApplicationContext restartWithDice(
+      EncounterDice dice) {
+    return new SpringApplicationBuilder(RpgApplication.class)
+        .initializers(
+            context -> {
+              var fixedDice = new RootBeanDefinition(EncounterDice.class);
+              fixedDice.setPrimary(true);
+              fixedDice.setInstanceSupplier(() -> dice);
+              ((BeanDefinitionRegistry) context.getBeanFactory())
+                  .registerBeanDefinition("restartDice", fixedDice);
+            })
+        .run(
+            "--server.port=0",
+            "--app.jdbc-sessions=false",
+            "--app.instance-key=" + INSTANCE_KEY,
+            "--spring.datasource.url=" + POSTGRES.getJdbcUrl(),
+            "--spring.datasource.username=" + POSTGRES.getUsername(),
+            "--spring.datasource.password=" + POSTGRES.getPassword());
   }
 
   @Test
