@@ -19,4 +19,5 @@ Code copied from other projects. Do not edit these files by hand.
 - sha256 of httplib.h: 805169049e6a6e9ba7729d7e01d14ced825029c88a277586602a6b38df4d5357
 - sha256 of LICENSE: 4b45cbe16d7b71b89ae6127e26e0d90a029198ca5e958ad8e3d0b8bbed364d8b
 - Used by: pathfinder/src/main.cpp
-- To upgrade: replace both files from a newer release tag and update this record.
+- The build adapts the header in its output directory to enforce the 8 KiB request-header block limit (Grid and Pathfinder Specification §7).
+- To upgrade: replace both files from a newer release tag, update this record and verify the in-build adaptation and HTTP tests.
