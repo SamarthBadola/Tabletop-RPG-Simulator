@@ -1,0 +1,16 @@
+{
+  "kind": "resource",
+  "key": "srd-5.1:action-surge-uses",
+  "name": "Action Surge",
+  "max": "1",
+  "recharge": [
+    {
+      "on": "SHORT_REST",
+      "restore": "all"
+    },
+    {
+      "on": "LONG_REST",
+      "restore": "all"
+    }
+  ]
+}

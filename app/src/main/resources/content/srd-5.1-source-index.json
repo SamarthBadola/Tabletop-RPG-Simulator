@@ -1,0 +1,310 @@
+{
+  "pdf": "https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf",
+  "pdfSha256": "2504d2a0abb0a4d491a939be4f17910a2dde0312570ab8d208080225ccf0a1f0",
+  "spans": [
+    {
+      "key": "srd-5.1:prone",
+      "textFile": "text/conditions/prone.md",
+      "pdfPage": 359,
+      "heading": "Prone",
+      "nextHeading": "Restrained",
+      "sha256": "983c7d564f10f5ca36ee898afee52ab520b9d1cc65582520c4650956b396a5ac"
+    },
+    {
+      "key": "srd-5.1:archery",
+      "textFile": "text/features/archery.md",
+      "pdfPage": 24,
+      "flatStart": 1814,
+      "flatEnd": 1879,
+      "sha256": "e3ecb901b4e55eff9d9f981a674f3724e9bb114be72287b18161d4e9821af4e9"
+    },
+    {
+      "key": "srd-5.1:defense",
+      "textFile": "text/features/defense.md",
+      "pdfPage": 24,
+      "flatStart": 1888,
+      "flatEnd": 1943,
+      "sha256": "806a6530f517bb6b4d80b3718bfad8fadd3df663adde9245ee37c0da6120e683"
+    },
+    {
+      "key": "srd-5.1:dueling",
+      "textFile": "text/features/dueling.md",
+      "pdfPage": 24,
+      "flatStart": 1952,
+      "flatEnd": 2076,
+      "sha256": "6c4f13bcec0916fd65d772830545fe17cc61544a0684b47c7703789823313032"
+    },
+    {
+      "key": "srd-5.1:great-weapon-fighting",
+      "textFile": "text/features/great-weapon-fighting.md",
+      "pdfPage": 24,
+      "flatStart": 2099,
+      "flatEnd": 2395,
+      "sha256": "348c300ced0efc0d3d398d19e2b6e8de6e2562ff9cfac01748d25e87bd20bca3"
+    },
+    {
+      "key": "srd-5.1:protection",
+      "textFile": "text/features/protection.md",
+      "pdfPage": 24,
+      "flatStart": 2407,
+      "flatEnd": 2596,
+      "sha256": "26d829d844bdccd7b97c208f8c193162f71990a1116cbd1b150e89ba5b27c7b0"
+    },
+    {
+      "key": "srd-5.1:two-weapon-fighting",
+      "textFile": "text/features/two-weapon-fighting.md",
+      "pdfPage": 24,
+      "flatStart": 2617,
+      "flatEnd": 2729,
+      "sha256": "d071b654f6685d92eb5335ac5bf593f6cc4282a2d27f205bd65539e1723378f6"
+    },
+    {
+      "key": "srd-5.1:second-wind",
+      "textFile": "text/features/second-wind.md",
+      "pdfPage": 24,
+      "flatStart": 2742,
+      "flatEnd": 3019,
+      "sha256": "400ab8527ee899bf3d1abeb8f858f4a0e6a1e3b53c6165a13fa072097551c3c5"
+    },
+    {
+      "key": "srd-5.1:action-surge",
+      "textFile": "text/features/action-surge.md",
+      "pdfPage": 25,
+      "flatStart": 46,
+      "flatEnd": 423,
+      "sha256": "1db73b5811af2c01c832e9ca0adf400920238a6990f78d5927f607a4b42312e5"
+    },
+    {
+      "key": "srd-5.1:improved-critical",
+      "textFile": "text/features/improved-critical.md",
+      "pdfPage": 25,
+      "flatStart": 1972,
+      "flatEnd": 2090,
+      "sha256": "a5a9b9de407ce1ff9e6eda79eb9da6274fae22eacccc3d891589428519fc925b"
+    },
+    {
+      "key": "srd-5.1:extra-attack",
+      "textFile": "text/features/extra-attack.md",
+      "pdfPage": 25,
+      "flatStart": 981,
+      "flatEnd": 1227,
+      "sha256": "f99c17efd8900e110aac32e4533c550cfd6225b367424e1d63cac3f44719096f"
+    },
+    {
+      "key": "srd-5.1:champion",
+      "textFile": "text/subclasses/champion.md",
+      "pdfPage": 25,
+      "flatStart": 1730,
+      "flatEnd": 1953,
+      "sha256": "a87ce20592bed774091ff2b74e786c7e3b2fabe666b93ccc56ac352659774a02"
+    },
+    {
+      "key": "srd-5.1:human",
+      "textFile": "text/species/human.md",
+      "pdfPage": 5,
+      "flatStart": 1030,
+      "flatEnd": 1905,
+      "sha256": "a1704c4e58f8431a090c44c627773dde8ac0f866e276981900775fa3f4588364"
+    },
+    {
+      "key": "srd-5.1:acolyte",
+      "textFile": "text/backgrounds/acolyte.md",
+      "pdfPage": 61,
+      "flatStart": 33,
+      "flatEnd": 630,
+      "sha256": "a01184a0122e6742be8226fae14dfbec5e1b1cbe12a109eadc28cee10c9f3e47"
+    },
+    {
+      "key": "srd-5.1:chain-mail",
+      "textFile": "text/items/chain-mail.md",
+      "pdfPage": 64,
+      "flatStart": 483,
+      "flatEnd": 499,
+      "sha256": "c4a7b7a18074c4d9ac5aac8b4d620020405ef35df6250a277e425269962a76f2"
+    },
+    {
+      "key": "srd-5.1:leather-armor",
+      "textFile": "text/items/leather-armor.md",
+      "pdfPage": 64,
+      "flatStart": 33,
+      "flatEnd": 46,
+      "sha256": "28ba4ac703e2d02be5f8daf819ffcd01494e5f59671a865a9058c0ff553a0cad"
+    },
+    {
+      "key": "srd-5.1:shield",
+      "textFile": "text/items/shield.md",
+      "pdfPage": 64,
+      "flatStart": 626,
+      "flatEnd": 638,
+      "sha256": "f8f4eb901f0cf2a5c0135850e6694f7b12e3c2d1b605b00adca92619f9092f02"
+    },
+    {
+      "key": "srd-5.1:dungeoneers-pack",
+      "textFile": "text/items/dungeoneers-pack.md",
+      "pdfPage": 70,
+      "flatStart": 1171,
+      "flatEnd": 1381,
+      "sha256": "707eadd1bf926230d44cf600571038e6a40e96085df3076f17691067aacc8b33"
+    },
+    {
+      "key": "srd-5.1:explorers-pack",
+      "textFile": "text/items/explorers-pack.md",
+      "pdfPage": 70,
+      "flatStart": 1517,
+      "flatEnd": 1716,
+      "sha256": "9150938dd98c41f6695d8b75dd2b109609f717c3d729a419eaacd3499461a03f"
+    },
+    {
+      "key": "srd-5.1:arrows",
+      "textFile": "text/items/arrows.md",
+      "pdfPage": 69,
+      "flatStart": 140,
+      "flatEnd": 151,
+      "sha256": "aab127d7188b0b0eb86def1394de9997fd64f3d5822776b7b9f9cfcd7c6f7090"
+    },
+    {
+      "key": "srd-5.1:crossbow-bolts",
+      "textFile": "text/items/crossbow-bolts.md",
+      "pdfPage": 69,
+      "flatStart": 195,
+      "flatEnd": 214,
+      "sha256": "b531d25311350ef0bede77e899d8ac229ac069b3e1380a857cd7181d6fe626d4"
+    },
+    {
+      "key": "srd-5.1:holy-symbol",
+      "textFile": "text/items/holy-symbol.md",
+      "pdfPage": 69,
+      "flatStart": 1227,
+      "flatEnd": 1238,
+      "sha256": "c9156f8637e936b381520840a1af553d888d287a016e2fa1418e64a323314ac6"
+    },
+    {
+      "key": "srd-5.1:prayer-book",
+      "textFile": "text/items/prayer-book.md",
+      "pdfPage": 61,
+      "flatStart": 776,
+      "flatEnd": 787,
+      "sha256": "3cc0819ddf1cb583985fc6e46bcff2dd49a72bb46e9e84831d7c0de3e3fbe325"
+    },
+    {
+      "key": "srd-5.1:incense",
+      "textFile": "text/items/incense.md",
+      "pdfPage": 61,
+      "flatStart": 807,
+      "flatEnd": 824,
+      "sha256": "96c65a21c8f3376242b6dd14993824fe2d02fddbb8c871833eb92ec59445739f"
+    },
+    {
+      "key": "srd-5.1:vestments",
+      "textFile": "text/items/vestments.md",
+      "pdfPage": 61,
+      "flatStart": 826,
+      "flatEnd": 835,
+      "sha256": "1008c7aac534e7472b8d6df82d1d728e8220098314ba51ef309eacfd78a6aa1a"
+    },
+    {
+      "key": "srd-5.1:common-clothes",
+      "textFile": "text/items/common-clothes.md",
+      "pdfPage": 69,
+      "flatStart": 821,
+      "flatEnd": 836,
+      "sha256": "a0fd5d9e8ca3c5080a470e319e893c9675d4aa4d3301a435706d3cbccaf25739"
+    },
+    {
+      "key": "srd-5.1:pouch",
+      "textFile": "text/items/pouch.md",
+      "pdfPage": 69,
+      "flatStart": 1910,
+      "flatEnd": 1920,
+      "sha256": "7e99f0b2fc16b8812674ef9b7355ddf5e7cad3a7b1f6409316620ec8bd267313"
+    },
+    {
+      "key": "srd-5.1:handaxe",
+      "textFile": "text/items/handaxe.md",
+      "pdfPage": 66,
+      "flatStart": 190,
+      "flatEnd": 197,
+      "sha256": "9a140d319b0d5758ac0f3a1bc25ef1cfe8f2646e598f29efc33ecd2cf89b2834"
+    },
+    {
+      "key": "srd-5.1:crossbow-light",
+      "textFile": "text/items/crossbow-light.md",
+      "pdfPage": 66,
+      "flatStart": 589,
+      "flatEnd": 604,
+      "sha256": "e2e3d67d32efab323a8d4ca8a18f31a9f8ab119b9691a7eb9eeb37ea1f6f5e8f"
+    },
+    {
+      "key": "srd-5.1:longsword",
+      "textFile": "text/items/longsword.md",
+      "pdfPage": 66,
+      "flatStart": 1258,
+      "flatEnd": 1267,
+      "sha256": "c47593d2cf1da5f5febca151a7f2be3a13397667a51881906b12af1ef5aa0887"
+    },
+    {
+      "key": "srd-5.1:greatsword",
+      "textFile": "text/items/greatsword.md",
+      "pdfPage": 66,
+      "flatStart": 1094,
+      "flatEnd": 1104,
+      "sha256": "7caa0fa619e382ef655de551803638b595e7af369b8bca264fd97c0fa5cc39a7"
+    },
+    {
+      "key": "srd-5.1:battleaxe",
+      "textFile": "text/items/battleaxe.md",
+      "pdfPage": 66,
+      "flatStart": 891,
+      "flatEnd": 900,
+      "sha256": "199e60bb991bda4446a7fb0c21353347b415a53aa454b841a843ec362195a1d2"
+    },
+    {
+      "key": "srd-5.1:rapier",
+      "textFile": "text/items/rapier.md",
+      "pdfPage": 66,
+      "flatStart": 1461,
+      "flatEnd": 1467,
+      "sha256": "827d1a2235804db2eb37e5e540cc5f03632c4d65037f663da30524586be5b49d"
+    },
+    {
+      "key": "srd-5.1:shortsword",
+      "textFile": "text/items/shortsword.md",
+      "pdfPage": 66,
+      "flatStart": 1550,
+      "flatEnd": 1560,
+      "sha256": "47564edb94d9e188e11ace6efaf301b717014996158d9727e07d65b53935440e"
+    },
+    {
+      "key": "srd-5.1:warhammer",
+      "textFile": "text/items/warhammer.md",
+      "pdfPage": 66,
+      "flatStart": 1706,
+      "flatEnd": 1715,
+      "sha256": "04135f433e3aa1e48649c9c7e5bee02bfaaecdd636cb6e38b63cade610b55d9e"
+    },
+    {
+      "key": "srd-5.1:longbow",
+      "textFile": "text/items/longbow.md",
+      "pdfPage": 66,
+      "flatStart": 2076,
+      "flatEnd": 2083,
+      "sha256": "31b2fb624d3698dffd5bbe3001d40405e3a867822425811d7917863db0ab5615"
+    },
+    {
+      "key": "srd-5.1:fighter",
+      "textFile": "text/classes/fighter.md",
+      "pdfPage": 24,
+      "flatStart": 56,
+      "flatEnd": 906,
+      "sha256": "25922132dc4b8325c8d7b5576e403f9385854c10b993352e29a44dcc41c1f6fb"
+    },
+    {
+      "key": "srd-5.1:grappler",
+      "textFile": "text/feats/grappler.md",
+      "pdfPage": 75,
+      "flatStart": 882,
+      "flatEnd": 1299,
+      "sha256": "96097c9347d1a30fce1e28d270c99d370845bf52af7c8d4609eeeab584b19ed2"
+    }
+  ]
+}

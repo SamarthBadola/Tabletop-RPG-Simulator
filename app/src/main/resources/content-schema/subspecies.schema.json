@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/subspecies.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text",
+          "x-visibility": "public"
+        },
+        "species": {
+          "$ref": "common.schema.json#/$defs/key",
+          "x-reference": "species",
+          "x-visibility": "dm"
+        },
+        "abilityBonuses": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "ability": {
+                    "$ref": "vocabulary.json#/$defs/ability",
+                    "x-visibility": "dm"
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "minimum": -30,
+                    "maximum": 30,
+                    "x-visibility": "dm"
+                  }
+                },
+                "required": [
+                  "ability",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "$ref": "common.schema.json#/$defs/choice"
+              }
+            ]
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/key",
+            "x-reference": "feature"
+          },
+          "minItems": 0,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "subspecies",
+          "x-visibility": "dm"
+        },
+        "name": {
+          "type": "string",
+          "x-visibility": "public"
+        }
+      },
+      "required": [
+        "species",
+        "text"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

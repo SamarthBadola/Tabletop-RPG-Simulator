@@ -1,0 +1,12 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:pouch",
+  "name": "Pouch",
+  "text": {
+    "file": "text/items/pouch.md"
+  },
+  "cost": 50,
+  "weight": 100,
+  "tier": 0,
+  "category": "gear"
+}

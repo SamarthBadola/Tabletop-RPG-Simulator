@@ -18,6 +18,11 @@ spring:
     enabled: true
   thymeleaf:
     cache: true
+    check-template: true
+    template-resolver-order: 1
+
+app:
+  instance-key: ${APP_INSTANCE_KEY}
 
 server:
   shutdown: graceful

@@ -1,0 +1,15 @@
+{
+  "kind": "feature",
+  "key": "sample-pack:feature",
+  "name": "Fixture feature",
+  "text": "Fixture description.",
+  "activeWhen": "score:wis >= 10",
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ac",
+      "operation": "ADD",
+      "value": 1
+    }
+  ]
+}

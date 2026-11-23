@@ -1,0 +1,18 @@
+{
+  "kind": "ruleTable",
+  "key": "srd-5.1:human-languages",
+  "name": "Human additional languages",
+  "index": "name",
+  "columns": [
+    {
+      "name": "count",
+      "type": "int"
+    }
+  ],
+  "rows": [
+    {
+      "name": "extra",
+      "count": 1
+    }
+  ]
+}

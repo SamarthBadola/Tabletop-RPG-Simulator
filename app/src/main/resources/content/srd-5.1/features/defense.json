@@ -1,0 +1,17 @@
+{
+  "kind": "feature",
+  "key": "srd-5.1:defense",
+  "name": "Defense",
+  "text": {
+    "file": "text/features/defense.md"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ac",
+      "operation": "ADD",
+      "value": 1,
+      "activeWhen": "armor_worn"
+    }
+  ]
+}

@@ -5,14 +5,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-public final class AppUserPrincipal implements UserDetails {
+public final class AppUserPrincipal implements UserDetails, CredentialsContainer {
+  @java.io.Serial private static final long serialVersionUID = 1L;
   private final UUID id;
   private final String username;
-  private final String passwordHash;
+  private transient String passwordHash;
   private final String displayName;
   private final boolean instanceAdmin;
   private final List<GrantedAuthority> authorities;
@@ -52,6 +54,11 @@ public final class AppUserPrincipal implements UserDetails {
   @Override
   public String getPassword() {
     return passwordHash;
+  }
+
+  @Override
+  public void eraseCredentials() {
+    passwordHash = null;
   }
 
   @Override

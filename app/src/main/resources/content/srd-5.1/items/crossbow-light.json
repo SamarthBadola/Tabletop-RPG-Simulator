@@ -1,0 +1,27 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:crossbow-light",
+  "name": "Crossbow, light",
+  "text": {
+    "file": "text/items/crossbow-light.md"
+  },
+  "cost": 2500,
+  "weight": 500,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "ranged",
+    "proficiencyGroup": "simple",
+    "damage": "1d8",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "loading",
+      "two_handed"
+    ],
+    "range": {
+      "normal": 80,
+      "long": 320
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "kind": "monster",
+  "key": "step7-test:training-creature",
+  "name": "Training creature",
+  "size": "medium",
+  "type": "construct",
+  "alignment": "unaligned",
+  "ac": {"value": 10},
+  "hp": {"dice": "1d8", "average": 4},
+  "speeds": {"walk": 30},
+  "abilities": {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
+  "challenge": {"cr": 0, "xp": 0, "proficiencyBonus": 2},
+  "actions": [
+    {
+      "name": "Practice strike",
+      "text": "A basic attack for scripted combat tests.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "2",
+        "reach": 5,
+        "hits": [{"roll": "2d4kh1", "damageType": "bludgeoning"}]
+      }
+    }
+  ]
+}

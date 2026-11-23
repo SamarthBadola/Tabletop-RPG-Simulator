@@ -1,0 +1,23 @@
+{
+  "kind": "poison",
+  "key": "sample-pack:poison",
+  "name": "Fixture poison",
+  "delivery": "contact",
+  "save": {
+    "ability": "con",
+    "dc": "10",
+    "onSuccess": "none"
+  },
+  "duration": {
+    "kind": "ROUNDS",
+    "amount": "1"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ac",
+      "operation": "ADD",
+      "value": 1
+    }
+  ]
+}

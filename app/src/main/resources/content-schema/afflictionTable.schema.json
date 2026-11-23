@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tabletop-rpg.invalid/content/v1/afflictionTable.schema.json",
+  "allOf": [
+    {
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "afflictionKind": {
+          "enum": [
+            "MADNESS_SHORT",
+            "MADNESS_LONG",
+            "MADNESS_INDEFINITE",
+            "DISEASE"
+          ],
+          "x-visibility": "dm"
+        },
+        "die": {
+          "$ref": "common.schema.json#/$defs/roll",
+          "x-visibility": "dm"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 1,
+                "x-visibility": "dm"
+              },
+              "to": {
+                "type": "integer",
+                "minimum": 1,
+                "x-visibility": "dm"
+              },
+              "affliction": {
+                "$ref": "common.schema.json#/$defs/key",
+                "x-reference": "affliction",
+                "x-visibility": "dm"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "affliction"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "x-visibility": "dm"
+        },
+        "kind": {
+          "const": "afflictionTable",
+          "x-visibility": "dm"
+        }
+      },
+      "required": [
+        "afflictionKind",
+        "die",
+        "rows"
+      ]
+    }
+  ],
+  "unevaluatedProperties": false
+}

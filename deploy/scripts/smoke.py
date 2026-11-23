@@ -12,14 +12,14 @@ from html.parser import HTMLParser
 class CsrfParser(HTMLParser):
     def __init__(self):
         super().__init__()
-        self.token = None
+        self.tokens = {}
 
     def handle_starttag(self, tag, attrs):
         if tag != "input":
             return
         values = dict(attrs)
-        if values.get("name") == "_csrf":
-            self.token = values.get("value")
+        if values.get("name") in ("_csrf", "formToken"):
+            self.tokens[values["name"]] = values.get("value")
 
 
 def request(opener, url, data=None):
@@ -28,13 +28,17 @@ def request(opener, url, data=None):
 
 
 def csrf_token(opener, url):
+    return form_tokens(opener, url)["_csrf"]
+
+
+def form_tokens(opener, url):
     with request(opener, url) as response:
         html = response.read().decode("utf-8")
     parser = CsrfParser()
     parser.feed(html)
-    if not parser.token:
+    if not parser.tokens.get("_csrf"):
         raise RuntimeError(f"No CSRF token found in {url}")
-    return parser.token
+    return parser.tokens
 
 
 def wait_until_ready(opener, base_url):
@@ -63,18 +67,23 @@ def run(base_url):
     password = f"Walking-Skeleton-{secrets.token_hex(10)}!"
     display_name = "Smoke Test Admin"
 
-    token = csrf_token(opener, f"{base_url}/register")
+    tokens = form_tokens(opener, f"{base_url}/register")
     payload = urllib.parse.urlencode({
-        "_csrf": token,
+        "_csrf": tokens["_csrf"],
+        "formToken": tokens["formToken"],
         "username": username,
         "displayName": display_name,
         "password": password,
     }).encode("utf-8")
     with request(opener, f"{base_url}/register", payload) as response:
-        if response.status != 200 or not response.geturl().endswith("/login?registered"):
-            raise RuntimeError(f"Registration did not redirect to sign-in: {response.geturl()}")
+        if response.status != 200 or not response.geturl().endswith("/campaigns"):
+            raise RuntimeError(f"Registration did not reach the campaign list: {response.geturl()}")
     print("Readiness passed and first-account registration completed.")
 
+    # Start a fresh browser session to verify password sign-in independently of registration.
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar())
+    )
     token = csrf_token(opener, f"{base_url}/login")
     payload = urllib.parse.urlencode({
         "_csrf": token,
@@ -83,10 +92,10 @@ def run(base_url):
     }).encode("utf-8")
     with request(opener, f"{base_url}/login", payload) as response:
         body = response.read().decode("utf-8")
-        if response.status != 200 or not response.geturl().endswith("/"):
+        if response.status != 200 or not response.geturl().endswith("/campaigns"):
             raise RuntimeError(f"Login did not reach the workspace: {response.geturl()}")
-        if "Instance administrator account is ready." not in body:
-            raise RuntimeError("Authenticated workspace did not show the instance-admin state.")
+        if "<h1>Campaigns</h1>" not in body:
+            raise RuntimeError("The authenticated campaign list did not render.")
     print("Login and authenticated workspace passed.")
 
 

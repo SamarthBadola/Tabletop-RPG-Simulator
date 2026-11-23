@@ -1,0 +1,23 @@
+{
+  "kind": "item",
+  "key": "sample-pack:item",
+  "name": "Fixture item",
+  "text": "Fixture description.",
+  "category": "armor",
+  "cost": 100,
+  "weight": 100,
+  "tier": 2,
+  "armorData": {
+    "baseAc": 12,
+    "dexterity": "full"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ac",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "equipped"
+    }
+  ]
+}

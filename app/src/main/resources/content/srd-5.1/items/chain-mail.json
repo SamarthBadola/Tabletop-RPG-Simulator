@@ -1,0 +1,18 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:chain-mail",
+  "name": "Chain Mail",
+  "text": {
+    "file": "text/items/chain-mail.md"
+  },
+  "cost": 7500,
+  "weight": 5500,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 16,
+    "dexterity": "none",
+    "strengthRequired": 13,
+    "stealthDisadvantage": true
+  }
+}

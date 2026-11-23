@@ -1,0 +1,23 @@
+{
+  "kind": "affliction",
+  "key": "sample-pack:affliction",
+  "name": "Fixture affliction",
+  "afflictionKind": "DISEASE",
+  "text": "Fixture description.",
+  "save": {
+    "ability": "con",
+    "dc": "10",
+    "onSuccess": "none"
+  },
+  "duration": {
+    "kind": "PERMANENT"
+  },
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ac",
+      "operation": "ADD",
+      "value": 1
+    }
+  ]
+}

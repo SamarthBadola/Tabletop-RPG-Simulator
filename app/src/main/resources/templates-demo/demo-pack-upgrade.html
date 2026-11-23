@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Content packs</title></head>
+<body><main>
+    <a th:href="@{/campaigns/{id}(id=${campaignId})}">Campaign</a>
+    <h1>Content packs</h1>
+    <section id="pack-list" th:fragment="pack-list">
+        <ul><li th:each="pack : ${versions}">
+            <span th:text="|SRD 5.1 · ${pack.version} · ${pack.enabled ? 'Enabled' : 'Available'}|"></span>
+            <form th:if="${pack.enabled and pack.version != currentVersion}"
+                  th:action="@{/campaigns/{id}/packs/{pack}/reviews(id=${campaignId},pack=${pack.id})}" method="post">
+                <input type="hidden" name="action" value="upgrade">
+                <input type="hidden" name="targetVersion" th:value="${currentVersion}">
+                <button type="submit">Review upgrade</button>
+            </form>
+        </li></ul>
+    </section>
+    <section id="pack-review" th:fragment="pack-review" th:if="${review != null}">
+        <h2 th:text="|Upgrade to ${review.targetVersion}|"></h2>
+        <ul><li th:each="issue : ${review.blockers}" th:text="${issue}"></li></ul>
+        <form th:if="${review.blockers.isEmpty()}"
+              th:action="@{/campaigns/{id}/packs/{pack}/upgrades(id=${campaignId},pack=${review.source})}" method="post">
+            <input type="hidden" name="actionId" th:value="${actionId}">
+            <input type="hidden" name="expectedVersion" th:value="${expectedVersion}">
+            <input type="hidden" name="reviewHash" th:value="${review.hash}">
+            <input type="hidden" name="targetVersion" th:value="${review.targetVersion}">
+            <p th:if="${review.groups.isEmpty()}">Existing definitions are unchanged.</p>
+            <fieldset th:each="group : ${review.groups}">
+                <legend th:text="${group.key}"></legend>
+                <ul><li th:each="key : ${group.value}" th:text="${key}"></li></ul>
+                <label><input type="checkbox" name="confirmGroups" th:value="${group.key}" required>Acknowledge these changes</label>
+            </fieldset>
+            <button type="submit">Confirm upgrade</button>
+        </form>
+    </section>
+</main><footer th:replace="~{demo-footer :: help}"></footer></body></html>

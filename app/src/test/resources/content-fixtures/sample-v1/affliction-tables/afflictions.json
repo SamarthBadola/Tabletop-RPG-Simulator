@@ -1,0 +1,14 @@
+{
+  "kind": "afflictionTable",
+  "key": "sample-pack:afflictions",
+  "name": "Fixture afflictions",
+  "afflictionKind": "DISEASE",
+  "die": "d100",
+  "rows": [
+    {
+      "from": 1,
+      "to": 100,
+      "affliction": "sample-pack:affliction"
+    }
+  ]
+}
