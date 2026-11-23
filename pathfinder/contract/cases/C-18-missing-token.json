@@ -1,0 +1,8 @@
+{
+  "name": "C-18-missing-token",
+  "description": "A token is configured and the request has none.",
+  "endpoint": "/v1/path",
+  "config": {"token":"s3cret"},
+  "request": {"width":2,"height":1,"cells":["11"],"start":[0,0],"goal":[1,0],"budget":100},
+  "expect": {"status":401,"body":{"code":"UNAUTHORIZED"}}
+}

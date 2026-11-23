@@ -1,0 +1,7 @@
+{
+  "name": "C-18-height-201",
+  "description": "height is 201.",
+  "endpoint": "/v1/path",
+  "request": {"width":2,"height":201,"cells":["11"],"start":[0,0],"goal":[1,0],"budget":100},
+  "expect": {"status":422,"body":{"code":"INVALID_REQUEST","pointer":"/height"}}
+}

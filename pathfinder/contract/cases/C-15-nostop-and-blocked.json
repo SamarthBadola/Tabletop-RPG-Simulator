@@ -1,0 +1,7 @@
+{
+  "name": "C-15-nostop-and-blocked",
+  "description": "Reach with noStop and blocked cells.",
+  "endpoint": "/v1/reach",
+  "request": {"width":5,"height":3,"cells":["11101","11011","10111"],"noStop":[[1,0],[2,2]],"start":[0,0],"budget":600},
+  "expect": {"status":200,"body":{"width":5,"height":3,"costs":[0,100,200,-1,-1,100,100,-1,-1,-1,200,-1,-1,-1,-1],"stop":["10100","11000","10000"]}}
+}

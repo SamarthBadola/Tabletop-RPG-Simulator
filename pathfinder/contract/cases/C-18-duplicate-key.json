@@ -1,0 +1,7 @@
+{
+  "name": "C-18-duplicate-key",
+  "description": "A duplicate key.",
+  "endpoint": "/v1/path",
+  "request": "{\"width\":2,\"width\":3}",
+  "expect": {"status":400,"body":{"code":"INVALID_JSON"}}
+}

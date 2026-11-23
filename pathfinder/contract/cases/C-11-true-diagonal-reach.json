@@ -1,0 +1,7 @@
+{
+  "name": "C-11-true-diagonal-reach",
+  "description": "true_diagonal reach with budget 600 from a corner.",
+  "endpoint": "/v1/reach",
+  "request": {"width":6,"height":6,"cells":["111111","111111","111111","111111","111111","111111"],"metric":"true_diagonal","start":[0,0],"budget":600},
+  "expect": {"status":200,"body":{"width":6,"height":6,"costs":[0,100,200,300,400,500,100,141,241,341,441,541,200,241,282,382,482,582,300,341,382,423,523,-1,400,441,482,523,564,-1,500,541,582,-1,-1,-1],"stop":["111111","111111","111111","111110","111110","111000"]}}
+}

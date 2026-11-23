@@ -1,0 +1,7 @@
+{
+  "name": "C-01-straight-line",
+  "description": "A straight line on an open grid with equal_cost.",
+  "endpoint": "/v1/path",
+  "request": {"width":5,"height":1,"cells":["11111"],"start":[0,0],"goal":[4,0],"budget":500},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,0],[2,0],[3,0],[4,0]],"cost":400,"expansions":5}}
+}

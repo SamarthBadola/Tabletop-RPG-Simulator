@@ -25,6 +25,11 @@ add_executable(pathfinder_server_tests test/test_server.cpp)
 target_link_libraries(pathfinder_server_tests PRIVATE pathfinder_core)
 add_test(NAME pathfinder_server_tests COMMAND pathfinder_server_tests)
 
+add_executable(pathfinder_contract_tests test/test_contract.cpp)
+target_link_libraries(pathfinder_contract_tests PRIVATE pathfinder_core)
+target_compile_definitions(pathfinder_contract_tests PRIVATE CONTRACT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/contract/cases")
+add_test(NAME pathfinder_contract_tests COMMAND pathfinder_contract_tests)
+
 # The service itself: the program that listens on a port.
 set(PATHFINDER_BUILD "dev" CACHE STRING "Build identifier shown by GET /v1/info")
 find_package(Threads REQUIRED)

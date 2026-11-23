@@ -1,0 +1,7 @@
+{
+  "name": "C-02-zigzag-example",
+  "description": "The zig-zag example of section 5.3.",
+  "endpoint": "/v1/path",
+  "request": {"geometry":"square","metric":"equal_cost","corners":"forbid_if_blocked","width":5,"height":2,"cells":["12111","11111"],"noStop":[],"start":[0,0],"goal":[4,0],"budget":600},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,1],[2,0],[3,0],[4,0]],"cost":400,"expansions":5}}
+}

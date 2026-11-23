@@ -1,0 +1,7 @@
+{
+  "name": "C-18-row-wrong-length",
+  "description": "A cells row has the wrong length.",
+  "endpoint": "/v1/path",
+  "request": {"width":2,"height":1,"cells":["1"],"start":[0,0],"goal":[1,0],"budget":100},
+  "expect": {"status":422,"body":{"code":"INVALID_REQUEST","pointer":"/cells/0"}}
+}

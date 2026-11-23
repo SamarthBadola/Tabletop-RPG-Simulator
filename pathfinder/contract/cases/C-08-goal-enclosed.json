@@ -1,0 +1,7 @@
+{
+  "name": "C-08-goal-enclosed",
+  "description": "The goal is open but completely enclosed by blocked cells.",
+  "endpoint": "/v1/path",
+  "request": {"width":5,"height":5,"cells":["11111","10001","10101","10001","11111"],"start":[0,0],"goal":[2,2],"budget":10000},
+  "expect": {"status":200,"body":{"found":false,"reason":"NO_PATH_WITHIN_BUDGET","expansions":16}}
+}

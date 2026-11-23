@@ -1,0 +1,7 @@
+{
+  "name": "C-11-true-diagonal-5-steps",
+  "description": "true_diagonal, budget 600: the fifth diagonal step (705) does not fit.",
+  "endpoint": "/v1/path",
+  "request": {"width":6,"height":6,"cells":["111111","111111","111111","111111","111111","111111"],"metric":"true_diagonal","start":[0,0],"goal":[5,5],"budget":600},
+  "expect": {"status":200,"body":{"found":false,"reason":"NO_PATH_WITHIN_BUDGET","expansions":31}}
+}

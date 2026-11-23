@@ -1,0 +1,7 @@
+{
+  "name": "C-09-budget-exact",
+  "description": "The budget equals the cost of the cheapest path.",
+  "endpoint": "/v1/path",
+  "request": {"width":5,"height":2,"cells":["12111","11111"],"start":[0,0],"goal":[4,0],"budget":400},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,1],[2,0],[3,0],[4,0]],"cost":400,"expansions":5}}
+}

@@ -1,0 +1,7 @@
+{
+  "name": "C-18-width-201",
+  "description": "width is 201.",
+  "endpoint": "/v1/path",
+  "request": {"width":201,"height":1,"cells":["11"],"start":[0,0],"goal":[1,0],"budget":100},
+  "expect": {"status":422,"body":{"code":"INVALID_REQUEST","pointer":"/width"}}
+}

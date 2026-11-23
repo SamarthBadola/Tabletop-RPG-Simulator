@@ -1,0 +1,7 @@
+{
+  "name": "C-12-alternating-parity1-4-diagonals",
+  "description": "alternating, parity 1: four diagonals fit in 600.",
+  "endpoint": "/v1/path",
+  "request": {"width":6,"height":6,"cells":["111111","111111","111111","111111","111111","111111"],"metric":"alternating","parity":1,"start":[0,0],"goal":[4,4],"budget":600},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,1],[2,2],[3,3],[4,4]],"cost":600,"expansions":8}}
+}

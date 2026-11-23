@@ -1,0 +1,7 @@
+{
+  "name": "C-17-grid-1x1",
+  "description": "A 1x1 grid.",
+  "endpoint": "/v1/path",
+  "request": {"width":1,"height":1,"cells":["1"],"start":[0,0],"goal":[0,0],"budget":0},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0]],"cost":0,"expansions":1}}
+}

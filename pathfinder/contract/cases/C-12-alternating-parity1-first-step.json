@@ -1,0 +1,7 @@
+{
+  "name": "C-12-alternating-parity1-first-step",
+  "description": "alternating, parity 1: the first diagonal costs 200.",
+  "endpoint": "/v1/path",
+  "request": {"width":6,"height":6,"cells":["111111","111111","111111","111111","111111","111111"],"metric":"alternating","parity":1,"start":[0,0],"goal":[1,1],"budget":1000},
+  "expect": {"status":200,"body":{"found":true,"path":[[0,0],[1,1]],"cost":200,"expansions":2}}
+}

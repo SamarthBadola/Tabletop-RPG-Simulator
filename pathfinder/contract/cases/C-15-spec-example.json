@@ -1,0 +1,7 @@
+{
+  "name": "C-15-spec-example",
+  "description": "The example of section 5.4.",
+  "endpoint": "/v1/reach",
+  "request": {"width":5,"height":2,"cells":["12111","11111"],"noStop":[],"start":[0,0],"budget":300},
+  "expect": {"status":200,"body":{"width":5,"height":2,"costs":[0,200,200,300,-1,100,100,200,300,-1],"stop":["11110","11110"]}}
+}

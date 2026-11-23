@@ -1,0 +1,7 @@
+{
+  "name": "C-03-start-equals-goal-nostop",
+  "description": "start equals goal and the cell is in noStop.",
+  "endpoint": "/v1/path",
+  "request": {"width":3,"height":1,"cells":["111"],"noStop":[[1,0]],"start":[1,0],"goal":[1,0],"budget":0},
+  "expect": {"status":200,"body":{"found":true,"path":[[1,0]],"cost":0,"expansions":1}}
+}

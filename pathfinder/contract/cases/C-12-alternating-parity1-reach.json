@@ -1,0 +1,7 @@
+{
+  "name": "C-12-alternating-parity1-reach",
+  "description": "alternating reach, parity 1, budget 600.",
+  "endpoint": "/v1/reach",
+  "request": {"width":6,"height":6,"cells":["111111","111111","111111","111111","111111","111111"],"metric":"alternating","parity":1,"start":[0,0],"budget":600},
+  "expect": {"status":200,"body":{"width":6,"height":6,"costs":[0,100,200,300,400,500,100,200,300,400,500,600,200,300,300,400,500,600,300,400,400,500,600,-1,400,500,500,600,600,-1,500,600,600,-1,-1,-1],"stop":["111111","111111","111111","111110","111110","111000"]}}
+}

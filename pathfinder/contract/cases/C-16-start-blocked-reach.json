@@ -1,0 +1,7 @@
+{
+  "name": "C-16-start-blocked-reach",
+  "description": "Reach from a blocked start cell.",
+  "endpoint": "/v1/reach",
+  "request": {"width":4,"height":2,"cells":["0111","1111"],"start":[0,0],"budget":300},
+  "expect": {"status":200,"body":{"width":4,"height":2,"costs":[0,100,200,300,100,100,200,300],"stop":["1111","1111"]}}
+}
