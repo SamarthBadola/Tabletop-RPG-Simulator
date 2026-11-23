@@ -1,0 +1,63 @@
+name: Pathfinder CI
+
+on:
+  pull_request:
+    paths:
+      - pathfinder/**
+      - .github/workflows/pathfinder-ci.yml
+  push:
+    branches: [main]
+    paths:
+      - pathfinder/**
+      - .github/workflows/pathfinder-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pathfinder-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pathfinder:
+    name: pathfinder (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: release
+            build_type: Release
+            flags: ""
+          - name: asan-ubsan
+            build_type: Debug
+            flags: -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer
+          - name: tsan
+            build_type: Debug
+            flags: -fsanitize=thread
+    defaults:
+      run:
+        working-directory: pathfinder
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Let ThreadSanitizer start on this runner
+        if: matrix.name == 'tsan'
+        # Recent kernels randomise memory addresses more than ThreadSanitizer can handle.
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Configure
+        env:
+          BUILD_TYPE: ${{ matrix.build_type }}
+          SANITIZER_FLAGS: ${{ matrix.flags }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS -Werror"
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Run C++ tests
+        run: ctest --test-dir build --output-on-failure
