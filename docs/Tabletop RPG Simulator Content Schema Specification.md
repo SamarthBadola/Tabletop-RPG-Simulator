@@ -1,10 +1,10 @@
-# Tabletop RPG Simulator: Content Schema Specification (v1.2)
+# Tabletop RPG Simulator: Content Schema Specification
 
 Nov 21, 2026 · @Samarth
 
 ## 1. Purpose, scope and status
 
-This document fixes the exact format of game content: how a content pack is laid out on disk, how each definition is written, which engine pieces a definition may name, and the small grammar used for formulas. The Ruleset Specification says what the rules do; this document says how data refers to them. Current version 1.2. Version 1.0 was accepted by the owner on 2026-11-21. Its decisions are listed in section 18, and the revision history is at the end.
+This document fixes the exact format of game content: how a content pack is laid out on disk, how each definition is written, which engine pieces a definition may name, and the small grammar used for formulas. The Ruleset Specification says what the rules do; this document says how data refers to them. Current version 1.6. Version 1.0 was accepted by the owner on 2026-11-21. Its decisions are listed in section 18, and the revision history is at the end.
 
 | This document owns | Where the rest lives |
 | --- | --- |
@@ -323,7 +323,7 @@ One list serves spells, features, items, conditions and hazards, so that the sam
 | Group | Names |
 | --- | --- |
 | Spell primitives | `spell_attack`, `save`, `damage`, `heal`, `condition`, `modifier`, `hp_pool`, `temp_hp`, `forced_movement`, `teleport`, `zone`, `remove_condition`, `revive`, `next_hit_rider`, `dispel`, `counter`, `reaction_option`, `start_fall`, `ends_affliction`, `suppress_affliction` |
-| Feature types | `add_damage_dice`, `damage_die_reroll`, `grant_action`, `reduce_damage`, `roll_bonus_die`, `roll_penalty_die`, `aura`, `condition_immunity`, `turned`, `grant_advantage`, `grant_resistance`, `proficiency_fraction`, `roll_floor`, `save_outcome`, `rest_option`, `spend_resource` |
+| Feature types | `add_damage_dice`, `damage_die_reroll`, `off_hand_ability_damage`, `grant_action`, `reduce_damage`, `roll_bonus_die`, `roll_penalty_die`, `aura`, `condition_immunity`, `turned`, `grant_advantage`, `grant_resistance`, `proficiency_fraction`, `roll_floor`, `save_outcome`, `rest_option`, `spend_resource` |
 | Hazard and affliction types | The hazard and affliction records of Part H are built from the types above and from the trigger kinds below. They add no type of their own. |
 
 The Ruleset gives the provisional names of items in capitals. They become these entries.
@@ -364,8 +364,8 @@ The condition table of the Ruleset (RS-CND-003) makes conditions data: bundles o
 
 | Category | Names |
 | --- | --- |
-| Duration kinds | `INSTANT`, `ROUNDS(amount)`, `CLOCK(amount, seconds)`, `CONCENTRATION(max)`, `UNTIL_TURN_START`, `UNTIL_TURN_END` (both for a named creature), `UNTIL_DISPELLED`, `UNTIL_SHORT_OR_LONG_REST`, `UNTIL_LONG_REST`, `UNTIL_USED`, `PERMANENT`, `WHILE_EQUIPPED`, `WHILE_ATTUNED` (RS-MOD-004). Store absolute ends or end conditions, never counters; `INSTANT` is never stored as active. |
-| Modifier operations | `SET`, `ADD`, `MULTIPLY`, `MIN`, `MAX`; resolve same-key stacking first, then the newest `SET` across keys, followed by `ADD`, exact `MULTIPLY` with one `floorDiv`, `MIN`, `MAX` (RS-MOD-002, RS-MOD-003) |
+| Duration kinds | The thirteen kinds of Ruleset E-155: `INSTANT`, `ROUNDS`, `CLOCK`, `CONCENTRATION`, `UNTIL_TURN_START`, `UNTIL_TURN_END`, `UNTIL_DISPELLED`, `UNTIL_SHORT_OR_LONG_REST`, `UNTIL_LONG_REST`, `UNTIL_USED`, `PERMANENT`, `WHILE_EQUIPPED` and `WHILE_ATTUNED`. The Ruleset states the last four lifetimes in words (RS-MOD-004) and the registry names them. |
+| Modifier operations | `SET`, `ADD`, `MULTIPLY`, `MIN`, `MAX`, applied in that order (RS-MOD-003). An operand is a ratio (Ruleset E-154): a whole number, or the string `"n/d"` such as `"1/2"`, with the numerator and the denominator no larger than 1000. A pack with a larger operand is rejected when it loads, and so is a fraction given to `SET`, `ADD`, `MIN` or `MAX` on a stat that holds whole numbers. Only a proficiency multiplier stat holds a fraction. |
 | Rounding modes | `down` (the default, RS-CNV-001), `nearest_half_up` (used for ammunition recovery, E-102) |
 
 ### Enumerations and stat keys
@@ -381,9 +381,7 @@ The fixed lists below are closed because the engine's rules refer to them by nam
 | Creature sizes, creature types, alignments, speed kinds, senses | Part G |
 | Roll kinds: attack, save, check, damage, initiative, death save | Parts A and B |
 
-A stat key names one computed value that a modifier can change. The forms are `ac`, `speed`, `hp_max`, `ability:<ability>`, `skill:<skill>`, `skill:<skill>:prof_multiplier`, `save:<ability>`, `attack:<kind>`, `damage:<kind>`, `crit_threshold`, `attacks_per_action` (the number of attacks of the Attack action, RS-FTR-004) and `jump_distance` (RS-FTR-007). Proficiency effects like expertise target `skill:stealth:prof_multiplier` or the corresponding skill key so they only affect the proficiency component. Integer stats can also have their own `MULTIPLY` operands under RS-MOD-003. The list is closed. A new key is a registry entry with a handler (CS-VOC-002), and a key the registry lacks rejects the pack (CS-VOC-004).
-
-**Modifier values.** A modifier value is a whole number or an `n/d` string parsed as an exact normalized `Ratio` with a positive denominator; floating-point values are invalid. On integer stats, `SET`, `ADD`, `MIN` and `MAX` require a whole-number value. Only `skill:<skill>:prof_multiplier` is ratio-valued and is not rounded; its proficiency component is `floor(proficiency bonus x multiplier)`. A numerator or denominator above 1,000 is rejected when the pack is loaded.
+A stat key names one computed value that a modifier can change. The forms are `ac`, `speed`, `hp_max`, `ability:<ability>`, `skill:<skill>`, `skill:<skill>:prof_multiplier`, `save:<ability>`, `attack:<kind>`, `damage:<kind>`, `crit_threshold`, `attacks_per_action` (the number of attacks of the Attack action, RS-FTR-004) and `jump_distance` (RS-FTR-007). `MULTIPLY` targets a proficiency multiplier and never a final total, so expertise does not double an ability modifier (the rule behind `skill:stealth:prof_multiplier` in Part A). The list is closed. A new key is a registry entry with a handler (CS-VOC-002), and a key the registry lacks rejects the pack (CS-VOC-004).
 
 ### What this section leaves to the Ruleset
 
@@ -534,6 +532,8 @@ This section lists the fields of each kind. What a field means in play is the Ru
 |  | `hitDie` | `Enum<hit_die>` | Yes | The class hit die |
 |  | `savingThrows` | `Enum<ability>[]` | Yes | Proficient saves |
 |  | `proficiencies` | object | No | Armor, weapons, tools and `skillChoice` (`count`, `from`) |
+|  | `startingEquipment` | `Slot[]` | No | What a new character may take at creation, in addition to the background's equipment (Ruleset RS-CLS-007). A slot is either a list of entries, all of which are given, or `options`: a list of alternatives, each a list of entries, of which the player takes one. An entry is `{item: Ref<item>, count}` or `{pick: {category, count}}`, where `category` is a list of `item_category` values (the weapon classes of Ruleset Part F) and the player chooses `count` items from those categories. The engine does not choose for the player, and wearing and holding stay with the player (Ruleset E-113). The loader rejects an item reference that does not resolve and a category that is not an `item_category` value |
+|  | `startingGold` | `{dice, multiplier}` | No | The alternative to the equipment (Ruleset RS-CLS-007). `dice` is a `Dice` expression and `multiplier` an `Int`. The engine rolls the dice, multiplies, and credits the product in gold pieces, stored in copper like an item cost. A new character takes the equipment or the gold, never both. A class may carry either field, both or neither |
 |  | `spellcasting` | object | No | `ability`, `progression` (`full`, `half`, `third`, `pact`, `none`), `preparation` (`known` or `prepared`), `slots` (`Ref<ruleTable>`), `ritualCasting` |
 |  | `resources` | `Ref<resource>[]` | No | Resources the class owns |
 |  | `advancement` | `Ref<ruleTable>` | No | A table of per-level values the class features read |
@@ -656,8 +656,9 @@ Fields follow Part H (13.7, 13.8).
 |  | `resets` | bool | No |  |
 | `poison` | `delivery` | `ingested`, `inhaled`, `injury` or `contact` | Yes |  |
 |  | `save`, `effects`, `duration` | `Save`, `Effect[]`, `Duration` | Yes | The duration runs on the game clock |
+|  | text | Text | No | The description of the poison. In the SRD pack it holds the SRD wording unedited. Absent means no text, and a player sees the name only (section 15). It follows the Text rules of section 6, including the pointer to a file under text/poisons/ |
 | `affliction` | `afflictionKind` | `MADNESS_SHORT`, `MADNESS_LONG`, `MADNESS_INDEFINITE`, `DISEASE` or `POISON` | Yes |  |
-|  | `text`, `effects`, `duration` |  | Yes | DISEASE and POISON also require `save` for resisting them |
+|  | `text`, `effects`, `duration` |  | Yes | A disease or a poison adds `save` for resisting it |
 | `afflictionTable` | `afflictionKind` | as above | Yes |  |
 |  | `die` | `Dice` | Yes | The roll that picks a row, such as a d100 |
 |  | `rows` | list | Yes | Entries of `from`, `to` and `affliction` (`Ref<affliction>`), covering every face of the die once |
@@ -734,7 +735,7 @@ A pack is stored only after every validation stage passes. From there a DM enabl
 
 | Id | Rule |
 | --- | --- |
-| CS-LIF-003 | At first start the application loads the SRD pack that ships with it through the same loader. At every later start it compares the hash of the shipped pack with the stored hash for that version. A mismatch stops the start with a clear error, because it means the release was built with changed content under an unchanged version. |
+| CS-LIF-003 | At first start the application loads the SRD pack that ships with it through the same loader. At every later start it compares the hash of the shipped pack with the stored hash for that version. A mismatch stops the start with a clear error, because it means the release was built with changed content under an unchanged version. The first release ships a skeleton pack with exactly one definition, under a version below that of the full build (CS-SRD-008), so that an installation that stored the skeleton's hash accepts the full build. A pack with no definition is refused by the loader, the shipped pack included. |
 | CS-LIF-004 | Loading is independent of any campaign. A loaded pack version can be enabled in any number of campaigns. |
 | CS-LIF-005 | A loaded version is never edited in place, including homebrew. Changing homebrew means loading a new version (a new zip in version 1.5, an editor that writes a new version in version 2). |
 
@@ -894,7 +895,7 @@ Some content is secret until the table finds it out: a trap, an unidentified ite
 | Item | The `unidentified` name and text, when the item has them | The name, text, category and properties, once the item instance is identified (Ruleset 11.2) |
 | Monster |  | Name, size, type and the text of its traits and actions, once the monster is revealed. Numbers stay `dm` |
 | Hazard | Name, text and area when `visibility` is `visible` | The same, once the hazard is detected or triggered. A hazard with `visibility` `hidden` is `dm` until then |
-| Affliction and poison |  | Name and text, once applied to a creature the player controls. The effects stay `dm` |
+| Affliction and poison |  | Name and text, once applied to a creature the player controls. A poison with no text shows its name only. The effects stay `dm` |
 
 An item can carry an optional `unidentified` object with a `name` and a `text`. It is what a player sees before identification, for example a plain potion. An item without it appears to players as its category until it is identified.
 
@@ -1079,4 +1080,8 @@ These were the points of the draft that rested on something not yet confirmed. E
 | 0.1 | 2026-11-21 | First draft. Pack folder and manifest, keys and hashes, dependencies and overrides, the definition envelope and text, the vocabulary registry, the expression grammar, the schema of every kind, validation, lifecycle, storage, the SRD pack and its attribution, homebrew, visibility, security of imports and release phasing. Decisions CD-1 to CD-16 (CD-1 to CD-6 accepted by the owner, the rest Proposed), tests T-101 to T-116, verification debt V-10 |
 | 1.0 | 2026-11-21 | Accepted by the owner. Decisions CD-7 to CD-16 accepted as proposed. Verification debt V-10 cleared: the registry lists corrected against the Ruleset (the rest duration kind, recharge events, ON\_DAWN and START\_OF\_OWN\_TURN, the Part D feature catalog and its predicates, four Part D labels stored as modifier), the Ruleset references of section 9 corrected, the monster consistency ids corrected, the attribution wording and the JSON Schema library pairing confirmed, the limits checked against the SRD text and the verbatim check prototyped. Accepted risks: the human sample read of the first SRD build, the enumerations at first generation and the hostile-file measurements of T-111. On propagation the schema folder was named (CS-VAL-010) and the Ruleset, Architecture, Requirements, Decision Log and AI Build Brief were updated by reference |
 | 1.1 | 2026-11-21 | UX and API Specification, accepted by the owner on 2026-11-21, applied by reference. The scope table now points to that document. CS-SRD-010 is closed: the attribution statement is on the help page and every rules screen links to it. CS-HBR-003 names the pack screen and the refusal a player gets. Section 9 gains the rule for monster images (a mapping outside the pack, not a field of the definition) and the shape of a map asset, which belongs to a campaign or, as a seam, to a pack. |
-| 1.2 | 2026-11-22 | E-155: the modifier operand representation and pack limits are exact; section 7 now lists all 13 duration names and the end-time/end-condition rules, including modifier value validation. |
+| 1.2 | 2026-11-22 | Ruleset decisions E-154 and E-155 applied by reference. The duration row of the vocabulary table now lists the thirteen kinds in one sentence (the rest kinds, the turn kinds, `UNTIL_USED` and the three source lifetimes) and points to E-155. The modifier operations row states the operand form: a whole number or an `"n/d"` string, each part no larger than 1000, with a pack refused otherwise. No other change. |
+| 1.3 | 2026-11-22 | The shipped SRD pack is stated as a skeleton with exactly one definition under a version below the full build, so the hash check at a later start accepts the full build, and a pack with no definition is refused, the shipped pack included. No format rule changed. |
+| 1.4 | 2026-11-23 | The poison schema gains an optional text field, like hazard and affliction, so that section 15 has text to reveal. A poison with no text shows its name only to a player. Effects, save and delivery stay DM-only. No other schema changed. |
+| 1.5 | 2026-11-23 | The class kind gains two optional fields, startingEquipment and startingGold, for the starting equipment choices and starting gold that the Ruleset requires (RS-CLS-007). The registry gains the feature effect off\_hand\_ability\_damage for the Two-Weapon Fighting style (Ruleset E-157). No other change. |
+| 1.6 | 2026-11-24 | The affliction kind gains POISON (Ruleset E-158, 13.8), so a lasting poison from a spell, trap or monster attack is a tracked instance with an id, and a cure such as Lay on Hands can name it. A poison-kind affliction adds save, like a disease. The poison kind of section 13.7 is unchanged. No other change. |
