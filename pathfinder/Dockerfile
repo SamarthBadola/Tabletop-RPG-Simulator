@@ -7,12 +7,13 @@
 # Settings (all optional): PORT, BIND, WORKERS, MAX_QUEUE, PATHFINDER_TOKEN, LOG_LEVEL.
 
 # ---- build stage: compilers live here and never reach the final image --------
-FROM debian:bookworm-slim AS build
+FROM gcc:13-bookworm@sha256:8c0fe724784c6d617cb582f79ddaf5dd2233aaba2fb7a14e0b9d03348fea8088 AS build
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends g++ cmake make \
+    && apt-get install -y --no-install-recommends cmake python3 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY CMakeLists.txt ./
+COPY cmake cmake
 COPY include include
 COPY src src
 COPY test test
@@ -22,14 +23,16 @@ ARG PATHFINDER_BUILD=dev
 # The C++ runtime library is linked into the program, so the final image needs nothing but libc.
 RUN cmake -S . -B build \
         -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CXX_COMPILER=/usr/local/bin/g++ \
         -DPATHFINDER_BUILD="${PATHFINDER_BUILD}" \
         -DCMAKE_EXE_LINKER_FLAGS="-static-libstdc++ -static-libgcc" \
     && cmake --build build --target pathfinder_server pathfinder_tests pathfinder_api_tests \
         pathfinder_server_tests pathfinder_contract_tests pathfinder_work_queue_tests -j"$(nproc)" \
-    && ctest --test-dir build --output-on-failure
+    && ctest --test-dir build --output-on-failure \
+    && python3 test/test_http.py build/pathfinder_server
 
 # ---- runtime stage: the program and nothing else ------------------------------
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
 RUN useradd --system --uid 10001 pathfinder
 COPY --from=build /src/build/pathfinder_server /usr/local/bin/pathfinder_server
 USER pathfinder
