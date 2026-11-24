@@ -2,11 +2,13 @@ package com.github.sbadolankaur.rpg.encounter.application;
 
 import com.github.sbadolankaur.rpg.encounter.application.CombatRoster.Creature;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.Context;
+import com.github.sbadolankaur.rpg.engine.combat.ClockExpiry;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
 import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance.Boundary;
 import com.github.sbadolankaur.rpg.engine.kernel.AdvantageSources;
 import com.github.sbadolankaur.rpg.engine.kernel.DurationKind;
+import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Event;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,7 +29,7 @@ final class CombatEffects {
     }
     var active = new ArrayList<>(state.effects());
     active.removeIf(effect::sameSource);
-    active.add(effect);
+    active.add(effect.created(context.nextEffectCreationOrder()));
     context.vitals(creature, state.effects(active));
   }
 
@@ -69,22 +71,70 @@ final class CombatEffects {
         && (selectedSource == null || Objects.equals(source, selectedSource));
   }
 
+  private record Timer(UUID combatant, ClockExpiry expiry) {}
+
+  static List<Event> expireClock(Context context) {
+    var timers = new ArrayList<Timer>();
+    for (var entry : context.entries.values()) {
+      if (!Encounters.present(entry)
+          || entry.character() == null
+              && entry.npcVitals().effects().isEmpty()
+              && entry.npcVitals().inspiration() == null
+              && entry.npcVitals().recoveryAt() == null) continue;
+      var vitals = context.creature(entry.id()).vitals();
+      for (var expiry :
+          ClockExpiry.due(
+              context.seconds,
+              vitals.effects(),
+              vitals.inspiration(),
+              vitals.recoveryAt(),
+              vitals.recoveryOrder())) {
+        timers.add(new Timer(entry.id(), expiry));
+      }
+    }
+    timers.sort(java.util.Comparator.comparing(Timer::expiry, ClockExpiry.ORDER));
+    return timers.stream().map(timer -> expire(context, timer)).toList();
+  }
+
+  private static Event expire(Context context, Timer timer) {
+    var creature = context.creature(timer.combatant());
+    var vitals = creature.vitals();
+    var expiry = timer.expiry();
+    UUID id = timer.combatant();
+    String type;
+    Map<String, Object> payload;
+    switch (expiry.kind()) {
+      case CONDITION -> {
+        var remaining = new ArrayList<>(vitals.effects());
+        remaining.remove(expiry.effect());
+        context.vitals(creature, vitals.effects(remaining));
+        type = "ConditionsExpired";
+        payload = Map.of("combatantId", id, "conditions", List.of(expiry.effect().key()));
+      }
+      case INSPIRATION -> {
+        context.vitals(creature, vitals.inspiration(null));
+        type = "BardicInspirationExpired";
+        payload = Map.of("combatantId", id);
+      }
+      case STABLE_RECOVERY -> {
+        context.health(creature, vitals.health().heal(1));
+        type = "StableRecovered";
+        payload = Map.of("combatantId", id);
+      }
+      default -> throw new IllegalStateException("Unknown clock expiry");
+    }
+    return new Event(type, expiry.deadline(), null, payload, expiry.creationOrder());
+  }
+
   static void expire(Context context, UUID acting, Boundary boundary) {
+    context.recordClockEvents(expireClock(context));
     for (var id : List.copyOf(context.entries.keySet())) {
       var entry = context.entries.get(id);
       if (!Encounters.present(entry)) continue;
       if (entry.character() == null
           && entry.npcVitals().effects().isEmpty()
-          && entry.npcVitals().inspiration() == null
-          && !entry.tactics().dodging()
-          && entry.npcVitals().recoveryAt() == null) continue;
+          && !entry.tactics().dodging()) continue;
       var creature = context.creature(id);
-      if (creature.vitals().recoveryAt() != null
-          && creature.vitals().recoveryAt() <= context.seconds) {
-        context.health(creature, creature.vitals().health().heal(1));
-        context.dm("StableRecovered", Map.of("combatantId", id));
-        creature = context.creature(id);
-      }
       if (entry.tactics().dodging() && (creature.speed() == 0 || creature.incapacitated())) {
         var flags = creature.entry().tactics();
         context.update(
@@ -100,12 +150,6 @@ final class CombatEffects {
         creature = context.creature(id);
       }
       var state = creature.vitals();
-      if (state.inspiration() != null && !state.inspiration().active(context.seconds)) {
-        state = state.inspiration(null);
-        context.vitals(creature, state);
-        context.dm("BardicInspirationExpired", Map.of("combatantId", id));
-        creature = context.creature(id);
-      }
       var current = creature;
       var effects =
           state.effects().stream()
@@ -178,9 +222,7 @@ final class CombatEffects {
         state.effects().stream()
             .map(
                 effect ->
-                    new ConditionInstance(
-                        effect.key(),
-                        effect.source(),
+                    effect.until(
                         effect.end().afterEncounter(context.seconds, context.table.round())))
             .filter(
                 effect ->

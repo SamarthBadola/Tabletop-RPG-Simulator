@@ -37,6 +37,7 @@ import com.github.sbadolankaur.rpg.engine.kernel.HitPointRules;
 import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Prompt;
+import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Event;
 import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Trigger;
 import com.github.sbadolankaur.rpg.platform.InstanceMac;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
@@ -811,12 +812,15 @@ public class EncounterCommands {
       var before = current.vitals();
       var conditions = new HashSet<>(before.conditions());
       Long recoveryAt = null;
+      long recoveryOrder = 0;
       if (next.state() == State.STABLE) {
         recoveryAt = before.recoveryAt();
+        recoveryOrder = before.recoveryOrder();
         if (recoveryAt == null) {
           var recoveryRoll = DiceExpression.parse("1d4").roll(random());
           dice("StableRecovery", current.entry().id(), recoveryRoll);
           recoveryAt = Math.addExact(seconds, 3600L * recoveryRoll.total());
+          recoveryOrder = nextEffectCreationOrder();
         }
       }
       if (next.state() != State.ALIVE) {
@@ -828,9 +832,19 @@ public class EncounterCommands {
       }
       var vitals =
           new Vitals(
-              next, recoveryAt, conditions, before.effects(), exhaustion, before.inspiration());
+              next,
+              recoveryAt,
+              conditions,
+              before.effects(),
+              exhaustion,
+              before.inspiration(),
+              recoveryOrder);
       vitals(current, vitals);
       return vitals;
+    }
+
+    long nextEffectCreationOrder() {
+      return clocks.nextEffectCreationOrder();
     }
 
     void vitals(Creature current, Vitals next) {
@@ -944,6 +958,14 @@ public class EncounterCommands {
               });
     }
 
+    void recordClockEvents(List<Event> events) {
+      for (var event : events) {
+        var payload = new LinkedHashMap<>(event.data());
+        if (event.character() != null) payload.put("characterId", event.character());
+        dmAt(event.type(), event.seconds(), payload);
+      }
+    }
+
     void sweepRoundClock(long previous) {
       if (previous == seconds) return;
       setting("startTimeOfDay", String.class);
@@ -966,10 +988,22 @@ public class EncounterCommands {
               random());
       clockChanges.addAll(sweep.deltas());
       write(() -> timeEffects.apply(sweep.deltas(), false));
+      var timed = new ArrayList<>(CombatEffects.expireClock(this));
       for (var event : sweep.events()) {
-        var payload = new LinkedHashMap<>(event.data());
-        if (event.character() != null) payload.put("characterId", event.character());
-        dmAt(event.type(), event.seconds(), payload);
+        if (event.type().equals("EffectExpired") || event.type().equals("StableRecovered"))
+          timed.add(event);
+      }
+      timed.sort(
+          java.util.Comparator.comparingLong(Event::seconds)
+              .thenComparingLong(Event::creationOrder));
+      recordClockEvents(
+          sweep.events().stream().filter(event -> event.type().equals("ClockAdvanced")).toList());
+      recordClockEvents(timed);
+      for (var event : sweep.events()) {
+        if (event.type().equals("ClockAdvanced")
+            || event.type().equals("EffectExpired")
+            || event.type().equals("StableRecovered")) continue;
+        recordClockEvents(List.of(event));
         if ("DawnReached".equals(event.type())) {
           for (var entry : present) recharge(creature(entry.id()), Trigger.DAWN, event.seconds());
         }

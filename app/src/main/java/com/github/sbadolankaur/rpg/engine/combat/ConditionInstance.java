@@ -6,10 +6,23 @@ import java.util.Objects;
 import java.util.UUID;
 
 /** One source of a condition. Its end is an absolute deadline or an event. */
-public record ConditionInstance(String key, UUID source, End end) {
+public record ConditionInstance(String key, UUID source, End end, Long creationOrder) {
   public ConditionInstance {
     Objects.requireNonNull(key);
     if (end == null) end = End.untilDispelled();
+    if (creationOrder == null) creationOrder = 0L;
+  }
+
+  public ConditionInstance(String key, UUID source, End end) {
+    this(key, source, end, 0L);
+  }
+
+  public ConditionInstance created(long order) {
+    return new ConditionInstance(key, source, end, order);
+  }
+
+  public ConditionInstance until(End next) {
+    return new ConditionInstance(key, source, next, creationOrder);
   }
 
   public ConditionInstance(String key, UUID source) {

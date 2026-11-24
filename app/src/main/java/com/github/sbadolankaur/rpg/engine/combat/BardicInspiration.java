@@ -6,10 +6,19 @@ import com.github.sbadolankaur.rpg.engine.dice.RollPlan;
 import com.github.sbadolankaur.rpg.engine.dice.RollResult;
 
 /** One use, with an independent absolute expiry on the game clock. */
-public record BardicInspiration(int dieFaces, long endsAt) {
+public record BardicInspiration(int dieFaces, long endsAt, Long creationOrder) {
   public BardicInspiration {
+    if (creationOrder == null) creationOrder = 0L;
     if ((dieFaces != 6 && dieFaces != 8 && dieFaces != 10 && dieFaces != 12) || endsAt < 0)
       throw new IllegalArgumentException("Invalid Bardic Inspiration die");
+  }
+
+  public BardicInspiration(int dieFaces, long endsAt) {
+    this(dieFaces, endsAt, 0L);
+  }
+
+  public BardicInspiration created(long order) {
+    return new BardicInspiration(dieFaces, endsAt, order);
   }
 
   public boolean active(long now) {

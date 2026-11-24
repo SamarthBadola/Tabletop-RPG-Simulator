@@ -275,6 +275,51 @@ class ApplicationFlowIT {
   }
 
   @Test
+  void seededShortRestsProduceTheSameOrderedAudit() throws Exception {
+    UUID dm = characterAccount("rest-replay", true);
+    var logs = new java.util.ArrayList<java.util.List<String>>();
+    for (int attempt = 0; attempt < 2; attempt++) {
+      UUID campaign = campaigns.create(dm, "Seeded table " + attempt).id();
+      String base = "/campaigns/" + campaign;
+      UUID fighter = createCombatFighter(base + "/characters", campaign, dm, "rest-replay");
+      jdbcTemplate.update("UPDATE player_character SET hp_current = 1 WHERE id = ?", fighter);
+      play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+      settings.decide(
+          campaign, dm, combatCampaignEnvelope(campaign, dm), "hitDiceMethod", "ROLLED");
+
+      var random = new java.util.SplittableRandom(105);
+      org.mockito.Mockito.doAnswer(call -> random.nextInt(call.getArgument(0, Integer.class)))
+          .when(combatDice)
+          .nextInt(org.mockito.ArgumentMatchers.anyInt());
+      var envelope = combatCampaignEnvelope(campaign, dm);
+      mockMvc
+          .perform(
+              post(base + "/rests")
+                  .with(user("rest-replay"))
+                  .with(csrf())
+                  .param("kind", "short")
+                  .param("durationMinutes", "60")
+                  .param("participantIds", fighter.toString())
+                  .param("spendCount[" + fighter + "]", "1")
+                  .param("expectedVersion", String.valueOf(envelope.expectedVersion()))
+                  .param("actionId", envelope.actionId().toString()))
+          .andExpect(status().isOk());
+      logs.add(
+          jdbcTemplate.queryForList(
+              """
+          SELECT jsonb_build_array(type, game_time_seconds, audience, payload - 'characterId')::text
+          FROM campaign_event WHERE action_id = ? ORDER BY seq
+          """,
+              String.class,
+              envelope.actionId()));
+    }
+    assertThat(logs.getFirst())
+        .hasSize(5)
+        .anyMatch(event -> event.contains("HitDieSpent") && event.contains("rolled"));
+    assertThat(logs.getLast()).containsExactlyElementsOf(logs.getFirst());
+  }
+
+  @Test
   void restTransactionRollsBackAndConcurrentSubmissionsCheckTheVersion() throws Exception {
     UUID dm = characterAccount("rest-tx", true);
     UUID campaign = campaigns.create(dm, "Rest transaction").id();
@@ -372,6 +417,15 @@ class ApplicationFlowIT {
         .andExpect(status().isOk());
     org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
     submitBout(bout, "/start");
+    mockMvc
+        .perform(
+            conditionCorrection(
+                    bout, bout.first(), "srd-5.1:blinded", bout.second(), "add-condition")
+                .param("durationKind", "clock")
+                .param("durationAmount", "600"))
+        .andExpect(status().isSeeOther());
+    String persistedEffect = conditionEffects(bout.left());
+    assertThat(persistedEffect).contains("creationOrder", "\"seconds\": 29400");
     var before = encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 10);
     var paused = play.workspace(bout.campaign(), bout.dm());
     UUID sessionId = paused.session().id();
@@ -404,6 +458,7 @@ class ApplicationFlowIT {
       var after = resumedEncounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 10);
       assertThat(after.table()).isEqualTo(before.table());
       assertThat(after.combatants()).isEqualTo(before.combatants());
+      assertThat(conditionEffects(bout.left())).isEqualTo(persistedEffect);
       assertThat(resumedPlay.workspace(bout.campaign(), bout.dm()).recap())
           .isEqualTo(paused.recap());
       assertThat(resumedCommands.readClock(bout.campaign(), bout.dm()).gameSeconds())
@@ -414,6 +469,122 @@ class ApplicationFlowIT {
                   .lastLongRest(bout.left()))
           .isEqualTo(28800);
     }
+  }
+
+  @Test
+  void restsExpireEqualDeadlinesInPersistedCreationOrderBeforeDawn() throws Exception {
+    var bout = combatFixture(false);
+    settings.decide(
+        bout.campaign(),
+        bout.dm(),
+        combatCampaignEnvelope(bout.campaign(), bout.dm()),
+        "dawnTime",
+        "08:05");
+    UUID right =
+        jdbcTemplate.queryForObject(
+            "SELECT character_id FROM combatant WHERE id = ?", UUID.class, bout.second());
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
+    submitBout(bout, "/start");
+    for (UUID target : java.util.List.of(bout.second(), bout.first())) {
+      mockMvc
+          .perform(
+              conditionCorrection(bout, target, "srd-5.1:blinded", target, "add-condition")
+                  .param("durationKind", "clock")
+                  .param("durationAmount", "360"))
+          .andExpect(status().isSeeOther());
+    }
+    submitBout(bout, "/end");
+    var json = tools.jackson.databind.json.JsonMapper.builder().build();
+    long rightOrder = json.readTree(conditionEffects(right)).get(0).path("creationOrder").asLong();
+    long leftOrder =
+        json.readTree(conditionEffects(bout.left())).get(0).path("creationOrder").asLong();
+    assertThat(rightOrder).isPositive().isLessThan(leftOrder);
+
+    var envelope = combatCampaignEnvelope(bout.campaign(), bout.dm());
+    mockMvc
+        .perform(
+            post("/campaigns/" + bout.campaign() + "/rests")
+                .with(user("combat-dm"))
+                .with(csrf())
+                .param("kind", "short")
+                .param("durationMinutes", "60")
+                .param("participantIds", bout.left().toString())
+                .param("expectedVersion", String.valueOf(envelope.expectedVersion()))
+                .param("actionId", envelope.actionId().toString()))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT type || COALESCE(':' || (payload ->> 'characterId'), '')
+        FROM campaign_event WHERE action_id = ? ORDER BY seq
+        """,
+                String.class,
+                envelope.actionId()))
+        .containsExactly(
+            "RestStarted",
+            "ClockAdvanced",
+            "EffectExpired:" + right,
+            "EffectExpired:" + bout.left(),
+            "DawnReached",
+            "RestCompleted");
+    assertThat(conditionEffects(right)).isEqualTo("[]");
+    assertThat(conditionEffects(bout.left())).isEqualTo("[]");
+  }
+
+  @Test
+  void manualClockExpiresNpcAndPlayerEffectsInTheSameOrderDuringCombat() throws Exception {
+    var bout = combatFixture(true);
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/combatants", bout.id())
+                .param("monsterKey", "step7-test:training-creature"))
+        .andExpect(status().isSeeOther());
+    UUID npc =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE encounter_id = ? AND character_id IS NULL",
+            UUID.class,
+            bout.id());
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 11, 4);
+    submitBout(bout, "/start");
+    for (UUID target : java.util.List.of(npc, bout.first())) {
+      mockMvc
+          .perform(
+              conditionCorrection(bout, target, "srd-5.1:blinded", target, "add-condition")
+                  .param("durationKind", "clock")
+                  .param("durationAmount", "60"))
+          .andExpect(status().isSeeOther());
+    }
+    String campaign = "/campaigns/" + bout.campaign();
+    mockMvc
+        .perform(
+            action(campaign + "/rests", "combat-dm", bout.campaign(), bout.dm())
+                .accept("application/problem+json")
+                .param("kind", "short")
+                .param("durationMinutes", "60")
+                .param("participantIds", bout.left().toString()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("ENCOUNTER_ACTIVE"));
+
+    var envelope = combatCampaignEnvelope(bout.campaign(), bout.dm());
+    long combatVersion = combatVersion(bout.id());
+    play.advance(bout.campaign(), bout.dm(), envelope, 1, ClockUnit.MINUTES);
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT COALESCE(payload ->> 'combatantId', payload ->> 'characterId') FROM campaign_event
+        WHERE action_id = ? AND type = 'EffectExpired' ORDER BY seq
+        """,
+                String.class,
+                envelope.actionId()))
+        .containsExactly(npc.toString(), bout.left().toString());
+    assertThat(conditionEffects(bout.left())).isEqualTo("[]");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT (npc_vitals -> 'effects')::text FROM combatant WHERE id = ?",
+                String.class,
+                npc))
+        .isEqualTo("[]");
+    assertThat(combatVersion(bout.id())).isEqualTo(combatVersion + 1);
   }
 
   @Test
@@ -430,9 +601,17 @@ class ApplicationFlowIT {
         UPDATE player_character SET condition_effects = CAST(? AS jsonb) WHERE id = ?
         """,
         """
-        [{"key":"srd-5.1:blinded","end":{"kind":"CLOCK","seconds":6}}]
+        [{"key":"srd-5.1:blinded","end":{"kind":"CLOCK","seconds":6},"creationOrder":1}]
         """,
         outside);
+    jdbcTemplate.update(
+        """
+        UPDATE player_character SET condition_effects = CAST(? AS jsonb) WHERE id = ?
+        """,
+        """
+        [{"key":"srd-5.1:deafened","end":{"kind":"CLOCK","seconds":6},"creationOrder":2}]
+        """,
+        bout.left());
     org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
     submitBout(bout, "/start");
     for (UUID actor : java.util.List.of(bout.first(), bout.second())) {
@@ -443,6 +622,16 @@ class ApplicationFlowIT {
     }
     assertThat(commands.readClock(bout.campaign(), bout.dm()).gameSeconds()).isEqualTo(6);
     assertThat(conditionEffects(outside)).isEqualTo("[]");
+    assertThat(conditionEffects(bout.left())).isEqualTo("[]");
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT type FROM combat_event WHERE encounter_id = ?
+          AND type IN ('EffectExpired','ConditionsExpired') ORDER BY seq
+        """,
+                String.class,
+                bout.id()))
+        .containsExactly("EffectExpired", "ConditionsExpired");
     UUID latest =
         encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50).reversible();
     mockMvc
@@ -453,7 +642,8 @@ class ApplicationFlowIT {
                 .param("reason", "Replay the turn"))
         .andExpect(status().isSeeOther());
     assertThat(commands.readClock(bout.campaign(), bout.dm()).gameSeconds()).isZero();
-    assertThat(conditionEffects(outside)).contains("srd-5.1:blinded");
+    assertThat(conditionEffects(outside)).contains("srd-5.1:blinded", "\"creationOrder\": 1");
+    assertThat(conditionEffects(bout.left())).contains("srd-5.1:deafened", "\"creationOrder\": 2");
   }
 
   @Test
@@ -3169,6 +3359,19 @@ class ApplicationFlowIT {
                     1,
                     ClockUnit.MINUTES))
         .hasMessage("REACTION_PENDING");
+    mockMvc
+        .perform(
+            action(
+                    "/campaigns/" + bout.campaign() + "/rests",
+                    "combat-dm",
+                    bout.campaign(),
+                    bout.dm())
+                .accept("application/problem+json")
+                .param("kind", "short")
+                .param("durationMinutes", "60")
+                .param("participantIds", bout.left().toString()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
     mockMvc
         .perform(
             action(

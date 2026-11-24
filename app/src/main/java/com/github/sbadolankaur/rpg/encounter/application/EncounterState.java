@@ -43,6 +43,16 @@ public final class EncounterState {
       Integer tie,
       Tactics tactics,
       Vitals npcVitals) {
+    private static final int REMOVED = Integer.MAX_VALUE;
+
+    public boolean present() {
+      return tactics.firstRound() != REMOVED;
+    }
+
+    Entry removed() {
+      return tactics(tactics.assigned(REMOVED));
+    }
+
     public Entry initiative(Integer next, Integer tie) {
       return new Entry(id, character, monster, ordinal, next, tie, tactics, npcVitals);
     }
@@ -311,26 +321,29 @@ public final class EncounterState {
       Set<String> conditions,
       List<ConditionInstance> effects,
       int exhaustion,
-      BardicInspiration inspiration) {
+      BardicInspiration inspiration,
+      Long recoveryOrder) {
     public Vitals {
+      if (recoveryOrder == null) recoveryOrder = 0L;
       conditions = Set.copyOf(conditions);
       effects = effects == null ? List.of() : List.copyOf(effects);
     }
 
     public Vitals(CombatHealth health, Long recoveryAt, Set<String> conditions) {
-      this(health, recoveryAt, conditions, List.of(), 0, null);
+      this(health, recoveryAt, conditions, List.of(), 0, null, 0L);
     }
 
     Vitals effects(List<ConditionInstance> next) {
-      return new Vitals(health, recoveryAt, conditions, next, exhaustion, inspiration);
+      return new Vitals(
+          health, recoveryAt, conditions, next, exhaustion, inspiration, recoveryOrder);
     }
 
     Vitals conditions(Set<String> next) {
-      return new Vitals(health, recoveryAt, next, effects, exhaustion, inspiration);
+      return new Vitals(health, recoveryAt, next, effects, exhaustion, inspiration, recoveryOrder);
     }
 
     Vitals inspiration(BardicInspiration next) {
-      return new Vitals(health, recoveryAt, conditions, effects, exhaustion, next);
+      return new Vitals(health, recoveryAt, conditions, effects, exhaustion, next, recoveryOrder);
     }
   }
 }

@@ -60,6 +60,10 @@ public class CommandStore {
         .update();
   }
 
+  public long nextEffectCreationOrder() {
+    return jdbc.sql("SELECT nextval('clock_effect_creation_order')").query(Long.class).single();
+  }
+
   public long nextEventSequence(UUID campaign) {
     return jdbc.sql("SELECT COALESCE(MAX(seq), 0) + 1 FROM campaign_event WHERE campaign_id = ?")
         .param(campaign)

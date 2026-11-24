@@ -99,7 +99,8 @@ final class RestParty {
         classLevel(sheet, "wizard"),
         hasFeature(sheet, "song-of-rest") ? classLevel(sheet, "bard") : 0,
         recoveryKey,
-        Set.copyOf(sheet.baseConditionKeys()));
+        Set.copyOf(sheet.baseConditionKeys()),
+        metadata.recoveryOrder());
   }
 
   static boolean hasFeature(View sheet, String key) {
@@ -124,7 +125,8 @@ final class RestParty {
         state.effects(),
         state.inspiration(),
         state.health().current() == 0 && state.conditions().contains(SRD + "unconscious"),
-        resources);
+        resources,
+        state.recoveryOrder());
   }
 
   void apply(Delta change, boolean undo) {
@@ -145,7 +147,8 @@ final class RestParty {
           state.recoveryAt(),
           state.exhaustion(),
           state.effects(),
-          state.inspiration());
+          state.inspiration(),
+          state.recoveryOrder());
     }
     if (old.unconscious() != state.unconscious())
       store.condition(id, SRD + "unconscious", state.unconscious());
@@ -182,7 +185,8 @@ final class RestParty {
           state.recoveryAt(),
           state.exhaustion(),
           state.effects(),
-          state.inspiration());
+          state.inspiration(),
+          state.recoveryOrder());
       if (old.health().current() == 0 && health.current() > 0)
         store.condition(id, SRD + "unconscious", false);
     }

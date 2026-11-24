@@ -15,7 +15,11 @@ import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
 import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
 import com.github.sbadolankaur.rpg.character.application.CharacterSheets.View;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterDice;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Entry;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Phase;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
 import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
+import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.dice.RandomSource;
 import com.github.sbadolankaur.rpg.engine.kernel.GameClock;
@@ -115,7 +119,7 @@ public class CampaignRests implements CampaignTimeEffects {
                       GameClock.timeOfDay(result.end(), prepared.rules().startTimeOfDay()),
                   "events", result.events(),
                   "interruptionOutcome", prepared.preview().interruptionOutcome());
-          return change(result, report, prepared.reads());
+          return change(result, report, prepared.reads(), Set.of());
         });
   }
 
@@ -172,9 +176,29 @@ public class CampaignRests implements CampaignTimeEffects {
   public Change advance(UUID campaign, UUID actor, long start, long seconds) {
     var effective = settings.effective(campaign, actor);
     var rules = restRules(effective);
-    var participants = participants(campaign, actor);
-    var result = RestResolver.advance(start, seconds, participants, rules, random);
-    party.save(participants, result.participants());
+    var characters = participants(campaign, actor);
+    var combat =
+        encounters.list(campaign).stream()
+            .filter(table -> table.phase() == Phase.ACTIVE || table.phase() == Phase.INITIATIVE)
+            .findFirst()
+            .orElse(null);
+    var npcs =
+        combat == null
+            ? List.<Entry>of()
+            : encounters.entries(combat.id()).stream()
+                .filter(entry -> entry.present() && entry.character() == null)
+                .toList();
+    var clockCreatures = new ArrayList<>(characters);
+    npcs.stream().map(CampaignRests::npcTimers).forEach(clockCreatures::add);
+    var result = RestResolver.advance(start, seconds, clockCreatures, rules, random);
+    party.save(characters, result.participants().subList(0, characters.size()));
+    boolean npcChanged = false;
+    for (int i = 0; i < npcs.size(); i++) {
+      var old = npcs.get(i);
+      var next = result.participants().get(characters.size() + i);
+      npcChanged |= saveNpcClockEffects(old, next);
+    }
+    if (npcChanged) encounters.update(combat, Math.incrementExact(combat.version()));
     var ended =
         result.events().stream().filter(event -> event.type().equals("EffectExpired")).toList();
     var report =
@@ -185,7 +209,50 @@ public class CampaignRests implements CampaignTimeEffects {
             ended,
             "timeOfDaySeconds",
             GameClock.timeOfDay(result.end(), rules.startTimeOfDay()));
-    return change(result, report, readValues(effective, List.of("startTimeOfDay", "dawnTime")));
+    var npcIds = npcs.stream().map(Entry::id).collect(java.util.stream.Collectors.toSet());
+    return change(
+        result, report, readValues(effective, List.of("startTimeOfDay", "dawnTime")), npcIds);
+  }
+
+  private static Participant npcTimers(Entry npc) {
+    var vitals = npc.npcVitals();
+    return new Participant(
+        npc.id(),
+        vitals.health(),
+        vitals.health().maximum(),
+        0,
+        vitals.exhaustion(),
+        null,
+        vitals.recoveryAt(),
+        Map.of(),
+        Map.of(),
+        Map.of(),
+        List.of(),
+        vitals.effects(),
+        vitals.inspiration(),
+        0,
+        0,
+        null,
+        vitals.conditions(),
+        vitals.recoveryOrder());
+  }
+
+  private boolean saveNpcClockEffects(Entry npc, Participant state) {
+    var conditions = new java.util.HashSet<>(state.conditions());
+    if (npc.npcVitals().health().current() == 0 && state.health().current() > 0)
+      conditions.remove(CombatConditions.UNCONSCIOUS);
+    var next =
+        new Vitals(
+            state.health(),
+            state.recoveryAt(),
+            conditions,
+            state.effects(),
+            state.exhaustion(),
+            state.inspiration(),
+            state.recoveryOrder());
+    if (next.equals(npc.npcVitals())) return false;
+    encounters.update(npc.vitals(next));
+    return true;
   }
 
   @Override
@@ -218,13 +285,17 @@ public class CampaignRests implements CampaignTimeEffects {
     return party.load(party.sheets(campaign, actor), campaigns.contentFor(campaign, actor));
   }
 
-  private static Change change(Resolution result, Object report, Map<String, Object> reads) {
+  private static Change change(
+      Resolution result, Object report, Map<String, Object> reads, Set<UUID> npcs) {
     var events =
         result.events().stream()
             .map(
                 event -> {
                   var payload = new LinkedHashMap<>(event.data());
-                  if (event.character() != null) payload.put("characterId", event.character());
+                  if (event.character() != null)
+                    payload.put(
+                        npcs.contains(event.character()) ? "combatantId" : "characterId",
+                        event.character());
                   var audience =
                       switch (event.type()) {
                         case "ClockAdvanced",

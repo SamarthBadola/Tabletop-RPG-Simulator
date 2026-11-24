@@ -108,6 +108,8 @@ The DM rest form uses the existing preview and submit routes. It accepts the E-1
 
 The bundled SRD 5.1 pack is version 0.3.1. It includes the short-rest recharge for Channel Divinity. Existing campaigns can review and apply the usual pack upgrade.
 
+E-33 clock expiries are ordered by deadline, then by the persisted creation order of each condition, Bardic Inspiration die, or stable recovery timer. Rests, manual advances, and completed combat rounds use that ordering before dawn recharge. Older timers without a creation order retain a deterministic fallback when their deadlines tie.
+
 The Compose smoke test exercises both rest kinds and verifies Hit Dice, hit points, and the elapsed clock. The PostgreSQL suite exercises the transactional rest and session resume paths. Player rest plans remain part of Step 16.
 
 ## CI status

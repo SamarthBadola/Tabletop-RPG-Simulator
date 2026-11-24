@@ -39,5 +39,10 @@ public interface CampaignTimeEffects {
       List<ConditionInstance> effects,
       BardicInspiration inspiration,
       boolean unconscious,
-      Map<String, Integer> resources) {}
+      Map<String, Integer> resources,
+      Long recoveryOrder) {
+    public ClockState {
+      if (recoveryOrder == null) recoveryOrder = 0L;
+    }
+  }
 }

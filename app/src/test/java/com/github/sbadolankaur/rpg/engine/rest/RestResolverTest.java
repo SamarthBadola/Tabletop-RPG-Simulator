@@ -122,7 +122,8 @@ class RestResolverTest {
             5,
             0,
             "arcane-recovery",
-            Set.of());
+            Set.of(),
+            0);
     var valid = new Plan(WIZARD, null, null, true, null, Map.of(2, 1, 1, 1));
     var invalid = new Plan(WIZARD, null, null, true, null, Map.of(6, 1));
     var resolved =
@@ -360,7 +361,8 @@ class RestResolverTest {
         state.wizardLevel(),
         state.bardLevel(),
         state.arcaneRecoveryKey(),
-        state.conditions());
+        state.conditions(),
+        state.recoveryOrder());
   }
 
   @Test
@@ -381,6 +383,62 @@ class RestResolverTest {
         plans,
         List.of(song),
         List.of(fighter, bard(bard, 2, Set.of("srd-5.1:stunned"))));
+  }
+
+  @Test
+  void expiryOrdersConditionInspirationAndRecoveryByCreationAcrossCharacters() {
+    var active = fighter(12, 0, 0, null, Map.of(10, 1), Map.of());
+    var stable =
+        new Participant(
+            WIZARD,
+            CombatHealth.of(0, 20, 0).stabilize(),
+            20,
+            0,
+            0,
+            null,
+            120L,
+            Map.of(6, 1),
+            Map.of(),
+            Map.of(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            0,
+            null,
+            Set.of(),
+            2);
+    var recent = new ConditionInstance("recent", null, ConditionInstance.End.clock(120)).created(3);
+    var blessed =
+        new Participant(
+            active.id(),
+            active.health(),
+            active.baseMaximumHp(),
+            active.constitutionModifier(),
+            active.exhaustion(),
+            null,
+            null,
+            active.hitDice(),
+            active.spentHitDice(),
+            active.usedSlots(),
+            active.resources(),
+            List.of(recent),
+            new com.github.sbadolankaur.rpg.engine.combat.BardicInspiration(6, 120, 1L),
+            0,
+            0,
+            null,
+            Set.of(),
+            0);
+
+    var advanced =
+        RestResolver.advance(0, 120, List.of(blessed, stable), STANDARD, new ForcedDice());
+    assertThat(advanced.events())
+        .extracting(RestResolver.Event::creationOrder)
+        .containsExactly(0L, 1L, 2L, 3L);
+    assertThat(advanced.events())
+        .extracting(RestResolver.Event::type)
+        .containsExactly("ClockAdvanced", "EffectExpired", "StableRecovered", "EffectExpired");
+    assertThat(advanced.participants().getLast().health().current()).isOne();
   }
 
   @Test
@@ -431,7 +489,8 @@ class RestResolverTest {
         0,
         level,
         null,
-        conditions);
+        conditions,
+        0);
   }
 
   private static Participant fighter(
@@ -468,6 +527,7 @@ class RestResolverTest {
         0,
         0,
         null,
-        Set.of());
+        Set.of(),
+        0);
   }
 }

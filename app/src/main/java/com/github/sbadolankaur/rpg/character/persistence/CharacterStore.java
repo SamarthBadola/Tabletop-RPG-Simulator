@@ -342,7 +342,8 @@ public class CharacterStore {
     return jdbc.sql(
             """
         SELECT p.owner_id, p.death_successes, p.death_failures, p.stable_recovery_at,
-            p.exhaustion, p.condition_effects::text, g.game_seconds, p.bardic_inspiration::text
+            p.exhaustion, p.condition_effects::text, g.game_seconds, p.bardic_inspiration::text,
+            p.stable_recovery_order
         FROM player_character p JOIN game_clock g ON g.campaign_id = p.campaign_id WHERE p.id = ?
         """)
         .param(id)
@@ -359,7 +360,8 @@ public class CharacterStore {
                     row.getLong(7),
                     row.getString(8) == null
                         ? null
-                        : json.readValue(row.getString(8), BardicInspiration.class)))
+                        : json.readValue(row.getString(8), BardicInspiration.class),
+                    row.getLong(9)))
         .single();
   }
 
@@ -372,12 +374,13 @@ public class CharacterStore {
       Long recoveryAt,
       int exhaustion,
       List<ConditionInstance> effects,
-      BardicInspiration inspiration) {
+      BardicInspiration inspiration,
+      long recoveryOrder) {
     jdbc.sql(
             """
         UPDATE player_character SET hp_current=?, hp_temp=?, death_successes=?, death_failures=?,
           stable_recovery_at=?, exhaustion=?, condition_effects=CAST(? AS jsonb),
-          bardic_inspiration=CAST(? AS jsonb) WHERE id=?
+          bardic_inspiration=CAST(? AS jsonb), stable_recovery_order=? WHERE id=?
         """)
         .params(
             hp,
@@ -388,6 +391,7 @@ public class CharacterStore {
             exhaustion,
             json.writeValueAsString(effects),
             inspiration == null ? null : json.writeValueAsString(inspiration),
+            recoveryOrder,
             id)
         .update();
   }
@@ -436,7 +440,8 @@ public class CharacterStore {
       int exhaustion,
       List<ConditionInstance> effects,
       long gameSeconds,
-      BardicInspiration inspiration) {}
+      BardicInspiration inspiration,
+      long recoveryOrder) {}
 
   public void equip(UUID id, Map<UUID, String> slots) {
     jdbc.sql("UPDATE inventory_item SET equipment_slot = NULL WHERE player_character_id = ?")

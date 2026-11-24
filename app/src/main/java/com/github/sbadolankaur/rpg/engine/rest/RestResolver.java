@@ -1,6 +1,7 @@
 package com.github.sbadolankaur.rpg.engine.rest;
 
 import com.github.sbadolankaur.rpg.engine.combat.BardicInspiration;
+import com.github.sbadolankaur.rpg.engine.combat.ClockExpiry;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
@@ -155,47 +156,16 @@ public final class RestResolver {
 
     var expirations = new ArrayList<Timer>();
     for (var state : states) {
-      for (var effect : state.effects) {
-        Long deadline = effect.end().seconds();
-        if (deadline != null && deadline <= clock.end()) {
-          expirations.add(
-              new Timer(
-                  deadline,
-                  state,
-                  "EffectExpired",
-                  Map.of("effect", effect.key()),
-                  () -> state.effects.remove(effect)));
-        }
-      }
-      if (state.inspiration != null && state.inspiration.endsAt() <= clock.end()) {
-        expirations.add(
-            new Timer(
-                state.inspiration.endsAt(),
-                state,
-                "EffectExpired",
-                Map.of("effect", "Bardic Inspiration"),
-                () -> state.inspiration = null));
-      }
-      if (state.recoveryAt != null
-          && state.recoveryAt <= clock.end()
-          && state.health.state() == State.STABLE) {
-        expirations.add(
-            new Timer(
-                state.recoveryAt,
-                state,
-                "StableRecovered",
-                Map.of("amount", 1),
-                () -> {
-                  state.health = state.health.heal(1);
-                  state.recoveryAt = null;
-                }));
+      var recoveryAt = state.health.state() == State.STABLE ? state.recoveryAt : null;
+      for (var expiry :
+          ClockExpiry.due(
+              clock.end(), state.effects, state.inspiration, recoveryAt, state.recoveryOrder)) {
+        expirations.add(new Timer(expiry, state));
       }
     }
-    expirations.sort(Comparator.comparingLong(Timer::deadline));
+    expirations.sort(Comparator.comparing(Timer::expiry, ClockExpiry.ORDER));
     for (var timer : expirations) {
-      timer.apply().run();
-      events.add(
-          new Event(timer.type(), timer.deadline(), timer.state().initial.id(), timer.data()));
+      events.add(timer.state().expire(timer.expiry()));
     }
     for (long dawn : clock.dawns()) {
       events.add(new Event("DawnReached", dawn, null, Map.of()));
@@ -435,6 +405,7 @@ public final class RestResolver {
     if (change > 0) {
       state.health = next;
       state.recoveryAt = null;
+      state.recoveryOrder = 0;
       events.add(new Event("HpRegained", now, state.initial.id(), Map.of("amount", change)));
     }
   }
@@ -603,7 +574,8 @@ public final class RestResolver {
       int wizardLevel,
       int bardLevel,
       String arcaneRecoveryKey,
-      Set<String> conditions) {
+      Set<String> conditions,
+      long recoveryOrder) {
     public Participant {
       hitDice = Map.copyOf(hitDice);
       spentHitDice = Map.copyOf(spentHitDice);
@@ -687,7 +659,12 @@ public final class RestResolver {
     }
   }
 
-  public record Event(String type, long seconds, UUID character, Map<String, Object> data) {
+  public record Event(
+      String type, long seconds, UUID character, Map<String, Object> data, long creationOrder) {
+    public Event(String type, long seconds, UUID character, Map<String, Object> data) {
+      this(type, seconds, character, data, 0);
+    }
+
     public Event {
       data = Map.copyOf(data);
     }
@@ -700,8 +677,7 @@ public final class RestResolver {
     }
   }
 
-  private record Timer(
-      long deadline, Working state, String type, Map<String, Object> data, Runnable apply) {}
+  private record Timer(ClockExpiry expiry, Working state) {}
 
   private static final class Working {
     private final Participant initial;
@@ -713,6 +689,7 @@ public final class RestResolver {
     private int exhaustion;
     private Long lastLongRest;
     private Long recoveryAt;
+    private long recoveryOrder;
     private BardicInspiration inspiration;
 
     Working(Participant initial) {
@@ -721,11 +698,35 @@ public final class RestResolver {
       exhaustion = initial.exhaustion();
       lastLongRest = initial.lastLongRest();
       recoveryAt = initial.recoveryAt();
+      recoveryOrder = initial.recoveryOrder();
       inspiration = initial.inspiration();
       spent = new TreeMap<>(initial.spentHitDice());
       slots = new TreeMap<>(initial.usedSlots());
       effects = new ArrayList<>(initial.effects());
       initial.resources().forEach(r -> used.put(r.key(), r.used()));
+    }
+
+    Event expire(ClockExpiry expiry) {
+      var type = "EffectExpired";
+      Map<String, Object> data =
+          switch (expiry.kind()) {
+            case CONDITION -> {
+              effects.remove(expiry.effect());
+              yield Map.of("effect", expiry.effect().key());
+            }
+            case INSPIRATION -> {
+              inspiration = null;
+              yield Map.of("effect", "Bardic Inspiration");
+            }
+            case STABLE_RECOVERY -> {
+              type = "StableRecovered";
+              health = health.heal(1);
+              recoveryAt = null;
+              recoveryOrder = 0;
+              yield Map.of("amount", 1);
+            }
+          };
+      return new Event(type, expiry.deadline(), initial.id(), data, expiry.creationOrder());
     }
 
     Participant snapshot() {
@@ -750,7 +751,8 @@ public final class RestResolver {
           initial.wizardLevel(),
           initial.bardLevel(),
           initial.arcaneRecoveryKey(),
-          initial.conditions());
+          initial.conditions(),
+          recoveryOrder);
     }
   }
 }

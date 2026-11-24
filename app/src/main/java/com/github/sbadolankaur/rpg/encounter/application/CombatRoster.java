@@ -160,7 +160,8 @@ class CombatRoster {
             conditionKeys,
             details.effects(),
             details.exhaustion(),
-            details.inspiration()),
+            details.inspiration(),
+            details.recoveryOrder()),
         abilities,
         saves,
         sheet.skills(),
@@ -397,7 +398,8 @@ class CombatRoster {
         next.recoveryAt(),
         next.exhaustion(),
         next.effects(),
-        next.inspiration());
+        next.inspiration(),
+        next.recoveryOrder());
     for (String key : current.vitals().conditions()) {
       if (!next.conditions().contains(key)) characterStore.condition(player, key, false);
     }
