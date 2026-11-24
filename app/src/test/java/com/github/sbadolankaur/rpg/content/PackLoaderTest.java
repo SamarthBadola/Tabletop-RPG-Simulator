@@ -18,7 +18,7 @@ class PackLoaderTest {
       throws Exception {
     var files = new HashMap<>(PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1")));
     var pack = loader.load(files, true, List.of());
-    assertThat(pack.version()).isEqualTo("0.3.1");
+    assertThat(pack.version()).isEqualTo("0.4.0");
     assertThat(pack.definitions())
         .anySatisfy(
             def -> {
@@ -56,7 +56,7 @@ class PackLoaderTest {
     } catch (ContentInvalid invalid) {
       throw new AssertionError(invalid.findings().toString(), invalid);
     }
-    assertThat(pack.version()).isEqualTo("0.3.1");
+    assertThat(pack.version()).isEqualTo("0.4.0");
     var keys = pack.definitions().stream().map(definition -> definition.key()).toList();
     assertThat(keys)
         .contains(
@@ -66,6 +66,46 @@ class PackLoaderTest {
             "srd-5.1:oath-of-devotion",
             "srd-5.1:bard",
             "srd-5.1:college-of-lore");
+  }
+
+  @Test
+  void spellcastingClassesDeriveSlotLimitsFromTheirInstalledTables() throws Exception {
+    var pack = loader.load(BundledContent.resources(), true, List.of());
+    var index =
+        new HashMap<
+            com.github.sbadolankaur.rpg.engine.content.ContentSet.Key,
+            com.github.sbadolankaur.rpg.engine.content.Definition>();
+    for (var definition : pack.definitions()) {
+      index.put(
+          new com.github.sbadolankaur.rpg.engine.content.ContentSet.Key(
+              definition.kind(), definition.key()),
+          definition);
+    }
+    var content =
+        new com.github.sbadolankaur.rpg.engine.content.ContentSet(
+            List.of(pack.hash()), index, List.of());
+    assertThat(
+            com.github.sbadolankaur.rpg.engine.spell.SlotPool.forClass(
+                    content, "srd-5.1:bard", 5, Map.of(3, 1))
+                .orElseThrow()
+                .limits())
+        .containsExactlyInAnyOrderEntriesOf(Map.of(1, 4, 2, 3, 3, 2));
+    assertThat(
+            com.github.sbadolankaur.rpg.engine.spell.SlotPool.forClass(
+                    content, "srd-5.1:paladin", 5, Map.of())
+                .orElseThrow()
+                .limits())
+        .containsExactlyInAnyOrderEntriesOf(Map.of(1, 4, 2, 2));
+    assertThat(
+            com.github.sbadolankaur.rpg.engine.spell.SlotPool.forClass(
+                    content, "srd-5.1:paladin", 1, Map.of())
+                .orElseThrow()
+                .limits())
+        .isEmpty();
+    assertThat(
+            com.github.sbadolankaur.rpg.engine.spell.SlotPool.forClass(
+                content, "srd-5.1:fighter", 5, Map.of()))
+        .isEmpty();
   }
 
   @Test

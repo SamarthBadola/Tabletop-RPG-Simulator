@@ -498,6 +498,7 @@
   "spellcasting": {
     "ability": "cha",
     "progression": "half",
-    "preparation": "prepared"
+    "preparation": "prepared",
+    "slots": "srd-5.1:paladin-slots"
   }
 }

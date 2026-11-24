@@ -21,6 +21,40 @@ class SettingsRegistryTest {
   }
 
   @Test
+  void stepNineReactionSnapshotsKeepRecordedValuesAndGainSpellDefaults() {
+    var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+    var campaignSettings = new CampaignSettings(null, null, null, mapper);
+    var prior = mapper.createObjectNode();
+    for (var definition : SettingsRegistry.all()) {
+      prior.set(definition.key(), mapper.valueToTree(definition.defaultValue()));
+    }
+    prior.remove(
+        java.util.List.of(
+            "bonusActionSpellRule",
+            "counterspellInfo",
+            "missileDamageSources",
+            "missileRoll",
+            "areaCoverageRule",
+            "counteredConcentration",
+            "componentEnforcement"));
+    prior.put("divineSmiteTiming", "BEFORE_ATTACK");
+
+    var pinned = campaignSettings.pinned(prior);
+    assertThat(pinned.value("divineSmiteTiming")).isEqualTo("BEFORE_ATTACK");
+    assertThat(pinned.value("bonusActionSpellRule")).isEqualTo("OWN_TURN");
+    assertThat(pinned.value("counterspellInfo")).isEqualTo("ALERT");
+    assertThat(pinned.value("missileDamageSources")).isEqualTo("PER_DART");
+    assertThat(pinned.value("missileRoll")).isEqualTo("PER_DART");
+    assertThat(pinned.value("areaCoverageRule")).isEqualTo("HALF_ALL");
+    assertThat(pinned.value("counteredConcentration")).isEqualTo("ENDS_OLD");
+    assertThat(pinned.value("componentEnforcement")).isEqualTo("CONDITIONS_AND_COSTS");
+    assertThat(SettingsRegistry.require("areaCoverageRule").tier())
+        .isEqualTo(SettingsRegistry.Tier.ASK_ON_FIRST_USE);
+    assertThat(SettingsRegistry.require("componentEnforcement").tier())
+        .isEqualTo(SettingsRegistry.Tier.SILENT);
+  }
+
+  @Test
   void valuesKeepTheirTypesAndUnrecognizedSettingsAreRejected() {
     assertThat(SettingsRegistry.require("roundAdvanceSeconds").parse("0")).isEqualTo(0L);
     assertThat(SettingsRegistry.require("feats.enabled").parse("false")).isEqualTo(false);

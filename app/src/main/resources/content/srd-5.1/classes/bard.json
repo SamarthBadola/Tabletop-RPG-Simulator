@@ -236,6 +236,7 @@
     "ability": "cha",
     "progression": "full",
     "preparation": "known",
+    "slots": "srd-5.1:full-caster-slots",
     "ritualCasting": true
   }
 }

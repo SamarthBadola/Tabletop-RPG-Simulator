@@ -799,7 +799,7 @@ class ApplicationFlowIT {
                     .with(csrf())
                     .header("HX-Request", "true")
                     .param("action", "upgrade")
-                    .param("targetVersion", "0.3.1"))
+                    .param("targetVersion", "0.4.0"))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Confirm upgrade")))
             .andReturn();
@@ -809,20 +809,20 @@ class ApplicationFlowIT {
     mockMvc
         .perform(
             action(apply, "upgrade-player", campaign, player)
-                .param("targetVersion", "0.3.1")
+                .param("targetVersion", "0.4.0")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isForbidden());
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.3.1")
+                .param("targetVersion", "0.4.0")
                 .param("reviewHash", "expired-review"))
         .andExpect(status().isConflict());
     assertThat(contentPacks.open(campaign).find("class", "srd-5.1:fighter")).isEmpty();
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.3.1")
+                .param("targetVersion", "0.4.0")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isSeeOther())
         .andExpect(redirectedUrl(packs));
@@ -4036,32 +4036,32 @@ class ApplicationFlowIT {
       throws Exception {
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
+                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.4.0'",
                 Integer.class))
         .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForList(
                 """
                 SELECT d.key FROM content_definition d JOIN content_pack p ON p.id = d.pack_id
-                WHERE d.kind = 'class' AND p.pack_key = 'srd-5.1' AND p.version = '0.3.1'
+                WHERE d.kind = 'class' AND p.pack_key = 'srd-5.1' AND p.version = '0.4.0'
                 """,
                 String.class))
         .containsExactlyInAnyOrder(
             "srd-5.1:bard", "srd-5.1:fighter", "srd-5.1:paladin", "srd-5.1:rogue");
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
+                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.4.0'",
                 String.class))
-        .isEqualTo("0.3.1");
+        .isEqualTo("0.4.0");
     String manifest =
         jdbcTemplate.queryForObject(
-            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
+            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.4.0'",
             String.class);
     String notice = contentPacks.notice();
     var changed =
         new ContentPack(
             "srd-5.1",
-            "0.3.1",
+            "0.4.0",
             "sha256:" + "1".repeat(64),
             "srd-5.1",
             "CC-BY-4.0",

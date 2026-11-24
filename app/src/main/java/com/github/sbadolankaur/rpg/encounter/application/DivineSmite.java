@@ -8,9 +8,10 @@ import com.github.sbadolankaur.rpg.engine.dice.RollPlan;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Option;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Point;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Step;
+import com.github.sbadolankaur.rpg.engine.spell.SlotPool;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.IntStream;
 
 final class DivineSmite {
   static final String SETTING = "divineSmiteTiming";
@@ -21,11 +22,21 @@ final class DivineSmite {
   static List<Integer> available(Context context, Creature actor) {
     int level = actor.classLevel("srd-5.1:paladin");
     if (level < 2 || !actor.features().contains(FEATURE)) return List.of();
-    var used = context.spellSlots(actor);
-    return IntStream.rangeClosed(1, 5)
-        .filter(slot -> used.getOrDefault(slot, 0) < count(level, slot))
-        .boxed()
-        .toList();
+    return slots(context, actor).availableFrom(1);
+  }
+
+  private static SlotPool slots(Context context, Creature actor) {
+    int level = actor.classLevel("srd-5.1:paladin");
+    var spent = context.spellSlots(actor);
+    return SlotPool.forClass(context.content, "srd-5.1:paladin", level, spent)
+        .orElseGet(() -> legacySlots(level, spent));
+  }
+
+  private static SlotPool legacySlots(int level, Map<Integer, Integer> spent) {
+    // Campaigns pinned to a pre-spellcasting pack retain their existing Smite capacity.
+    var limits = new HashMap<Integer, Integer>();
+    for (int slot = 1; slot <= 5; slot++) limits.put(slot, count(level, slot));
+    return new SlotPool(limits, spent);
   }
 
   private static int count(int level, int slot) {
@@ -79,8 +90,8 @@ final class DivineSmite {
       selected = Integer.valueOf(answer);
     }
     if (selected == null) return null;
-    int used = context.spellSlots(actor).getOrDefault(selected, 0);
-    context.spellSlot(actor, selected, used + 1);
+    var spent = slots(context, actor).spend(1, selected);
+    context.spellSlot(actor, selected, spent.used().get(selected));
     String type = context.creatureType(target);
     var plan = CombatRolls.divineSmite(selected, "undead".equals(type) || "fiend".equals(type));
     context.dm("DivineSmiteUsed", Map.of("actorId", actor.entry().id(), "slotLevel", selected));

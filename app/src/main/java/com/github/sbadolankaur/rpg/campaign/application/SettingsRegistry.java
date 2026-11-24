@@ -295,6 +295,91 @@ public final class SettingsRegistry {
             "Exclude thrown attacks."));
     add(
         all,
+        choice(
+            "bonusActionSpellRule",
+            "Bonus action spell limit",
+            "OWN_TURN",
+            Tier.ASK_ON_FIRST_USE,
+            "OWN_TURN",
+            "Apply the limit on the caster's own turn.",
+            "ANY_TURN",
+            "Apply it to reactions until the caster's next turn.",
+            "REACTION_EXEMPT",
+            "Exempt reaction spells.",
+            "OFF",
+            "Allow spells within the normal action budget."));
+    add(
+        all,
+        choice(
+            "counterspellInfo",
+            "Counterspell information",
+            "ALERT",
+            Tier.ASK_ON_FIRST_USE,
+            "ALERT",
+            "Alert only eligible counterspellers.",
+            "REVEAL",
+            "Reveal the spell name and cast level.",
+            "SILENT",
+            "Leave the prompt to the DM."));
+    add(
+        all,
+        choice(
+            "missileDamageSources",
+            "Magic Missile damage sources",
+            "PER_DART",
+            Tier.ASK_ON_FIRST_USE,
+            "PER_DART",
+            "Each dart counts as its own damage instance.",
+            "SINGLE",
+            "Combine the darts hitting each creature."));
+    add(
+        all,
+        choice(
+            "missileRoll",
+            "Magic Missile damage dice",
+            "PER_DART",
+            Tier.ASK_ON_FIRST_USE,
+            "PER_DART",
+            "Roll damage for each dart.",
+            "ONE_ROLL",
+            "Use one damage roll for all the darts."));
+    add(
+        all,
+        choice(
+            "areaCoverageRule",
+            "Spell area coverage",
+            "HALF_ALL",
+            Tier.ASK_ON_FIRST_USE,
+            "HALF_ALL",
+            "Include a square when its center is inside the area.",
+            "DMG_XGTE",
+            "Count positive overlap for cones, cubes and lines."));
+    add(
+        all,
+        choice(
+            "counteredConcentration",
+            "Countered concentration spells",
+            "ENDS_OLD",
+            Tier.SILENT,
+            "ENDS_OLD",
+            "End existing concentration when the new cast begins.",
+            "KEEP_OLD",
+            "Keep existing concentration if the new spell is countered."));
+    add(
+        all,
+        choice(
+            "componentEnforcement",
+            "Spell components",
+            "CONDITIONS_AND_COSTS",
+            Tier.SILENT,
+            "CONDITIONS_AND_COSTS",
+            "Check verbal conditions and costed or consumed materials.",
+            "FULL",
+            "Also enforce somatic and free-hand requirements.",
+            "OFF",
+            "Use the DM's component ruling."));
+    add(
+        all,
         integer(
             "roundAdvanceSeconds",
             "Game clock advance per round",

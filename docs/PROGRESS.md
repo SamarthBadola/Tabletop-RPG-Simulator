@@ -112,6 +112,12 @@ E-33 clock expiries are ordered by deadline, then by the persisted creation orde
 
 The Compose smoke test exercises both rest kinds and verifies Hit Dice, hit points, and the elapsed clock. The PostgreSQL suite exercises the transactional rest and session resume paths. Player rest plans remain part of Step 16.
 
+## Step 10 spell implementation
+
+The spell rules share the existing spent-slot state with Divine Smite and rests. The first implementation adds the Part E settings, spell progression tables for Bard and Paladin, turn restrictions, concentration save DCs, cantrip scaling, and integer spell area geometry. The bundled pack is version 0.4.0 with class spellcasting metadata. Campaigns pinned to an earlier pack retain their Divine Smite slot limits.
+
+The owner confirmed the unmapped cast contract for this step. The DM supplies area targets and can optionally supply distance and cover per target. An area spell rolls damage once and resolves a separate save per target. Counterspell will use the existing reaction flow, with the DM confirming actual range and sight. A target cell requires a map. Mapped casts will compute distance, cover, and area membership in Step 14. The approved preparation and ritual routes are separate campaign commands under the character, with player proposals for their own character through the proposal flow. A ritual advances the clock by its casting time plus 10 minutes. An interrupted ritual applies no effects.
+
 ## CI status
 
 The active \`.github/workflows/ci.yml\` defines \`repo-hygiene\`, \`unit\`, \`integration\`, \`secrets\`, and \`compose-smoke\`. All five jobs passed on [PR #12 run](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260399502) and [post-merge run on `main`](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260733720). Compose smoke runs on pull requests and branch pushes after integration tests; it is not main-only. The live \`main-quality-gates\` ruleset requires all five jobs plus \`DCO\`.
