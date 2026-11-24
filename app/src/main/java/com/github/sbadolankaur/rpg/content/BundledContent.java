@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 class BundledContent implements ApplicationRunner {
   static final String PACK_KEY = "srd-5.1";
-  static final String VERSION = "0.3.1";
+  static final String VERSION = "0.4.0";
   private static final String FOLDER = "content/" + PACK_KEY + "/";
   private final PackLoader loader;
   private final ContentPacks packs;

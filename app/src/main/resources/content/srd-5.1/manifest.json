@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "srd-5.1",
   "name": "System Reference Document 5.1",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "ruleset": "srd-5.1",
   "vocabulary": 2,
   "license": {
