@@ -5,6 +5,10 @@
   "max": "1",
   "recharge": [
     {
+      "on": "SHORT_REST",
+      "restore": "all"
+    },
+    {
       "on": "LONG_REST",
       "restore": "all"
     }

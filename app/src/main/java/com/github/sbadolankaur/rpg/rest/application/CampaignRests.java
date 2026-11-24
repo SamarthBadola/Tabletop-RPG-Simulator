@@ -16,6 +16,8 @@ import com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore;
 import com.github.sbadolankaur.rpg.character.application.CharacterSheets.View;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterDice;
 import com.github.sbadolankaur.rpg.encounter.persistence.EncounterStore;
+import com.github.sbadolankaur.rpg.engine.content.ContentSet;
+import com.github.sbadolankaur.rpg.engine.dice.RandomSource;
 import com.github.sbadolankaur.rpg.engine.kernel.GameClock;
 import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import com.github.sbadolankaur.rpg.engine.rest.RestResolver;
@@ -30,6 +32,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -76,11 +79,14 @@ public class CampaignRests implements CampaignTimeEffects {
   }
 
   @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-  public Preview preview(UUID campaign, UUID actor, RestInput input) {
+  public PreviewResult preview(UUID campaign, UUID actor, RestInput input) {
     campaigns.requireDm(campaign, actor);
-    return prepare(campaign, actor, commands.readClock(campaign, actor).gameSeconds(), input)
-        .preview();
+    var clock = commands.readClock(campaign, actor);
+    return new PreviewResult(
+        prepare(campaign, actor, clock.gameSeconds(), input).preview(), clock.version());
   }
+
+  public record PreviewResult(Preview preview, long version) {}
 
   public Reply submit(
       UUID campaign, UUID actor, Envelope envelope, RestInput input, boolean confirmWarnings) {
@@ -180,6 +186,32 @@ public class CampaignRests implements CampaignTimeEffects {
             "timeOfDaySeconds",
             GameClock.timeOfDay(result.end(), rules.startTimeOfDay()));
     return change(result, report, readValues(effective, List.of("startTimeOfDay", "dawnTime")));
+  }
+
+  @Override
+  public Sweep outsideEncounter(
+      UUID campaign,
+      UUID actor,
+      Set<UUID> roster,
+      long start,
+      long seconds,
+      SettingsView pinned,
+      ContentSet content,
+      RandomSource dice) {
+    var before = party.outsideEncounter(campaign, actor, roster, content, pinned);
+    var result = RestResolver.advance(start, seconds, before, restRules(pinned), dice);
+    var deltas = new ArrayList<Delta>();
+    for (int i = 0; i < before.size(); i++) {
+      var old = RestParty.clockState(before.get(i));
+      var next = RestParty.clockState(result.participants().get(i));
+      if (!old.equals(next)) deltas.add(new Delta(before.get(i).id(), old, next));
+    }
+    return new Sweep(List.copyOf(deltas), result.events());
+  }
+
+  @Override
+  public void apply(List<Delta> deltas, boolean undo) {
+    deltas.forEach(delta -> party.apply(delta, undo));
   }
 
   private List<Participant> participants(UUID campaign, UUID actor) {

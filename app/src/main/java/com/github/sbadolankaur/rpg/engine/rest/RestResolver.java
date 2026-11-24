@@ -445,16 +445,43 @@ public final class RestResolver {
       int used = state.used.get(resource.key());
       var rule = resource.recharge().get(trigger);
       if (used == 0 || rule == null) continue;
-      int restored = Math.min(used, rule.applyAsInt(random));
-      if (restored > 0) {
-        state.used.put(resource.key(), used - restored);
+      var recharge = evaluateRecharge(used, rule, random);
+      if (recharge.amount() > 0) state.used.put(resource.key(), used - recharge.amount());
+      if (recharge.recordable()) {
         events.add(
             new Event(
                 "ResourceRecharged",
                 now,
                 state.initial.id(),
-                Map.of("resource", resource.key(), "amount", restored)));
+                Map.of(
+                    "resource",
+                    resource.key(),
+                    "amount",
+                    recharge.amount(),
+                    "dice",
+                    recharge.dice())));
       }
+    }
+  }
+
+  public static Recharge evaluateRecharge(
+      int used, ToIntFunction<RandomSource> rule, RandomSource random) {
+    var draws = new ArrayList<RechargeDie>();
+    int amount =
+        rule.applyAsInt(
+            bound -> {
+              int zeroBased = random.nextInt(bound);
+              draws.add(new RechargeDie(bound, zeroBased + 1));
+              return zeroBased;
+            });
+    return new Recharge(Math.clamp(amount, 0, used), List.copyOf(draws));
+  }
+
+  public record RechargeDie(int size, int face) {}
+
+  public record Recharge(int amount, List<RechargeDie> dice) {
+    public boolean recordable() {
+      return amount > 0 || !dice.isEmpty();
     }
   }
 

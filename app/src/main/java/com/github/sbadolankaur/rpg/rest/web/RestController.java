@@ -65,7 +65,7 @@ class RestController {
             Map.of(),
             List.of(),
             List.of());
-    page(id, actor, input, null, model);
+    page(id, actor, input, null, commands.readClock(id, actor).version(), model);
     return "demo-rests";
   }
 
@@ -78,7 +78,8 @@ class RestController {
     UUID actor = CampaignWeb.actor(accounts, principal);
     campaigns.requireDm(id, actor);
     var input = new RestForm(fields).input();
-    page(id, actor, input, rests.preview(id, actor, input), model);
+    var preview = rests.preview(id, actor, input);
+    page(id, actor, input, preview.preview(), preview.version(), model);
     return "demo-rests :: rest-preview";
   }
 
@@ -106,7 +107,8 @@ class RestController {
     return "demo-rests :: rest-result";
   }
 
-  private void page(UUID id, UUID actor, RestInput input, Preview preview, Model model) {
+  private void page(
+      UUID id, UUID actor, RestInput input, Preview preview, long version, Model model) {
     model.addAttribute("campaign", campaigns.requireDm(id, actor));
     model.addAttribute("characters", rests.characters(id, actor));
     model.addAttribute("input", input);
@@ -115,7 +117,7 @@ class RestController {
     var rows = new HashMap<UUID, PreviewRow>();
     if (preview != null) preview.participants().forEach(row -> rows.put(row.id(), row));
     model.addAttribute("rows", rows);
-    model.addAttribute("version", commands.readClock(id, actor).version());
+    model.addAttribute("version", version);
     model.addAttribute("ids", commands);
   }
 }

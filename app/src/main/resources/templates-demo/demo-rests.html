@@ -97,7 +97,15 @@
             <ul>
                 <li th:each="event : ${result.path('events')}" th:attr="data-event=${event.path('type').asString()}">
                     <span th:text="${event.path('type').asString()}"></span>
-                    <span th:if="${event.path('data').has('roll')}" th:text="|total ${event.path('data').path('roll').path('total').asInt()}|"></span>
+                    <th:block th:if="${event.path('data').has('roll')}" th:with="roll=${event.path('data').path('roll')}">
+                        <span th:text="|total ${roll.path('total').asInt()}|"></span>
+                        <ul>
+                            <li th:each="term : ${roll.path('terms')}">
+                                <span th:text="|${term.path('label').asString()} ${term.path('subtotal').asInt()}|"></span>
+                                <span th:each="die : ${term.path('dice')}" th:text="${die.path('rolled').asInt()}"></span>
+                            </li>
+                        </ul>
+                    </th:block>
                     <span th:if="${event.path('data').has('amount')}" th:text="|amount ${event.path('data').path('amount').asInt()}|"></span>
                 </li>
             </ul>

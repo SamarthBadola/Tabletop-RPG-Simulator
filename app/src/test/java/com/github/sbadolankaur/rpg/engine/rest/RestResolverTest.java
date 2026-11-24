@@ -363,6 +363,52 @@ class RestResolverTest {
         state.conditions());
   }
 
+  @Test
+  void songOfRestRefusesDuplicateOutsideAndIncapacitatedPerformers() {
+    UUID bard = new UUID(0, 3);
+    UUID outside = new UUID(0, 4);
+    var song = new RestResolver.Song(bard, Set.of(FIGHTER, bard));
+    var plans = List.of(Plan.noChoices(FIGHTER), Plan.noChoices(bard));
+    var fighter = fighter(7, 0, 0, null, Map.of(10, 1), Map.of());
+    var eligible = List.of(fighter, bard(bard, 2, Set.of()));
+    assertSongError(Kind.SHORT, plans, List.of(song, song), eligible);
+    assertSongError(
+        Kind.SHORT, plans, List.of(new RestResolver.Song(outside, Set.of(FIGHTER))), eligible);
+    assertSongError(Kind.LONG, plans, List.of(song), eligible);
+    assertSongError(Kind.SHORT, plans, List.of(song), List.of(fighter, bard(bard, 1, Set.of())));
+    assertSongError(
+        Kind.SHORT,
+        plans,
+        List.of(song),
+        List.of(fighter, bard(bard, 2, Set.of("srd-5.1:stunned"))));
+  }
+
+  @Test
+  void formulaRechargeCapsTheAmountAndKeepsTheDiceInTheAudit() {
+    var random = new ForcedDice(4);
+    var recharge = RestResolver.evaluateRecharge(2, source -> source.nextInt(6) + 1, random);
+    assertThat(recharge.amount()).isEqualTo(2);
+    assertThat(recharge.dice()).containsExactly(new RestResolver.RechargeDie(6, 4));
+    random.assertExhausted();
+  }
+
+  private static void assertSongError(
+      Kind kind, List<Plan> plans, List<RestResolver.Song> songs, List<Participant> party) {
+    assertThatThrownBy(
+            () ->
+                RestResolver.preview(
+                    0,
+                    new Request(kind, kind == Kind.LONG ? 480 : 60, false, plans, songs),
+                    party,
+                    STANDARD))
+        .isInstanceOfSatisfying(
+            RestResolver.Rejected.class,
+            failure -> {
+              assertThat(failure.field()).isEqualTo("songOfRestPerformerIds");
+              assertThat(failure.fieldCode()).isEqualTo("INCORRECT");
+            });
+  }
+
   private static Settings fixedDice() {
     return new Settings(60, 480, 24, false, true, 28800, 21600);
   }

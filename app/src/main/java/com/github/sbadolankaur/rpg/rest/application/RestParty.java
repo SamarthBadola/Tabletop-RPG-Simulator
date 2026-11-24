@@ -1,27 +1,23 @@
 package com.github.sbadolankaur.rpg.rest.application;
 
+import com.github.sbadolankaur.rpg.campaign.application.CampaignTimeEffects.ClockState;
+import com.github.sbadolankaur.rpg.campaign.application.CampaignTimeEffects.Delta;
 import com.github.sbadolankaur.rpg.character.application.CharacterSheets.View;
 import com.github.sbadolankaur.rpg.character.application.Characters;
+import com.github.sbadolankaur.rpg.character.application.ResourceRecharge;
 import com.github.sbadolankaur.rpg.character.persistence.CharacterStore;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth;
 import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
-import com.github.sbadolankaur.rpg.engine.content.ContentExpression;
-import com.github.sbadolankaur.rpg.engine.content.ContentExpression.Type;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
-import com.github.sbadolankaur.rpg.engine.dice.RandomSource;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
+import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Participant;
 import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Resource;
-import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Trigger;
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.function.ToIntFunction;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -37,6 +33,11 @@ final class RestParty {
 
   List<View> sheets(UUID campaign, UUID actor) {
     return characters.list(campaign, actor);
+  }
+
+  List<Participant> outsideEncounter(
+      UUID campaign, UUID actor, Set<UUID> roster, ContentSet content, SettingsView settings) {
+    return load(characters.combatSheets(campaign, actor, content, settings, roster), content);
   }
 
   List<Participant> load(List<View> sheets, ContentSet content) {
@@ -68,7 +69,10 @@ final class RestParty {
     }
     var resources =
         sheet.resources().stream()
-            .map(row -> new Resource(row.key(), row.used(), recharge(content, sheet, row.key())))
+            .map(
+                row ->
+                    new Resource(
+                        row.key(), row.used(), ResourceRecharge.rules(content, sheet, row.key())))
             .toList();
     String recoveryKey =
         resources.stream()
@@ -98,49 +102,6 @@ final class RestParty {
         Set.copyOf(sheet.baseConditionKeys()));
   }
 
-  private static Map<Trigger, ToIntFunction<RandomSource>> recharge(
-      ContentSet content, View sheet, String key) {
-    var rules = new EnumMap<Trigger, ToIntFunction<RandomSource>>(Trigger.class);
-    content
-        .find("resource", key)
-        .ifPresent(
-            definition -> {
-              if (definition.fields().get("recharge") instanceof List<?> entries) {
-                for (Object entry : entries) {
-                  if (entry instanceof Map<?, ?> rule) {
-                    Trigger trigger = Trigger.valueOf((String) rule.get("on"));
-                    rules.put(trigger, restore(sheet, rule.get("restore")));
-                  }
-                }
-              }
-            });
-    if (key.equals(SRD + "bardic-inspiration-uses") && hasFeature(sheet, "font-of-inspiration"))
-      rules.put(Trigger.SHORT_REST, random -> Integer.MAX_VALUE);
-    return rules;
-  }
-
-  private static ToIntFunction<RandomSource> restore(View sheet, Object input) {
-    if ("all".equals(input)) return random -> Integer.MAX_VALUE;
-    var variables = new HashMap<String, Object>();
-    variables.put("level", (long) sheet.level());
-    variables.put("prof", (long) sheet.proficiency());
-    variables.put("hp", (long) sheet.currentHp());
-    variables.put("hp_max", (long) sheet.maximumHp());
-    sheet
-        .abilities()
-        .forEach(
-            (ability, score) -> {
-              String key = ability.name().toLowerCase(java.util.Locale.ROOT);
-              variables.put("mod:" + key, (long) score.modifier());
-              variables.put("score:" + key, (long) score.value());
-            });
-    var types = new HashMap<String, Type>();
-    variables.keySet().forEach(variable -> types.put(variable, Type.INT));
-    var formula = ContentExpression.parse(input.toString(), types);
-    return random ->
-        (int) Math.clamp((Long) formula.evaluate(variables, random), 0, Integer.MAX_VALUE);
-  }
-
   static boolean hasFeature(View sheet, String key) {
     return sheet.features().stream().anyMatch(feature -> feature.key().equals(SRD + key));
   }
@@ -151,6 +112,49 @@ final class RestParty {
         .mapToInt(row -> row.level())
         .findFirst()
         .orElse(0);
+  }
+
+  static ClockState clockState(Participant state) {
+    var resources = new TreeMap<String, Integer>();
+    state.resources().forEach(resource -> resources.put(resource.key(), resource.used()));
+    return new ClockState(
+        state.health(),
+        state.recoveryAt(),
+        state.exhaustion(),
+        state.effects(),
+        state.inspiration(),
+        state.health().current() == 0 && state.conditions().contains(SRD + "unconscious"),
+        resources);
+  }
+
+  void apply(Delta change, boolean undo) {
+    var old = undo ? change.after() : change.before();
+    var state = undo ? change.before() : change.after();
+    var hp = state.health();
+    UUID id = change.character();
+    if (!old.health().equals(hp)
+        || !Objects.equals(old.recoveryAt(), state.recoveryAt())
+        || !old.effects().equals(state.effects())
+        || !Objects.equals(old.inspiration(), state.inspiration())) {
+      store.combatVitals(
+          id,
+          hp.current(),
+          hp.temporary(),
+          hp.successes(),
+          hp.failures(),
+          state.recoveryAt(),
+          state.exhaustion(),
+          state.effects(),
+          state.inspiration());
+    }
+    if (old.unconscious() != state.unconscious())
+      store.condition(id, SRD + "unconscious", state.unconscious());
+    state
+        .resources()
+        .forEach(
+            (key, used) -> {
+              if (!Objects.equals(used, old.resources().get(key))) store.resource(id, key, used);
+            });
   }
 
   void save(List<Participant> before, List<Participant> after) {

@@ -5,6 +5,7 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
 import com.github.sbadolankaur.rpg.character.application.CharacterSheets.View;
 import com.github.sbadolankaur.rpg.character.application.Characters;
+import com.github.sbadolankaur.rpg.character.application.ResourceRecharge;
 import com.github.sbadolankaur.rpg.character.persistence.CharacterStore;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Entry;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Vitals;
@@ -15,8 +16,12 @@ import com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State;
 import com.github.sbadolankaur.rpg.engine.combat.CombatRolls;
 import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
+import com.github.sbadolankaur.rpg.engine.dice.RandomSource;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
+import com.github.sbadolankaur.rpg.engine.rest.RestResolver;
+import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Recharge;
+import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Trigger;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -74,6 +79,31 @@ class CombatRoster {
         entry,
         content,
         characters.combatSheet(campaign, actor, entry.character(), content, effective));
+  }
+
+  Map<String, Recharge> recharge(
+      UUID campaign,
+      UUID actor,
+      Creature creature,
+      ContentSet content,
+      SettingsView settings,
+      Trigger trigger,
+      RandomSource random) {
+    if (creature.entry().character() == null
+        || creature.resources().values().stream().noneMatch(used -> used > 0)) return Map.of();
+    var sheet =
+        characters.combatSheet(campaign, actor, creature.entry().character(), content, settings);
+    var restored = new java.util.TreeMap<String, Recharge>();
+    new java.util.TreeMap<>(creature.resources())
+        .forEach(
+            (key, used) -> {
+              if (used == 0) return;
+              var rule = ResourceRecharge.rules(content, sheet, key).get(trigger);
+              if (rule == null) return;
+              var recharge = RestResolver.evaluateRecharge(used, rule, random);
+              if (recharge.recordable()) restored.put(key, recharge);
+            });
+    return restored;
   }
 
   private Creature player(UUID campaign, UUID actor, Entry entry, ContentSet content) {

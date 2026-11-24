@@ -280,13 +280,15 @@ class ApplicationFlowIT {
     UUID campaign = campaigns.create(dm, "Rest transaction").id();
     String base = "/campaigns/" + campaign;
     UUID fighter = createCombatFighter(base + "/characters", campaign, dm, "rest-tx");
+    jdbcTemplate.update("UPDATE player_character SET hp_current = 1 WHERE id = ?", fighter);
     play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+    settings.decide(campaign, dm, combatCampaignEnvelope(campaign, dm), "hitDiceMethod", "FIXED");
     var input =
         new com.github.sbadolankaur.rpg.rest.application.RestInput(
             com.github.sbadolankaur.rpg.engine.rest.RestResolver.Kind.SHORT,
             60,
             java.util.List.of(fighter),
-            java.util.Map.of(),
+            java.util.Map.of(fighter, 1),
             java.util.Map.of(),
             false,
             java.util.Map.of(),
@@ -304,8 +306,8 @@ class ApplicationFlowIT {
         .when(commandStore)
         .updateClock(campaign, 3600, nextVersion);
     assertThatThrownBy(() -> campaignRests.submit(campaign, dm, envelope, input, false))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessage("After the clock write");
+        .hasRootCauseInstanceOf(IllegalStateException.class)
+        .hasRootCauseMessage("After the clock write");
     assertThat(commands.readClock(campaign, dm).gameSeconds()).isZero();
     assertThat(
             jdbcTemplate.queryForObject(
@@ -318,6 +320,16 @@ class ApplicationFlowIT {
                 "SELECT count(*) FROM campaign_action WHERE action_id = ?",
                 Integer.class,
                 envelope.actionId()))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT hp_current FROM player_character WHERE id = ?", Integer.class, fighter))
+        .isOne();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT spent FROM pc_hit_dice WHERE player_character_id = ?",
+                Integer.class,
+                fighter))
         .isZero();
     org.mockito.Mockito.doCallRealMethod()
         .when(commandStore)
@@ -347,6 +359,17 @@ class ApplicationFlowIT {
   @Test
   void resumeReadsTheSameMidEncounterStateFromPostgresAfterRestart() throws Exception {
     var bout = combatFixture(false);
+    mockMvc
+        .perform(
+            action(
+                    "/campaigns/" + bout.campaign() + "/rests",
+                    "combat-dm",
+                    bout.campaign(),
+                    bout.dm())
+                .param("kind", "long")
+                .param("durationMinutes", "480")
+                .param("participantIds", bout.left().toString()))
+        .andExpect(status().isOk());
     org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
     submitBout(bout, "/start");
     var before = encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 10);
@@ -383,7 +406,54 @@ class ApplicationFlowIT {
       assertThat(after.combatants()).isEqualTo(before.combatants());
       assertThat(resumedPlay.workspace(bout.campaign(), bout.dm()).recap())
           .isEqualTo(paused.recap());
+      assertThat(resumedCommands.readClock(bout.campaign(), bout.dm()).gameSeconds())
+          .isEqualTo(28800);
+      assertThat(
+              restarted
+                  .getBean(com.github.sbadolankaur.rpg.character.persistence.CharacterStore.class)
+                  .lastLongRest(bout.left()))
+          .isEqualTo(28800);
     }
+  }
+
+  @Test
+  void advancingAndUndoingACombatRoundExpiresAndRestoresAnOffRosterEffect() throws Exception {
+    var bout = combatFixture(false);
+    UUID outside =
+        createCombatFighter(
+            "/campaigns/" + bout.campaign() + "/characters",
+            bout.campaign(),
+            bout.dm(),
+            "combat-dm");
+    jdbcTemplate.update(
+        """
+        UPDATE player_character SET condition_effects = CAST(? AS jsonb) WHERE id = ?
+        """,
+        """
+        [{"key":"srd-5.1:blinded","end":{"kind":"CLOCK","seconds":6}}]
+        """,
+        outside);
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
+    submitBout(bout, "/start");
+    for (UUID actor : java.util.List.of(bout.first(), bout.second())) {
+      mockMvc
+          .perform(
+              combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", actor.toString()))
+          .andExpect(status().isSeeOther());
+    }
+    assertThat(commands.readClock(bout.campaign(), bout.dm()).gameSeconds()).isEqualTo(6);
+    assertThat(conditionEffects(outside)).isEqualTo("[]");
+    UUID latest =
+        encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50).reversible();
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/overrides", bout.id())
+                .param("kind", "undo-last")
+                .param("entryId", latest.toString())
+                .param("reason", "Replay the turn"))
+        .andExpect(status().isSeeOther());
+    assertThat(commands.readClock(bout.campaign(), bout.dm()).gameSeconds()).isZero();
+    assertThat(conditionEffects(outside)).contains("srd-5.1:blinded");
   }
 
   @Test
@@ -539,7 +609,7 @@ class ApplicationFlowIT {
                     .with(csrf())
                     .header("HX-Request", "true")
                     .param("action", "upgrade")
-                    .param("targetVersion", "0.3.0"))
+                    .param("targetVersion", "0.3.1"))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Confirm upgrade")))
             .andReturn();
@@ -549,20 +619,20 @@ class ApplicationFlowIT {
     mockMvc
         .perform(
             action(apply, "upgrade-player", campaign, player)
-                .param("targetVersion", "0.3.0")
+                .param("targetVersion", "0.3.1")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isForbidden());
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.3.0")
+                .param("targetVersion", "0.3.1")
                 .param("reviewHash", "expired-review"))
         .andExpect(status().isConflict());
     assertThat(contentPacks.open(campaign).find("class", "srd-5.1:fighter")).isEmpty();
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.3.0")
+                .param("targetVersion", "0.3.1")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isSeeOther())
         .andExpect(redirectedUrl(packs));
@@ -3763,32 +3833,32 @@ class ApplicationFlowIT {
       throws Exception {
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
+                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
                 Integer.class))
         .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForList(
                 """
                 SELECT d.key FROM content_definition d JOIN content_pack p ON p.id = d.pack_id
-                WHERE d.kind = 'class' AND p.pack_key = 'srd-5.1' AND p.version = '0.3.0'
+                WHERE d.kind = 'class' AND p.pack_key = 'srd-5.1' AND p.version = '0.3.1'
                 """,
                 String.class))
         .containsExactlyInAnyOrder(
             "srd-5.1:bard", "srd-5.1:fighter", "srd-5.1:paladin", "srd-5.1:rogue");
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
+                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
                 String.class))
-        .isEqualTo("0.3.0");
+        .isEqualTo("0.3.1");
     String manifest =
         jdbcTemplate.queryForObject(
-            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
+            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
             String.class);
     String notice = contentPacks.notice();
     var changed =
         new ContentPack(
             "srd-5.1",
-            "0.3.0",
+            "0.3.1",
             "sha256:" + "1".repeat(64),
             "srd-5.1",
             "CC-BY-4.0",

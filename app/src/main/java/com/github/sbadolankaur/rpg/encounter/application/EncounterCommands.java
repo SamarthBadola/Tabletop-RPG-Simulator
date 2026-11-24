@@ -6,6 +6,8 @@ import com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Reply;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignSettings;
+import com.github.sbadolankaur.rpg.campaign.application.CampaignTimeEffects;
+import com.github.sbadolankaur.rpg.campaign.application.CampaignTimeEffects.Delta;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignView;
 import com.github.sbadolankaur.rpg.campaign.application.Campaigns;
 import com.github.sbadolankaur.rpg.campaign.persistence.CommandStore;
@@ -35,6 +37,7 @@ import com.github.sbadolankaur.rpg.engine.kernel.HitPointRules;
 import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Prompt;
+import com.github.sbadolankaur.rpg.engine.rest.RestResolver.Trigger;
 import com.github.sbadolankaur.rpg.platform.InstanceMac;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -65,6 +68,7 @@ public class EncounterCommands {
   private final Campaigns campaigns;
   private final CampaignCommands campaignCommands;
   private final CampaignSettings settings;
+  private final CampaignTimeEffects timeEffects;
   private final CommandStore clocks;
   private final EncounterStore store;
   private final CombatRoster roster;
@@ -80,6 +84,7 @@ public class EncounterCommands {
       Campaigns campaigns,
       CampaignCommands campaignCommands,
       CampaignSettings settings,
+      CampaignTimeEffects timeEffects,
       CommandStore clocks,
       EncounterStore store,
       CombatRoster roster,
@@ -93,6 +98,7 @@ public class EncounterCommands {
     this.campaigns = campaigns;
     this.campaignCommands = campaignCommands;
     this.settings = settings;
+    this.timeEffects = timeEffects;
     this.clocks = clocks;
     this.store = store;
     this.roster = roster;
@@ -603,6 +609,7 @@ public class EncounterCommands {
     private ReactionReplay replay;
     private final Map<String, Object> settingsRead = new LinkedHashMap<>();
     private final List<PendingEvent> events = new ArrayList<>();
+    private final List<Delta> clockChanges = new ArrayList<>();
     private final List<Warning> criticalWarnings = new ArrayList<>();
     private final List<JsonNode> rolls = new ArrayList<>();
     private final Map<String, Object> result = new LinkedHashMap<>();
@@ -757,7 +764,7 @@ public class EncounterCommands {
 
     EncounterUndo undo(Table before, long elapsed) {
       boolean publicOutput = events.stream().anyMatch(event -> event.audience().equals("ALL"));
-      return EncounterUndo.of(this, before, elapsed, originals, publicOutput);
+      return EncounterUndo.of(this, before, elapsed, originals, publicOutput, clockChanges);
     }
 
     void update(Entry entry) {
@@ -837,7 +844,11 @@ public class EncounterCommands {
     }
 
     void dm(String type, Map<String, ?> data) {
-      events.add(new PendingEvent(type, "DM", null, data, seconds, table.round()));
+      dmAt(type, seconds, data);
+    }
+
+    private void dmAt(String type, long at, Map<String, ?> data) {
+      events.add(new PendingEvent(type, "DM", null, data, at, table.round()));
     }
 
     void tell(String type, UUID recipient, String line) {
@@ -904,6 +915,69 @@ public class EncounterCommands {
 
     boolean alwaysPass(Creature creature, String feature) {
       return roster.alwaysPassReaction(creature, feature);
+    }
+
+    void recharge(Creature creature, Trigger trigger) {
+      recharge(creature, trigger, seconds);
+    }
+
+    private void recharge(Creature creature, Trigger trigger, long at) {
+      UUID id = creature.entry().id();
+      roster
+          .recharge(table.campaign(), actor, creature, content, effective, trigger, random())
+          .forEach(
+              (key, recharge) -> {
+                if (recharge.amount() > 0)
+                  resource(creature(id), key, creature.resources().get(key) - recharge.amount());
+                dmAt(
+                    "ResourceRecharged",
+                    at,
+                    Map.of(
+                        "combatantId",
+                        id,
+                        "resource",
+                        key,
+                        "amount",
+                        recharge.amount(),
+                        "dice",
+                        recharge.dice()));
+              });
+    }
+
+    void sweepRoundClock(long previous) {
+      if (previous == seconds) return;
+      setting("startTimeOfDay", String.class);
+      setting("dawnTime", String.class);
+      var present = entries.values().stream().filter(Encounters::present).toList();
+      var playerIds =
+          present.stream()
+              .map(Entry::character)
+              .filter(java.util.Objects::nonNull)
+              .collect(java.util.stream.Collectors.toSet());
+      var sweep =
+          timeEffects.outsideEncounter(
+              table.campaign(),
+              actor,
+              playerIds,
+              previous,
+              seconds - previous,
+              effective,
+              content,
+              random());
+      clockChanges.addAll(sweep.deltas());
+      write(() -> timeEffects.apply(sweep.deltas(), false));
+      for (var event : sweep.events()) {
+        var payload = new LinkedHashMap<>(event.data());
+        if (event.character() != null) payload.put("characterId", event.character());
+        dmAt(event.type(), event.seconds(), payload);
+        if ("DawnReached".equals(event.type())) {
+          for (var entry : present) recharge(creature(entry.id()), Trigger.DAWN, event.seconds());
+        }
+      }
+    }
+
+    void restoreClockEffects(List<Delta> changes) {
+      write(() -> timeEffects.apply(changes, true));
     }
 
     void resource(Creature creature, String key, int used) {

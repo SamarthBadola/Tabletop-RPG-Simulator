@@ -2,6 +2,7 @@ package com.github.sbadolankaur.rpg.encounter.application;
 
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException;
 import com.github.sbadolankaur.rpg.campaign.application.CampaignException.Code;
+import com.github.sbadolankaur.rpg.campaign.application.CampaignTimeEffects.Delta;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.Context;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Entry;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Table;
@@ -21,7 +22,12 @@ record EncounterUndo(
     long clockVersionAfter,
     List<Change> changes,
     boolean publicChange,
-    Map<UUID, String> privateChanges) {
+    Map<UUID, String> privateChanges,
+    List<Delta> clockChanges) {
+
+  EncounterUndo {
+    clockChanges = clockChanges == null ? List.of() : List.copyOf(clockChanges);
+  }
 
   boolean visible() {
     return publicChange || !privateChanges.isEmpty();
@@ -76,7 +82,10 @@ record EncounterUndo(
               });
     }
     context.table = table;
-    if (secondsBefore != secondsAfter) context.seconds = secondsBefore;
+    if (secondsBefore != secondsAfter) {
+      context.restoreClockEffects(clockChanges);
+      context.seconds = secondsBefore;
+    }
   }
 
   static EncounterUndo of(
@@ -84,7 +93,8 @@ record EncounterUndo(
       Table before,
       long elapsed,
       Map<UUID, Snapshot> originals,
-      boolean publicOutput) {
+      boolean publicOutput,
+      List<Delta> clockChanges) {
     var changes =
         originals.entrySet().stream()
             .map(
@@ -129,7 +139,8 @@ record EncounterUndo(
         context.clockVersion + (elapsed == context.seconds ? 0 : 1),
         changes,
         visible,
-        Map.copyOf(privateChanges));
+        Map.copyOf(privateChanges),
+        clockChanges);
   }
 
   private static java.util.Set<String> presentConditions(Snapshot snapshot) {

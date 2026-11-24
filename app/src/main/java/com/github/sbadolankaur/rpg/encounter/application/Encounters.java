@@ -387,6 +387,9 @@ public class Encounters {
   private static int initiative(Context context, UUID id, int modifier, RollMode mode) {
     var roll = CombatRolls.d20("Initiative modifier", modifier, mode, context.random());
     context.dice("Initiative", id, roll);
+    context.recharge(
+        context.creature(id),
+        com.github.sbadolankaur.rpg.engine.rest.RestResolver.Trigger.ROLL_INITIATIVE);
     return roll.total();
   }
 
@@ -552,6 +555,7 @@ public class Encounters {
       return;
     }
     int round = context.table.round();
+    long previous = context.seconds;
     var possible = eligible(remaining, round);
     if (possible.isEmpty()) {
       round++;
@@ -564,6 +568,7 @@ public class Encounters {
     context.update(next.tactics(next.tactics().start(round)));
     context.table = context.table.position(Phase.ACTIVE, round, next.id(), TurnBudget.start());
     CombatEffects.expire(context, next.id(), Boundary.START);
+    context.sweepRoundClock(previous);
     context.dm("TurnStarted", Map.of("combatantId", next.id()));
     var creature = context.creature(next.id());
     if (creature.vitals().health().state() == State.DYING) {

@@ -68,6 +68,26 @@ public class Characters {
     boolean dm = campaigns.requireMember(campaign, actor).role() == Role.DM;
     var catalog = catalog(campaign, actor);
     var effective = settings.effective(campaign, actor);
+    return list(campaign, actor, dm, catalog, effective);
+  }
+
+  @Transactional(readOnly = true)
+  public List<CharacterSheets.View> combatSheets(
+      UUID campaign,
+      UUID dm,
+      ContentSet pinned,
+      SettingsView effective,
+      java.util.Set<UUID> exclude) {
+    campaigns.requireDm(campaign, dm);
+    var catalog = new CharacterCatalog(pinned);
+    return store.list(campaign, dm, true).stream()
+        .filter(header -> !exclude.contains(header.id()))
+        .map(header -> CharacterSheets.derive(store.read(header), catalog, effective, true))
+        .toList();
+  }
+
+  private List<CharacterSheets.View> list(
+      UUID campaign, UUID actor, boolean dm, CharacterCatalog catalog, SettingsView effective) {
     return store.list(campaign, actor, dm).stream()
         .map(header -> CharacterSheets.derive(store.read(header), catalog, effective, dm))
         .toList();

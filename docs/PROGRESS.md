@@ -106,6 +106,8 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 
 The DM rest form uses the existing preview and submit routes. It accepts the E-160 choices for interruption, food and drink, Hit Dice recovery, Arcane Recovery, and Song of Rest. RS-RST-004 sets the recovery allowance at half the total Hit Dice, rounded down, with a minimum of one. E-26 controls how both spent Hit Dice and the Song of Rest die are taken. A long rest clears concentration only when it grants long rest benefits.
 
+The bundled SRD 5.1 pack is version 0.3.1. It includes the short-rest recharge for Channel Divinity. Existing campaigns can review and apply the usual pack upgrade.
+
 The Compose smoke test exercises both rest kinds and verifies Hit Dice, hit points, and the elapsed clock. The PostgreSQL suite exercises the transactional rest and session resume paths. Player rest plans remain part of Step 16.
 
 ## CI status
