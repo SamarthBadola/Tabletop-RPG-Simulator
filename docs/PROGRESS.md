@@ -102,6 +102,12 @@ Implemented the pure-JDK dice engine in the existing `app` Maven module, includi
 
 **Implementation checkpoint note.** This progress section records status as of 2026-11-14. Since then, the approved specifications for later steps were added; follow the current AI Build Brief for the implementation sequence and stop points. This documentation sync does not verify later implementation work. Do not invent D&D rules from memory.
 
+## Step 9 rest implementation
+
+The DM rest form uses the existing preview and submit routes. It accepts the E-160 choices for interruption, food and drink, Hit Dice recovery, Arcane Recovery, and Song of Rest. RS-RST-004 sets the recovery allowance at half the total Hit Dice, rounded down, with a minimum of one. E-26 controls how both spent Hit Dice and the Song of Rest die are taken. A long rest clears concentration only when it grants long rest benefits.
+
+The Compose smoke test exercises both rest kinds and verifies Hit Dice, hit points, and the elapsed clock. The PostgreSQL suite exercises the transactional rest and session resume paths. Player rest plans remain part of Step 16.
+
 ## CI status
 
 The active \`.github/workflows/ci.yml\` defines \`repo-hygiene\`, \`unit\`, \`integration\`, \`secrets\`, and \`compose-smoke\`. All five jobs passed on [PR #12 run](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260399502) and [post-merge run on `main`](https://github.com/SamarthBadola/Tabletop-RPG-Simulator/actions/runs/38260733720). Compose smoke runs on pull requests and branch pushes after integration tests; it is not main-only. The live \`main-quality-gates\` ruleset requires all five jobs plus \`DCO\`.

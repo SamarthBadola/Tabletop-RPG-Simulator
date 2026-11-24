@@ -308,6 +308,30 @@ public class CharacterStore {
     jdbc.sql("UPDATE player_character SET name = ? WHERE id = ?").params(name, id).update();
   }
 
+  public Long lastLongRest(UUID id) {
+    return jdbc.sql("SELECT last_long_rest_end_seconds FROM player_character WHERE id = ?")
+        .param(id)
+        .query(Long.class)
+        .optional()
+        .orElse(null);
+  }
+
+  public void lastLongRest(UUID id, long seconds) {
+    jdbc.sql("UPDATE player_character SET last_long_rest_end_seconds = ? WHERE id = ?")
+        .params(seconds, id)
+        .update();
+  }
+
+  public void spentHitDice(UUID id, int size, int spent) {
+    jdbc.sql(
+            """
+        INSERT INTO pc_hit_dice (player_character_id, die_size, spent) VALUES (?, ?, ?)
+        ON CONFLICT (player_character_id, die_size) DO UPDATE SET spent = EXCLUDED.spent
+        """)
+        .params(id, size, spent)
+        .update();
+  }
+
   public void hitPoints(UUID id, int current, int temporary) {
     jdbc.sql("UPDATE player_character SET hp_current = ?, hp_temp = ? WHERE id = ?")
         .params(current, temporary, id)

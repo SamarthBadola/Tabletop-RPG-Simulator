@@ -14,7 +14,8 @@ import org.springframework.web.servlet.ModelAndView;
     basePackages = {
       "com.github.sbadolankaur.rpg.campaign.web",
       "com.github.sbadolankaur.rpg.character.web",
-      "com.github.sbadolankaur.rpg.encounter.web"
+      "com.github.sbadolankaur.rpg.encounter.web",
+      "com.github.sbadolankaur.rpg.rest.web"
     })
 class CampaignErrorAdvice {
   @ExceptionHandler(exception = CampaignException.class, produces = "text/html")
@@ -72,7 +73,10 @@ class CampaignErrorAdvice {
               REACTION_NOT_AVAILABLE,
               FEATURE_INPUT_INVALID,
               FEATURE_NOT_AVAILABLE,
-              FEATURE_USES_EXHAUSTED ->
+              FEATURE_USES_EXHAUSTED,
+              REST_NOT_ALLOWED,
+              REST_TOO_SHORT,
+              HIT_DICE_UNAVAILABLE ->
               HttpStatus.UNPROCESSABLE_CONTENT;
         };
     String detail =
@@ -107,6 +111,9 @@ class CampaignErrorAdvice {
           case TARGET_OUT_OF_RANGE -> "This target is out of range.";
           case TOTAL_COVER -> "This target is behind total cover.";
           case INVALID_TARGET -> "Choose an eligible target.";
+          case REST_NOT_ALLOWED -> "A selected character cannot rest in their current state.";
+          case REST_TOO_SHORT -> "Increase the duration to the minimum for this rest.";
+          case HIT_DICE_UNAVAILABLE -> "Choose a number of Hit Dice the character has left.";
           case SETTING_DECISION_REQUIRED -> "Set the campaign rules for this action first.";
         };
     var problem = ProblemDetail.forStatusAndDetail(status, detail);

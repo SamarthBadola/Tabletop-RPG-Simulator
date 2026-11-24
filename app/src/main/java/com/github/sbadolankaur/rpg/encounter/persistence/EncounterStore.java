@@ -58,6 +58,17 @@ public class EncounterStore {
         .optional();
   }
 
+  public boolean hasRunning(UUID campaign) {
+    return jdbc.sql(
+            """
+        SELECT EXISTS (SELECT 1 FROM encounter
+          WHERE campaign_id = ? AND state IN ('INITIATIVE', 'ACTIVE'))
+        """)
+        .param(campaign)
+        .query(Boolean.class)
+        .single();
+  }
+
   public boolean hasRunning(UUID campaign, UUID except) {
     return jdbc.sql(
             """

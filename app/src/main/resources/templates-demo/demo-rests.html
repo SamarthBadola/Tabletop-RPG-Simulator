@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head><meta charset="utf-8"><title>Party rest</title></head>
+<body>
+<main>
+    <h1>Party rest</h1>
+    <nav aria-label="Rest kind">
+        <a th:href="@{/campaigns/{id}/rests/new(id=${campaign.id},kind='short')}">Short rest</a>
+        <a th:href="@{/campaigns/{id}/rests/new(id=${campaign.id},kind='long')}">Long rest</a>
+    </nav>
+    <section id="rest-preview" th:fragment="rest-preview">
+        <h2 th:text="${longRest ? 'Long rest' : 'Short rest'}"></h2>
+        <p th:if="${preview != null && preview.interrupted}" th:text="${preview.interruptionOutcome()}"></p>
+        <p th:if="${#lists.isEmpty(characters)}">Create a character before taking a rest.</p>
+        <form th:unless="${#lists.isEmpty(characters)}" method="post"
+              th:action="@{/campaigns/{id}/rests/previews(id=${campaign.id})}">
+            <div th:replace="~{demo-command :: envelope}"></div>
+            <input type="hidden" name="kind" th:value="${longRest ? 'long' : 'short'}">
+            <label>Duration in minutes
+                <input type="number" name="durationMinutes" min="1" max="527040" required
+                       th:value="${input.durationMinutes}">
+            </label>
+            <label><input name="interrupted" type="checkbox" value="true" th:checked="${input.interrupted}">
+                Interrupted</label>
+            <fieldset th:each="character : ${characters}" th:with="row=${rows.get(character.id)}">
+                <legend th:text="${character.name}">Character</legend>
+                <label><input type="checkbox" name="participantIds" th:value="${character.id}"
+                              th:checked="${input.participantIds.contains(character.id)}"> Joining the rest</label>
+                <p th:if="${row != null}" th:text="|${row.hitDiceAvailable} Hit Dice available.|"></p>
+                <p th:if="${row != null && !row.warnings.isEmpty()}">This character gains no long rest benefits.</p>
+                <th:block th:if="${!longRest || (preview != null && preview.benefit != null && preview.benefit.name() == 'SHORT')}">
+                    <label>Hit Dice to spend
+                        <input type="number" min="0" th:name="|spendCount[${character.id}]|" th:value="${input.spendCount.get(character.id)}">
+                    </label>
+                    <label>Or spend until reaching this HP
+                        <input type="number" min="1" th:name="|spendUntil[${character.id}]|" th:value="${input.spendUntil.get(character.id)}">
+                    </label>
+                </th:block>
+                <th:block th:unless="${longRest}">
+                    <label th:if="${!character.features.?[key == 'srd-5.1:song-of-rest'].isEmpty()}">
+                        <input type="checkbox" name="songOfRestPerformerIds" th:value="${character.id}"
+                               th:checked="${input.songOfRestPerformerIds.contains(character.id)}"> Perform Song of Rest
+                    </label>
+                    <label><input type="checkbox" name="songOfRestExcludedIds" th:value="${character.id}"
+                                  th:checked="${input.songOfRestExcludedIds.contains(character.id)}"> Exclude from Song of Rest</label>
+                    <p th:if="${row != null && row.songOfRestDie > 0}" th:text="|Song of Rest die: d${row.songOfRestDie}|"></p>
+                    <th:block th:if="${row != null && row.arcaneRecoveryBudget > 0}">
+                        <p th:text="|Arcane Recovery budget: ${row.arcaneRecoveryBudget} total slot levels.|"></p>
+                        <label th:each="slot : ${row.expendedSlots}" th:with="chosen=${input.arcaneRecovery.get(character.id)}">
+                            <span th:text="|Level ${slot.key} slots (${slot.value} expended)|"></span>
+                            <input type="number" min="0" th:max="${slot.value}"
+                                   th:name="|arcaneRecovery[${character.id}][${slot.key}]|"
+                                   th:value="${chosen == null ? null : chosen.get(slot.key)}">
+                        </label>
+                    </th:block>
+                </th:block>
+                <th:block th:if="${longRest}">
+                    <label th:if="${character.exhaustion > 0}" th:with="food=${input.ateAndDrank.get(character.id)}">
+                        Ate and drank
+                        <select th:name="|ateAndDrank[${character.id}]|">
+                            <option value="" th:selected="${food == null}">Yes (default)</option>
+                            <option value="yes" th:selected="${food == true}">Yes</option>
+                            <option value="no" th:selected="${food == false}">No</option>
+                        </select>
+                    </label>
+                    <p th:if="${row != null && row.recoveryAllowance > 0}"
+                       th:text="|Recover up to ${row.recoveryAllowance} spent Hit Dice.|"></p>
+                    <p th:if="${row != null && row.recoveryAllowance > 0 && !row.recoverableHitDice.isEmpty()}">
+                        Spent dice
+                        <span th:each="die : ${row.recoverableHitDice}" th:text="|${die.value}d${die.key} |"></span>
+                    </p>
+                    <th:block th:if="${row != null && row.recoveryAllowance > 0 && row.recoverableHitDice.size() > 1 && row.canChooseHitDiceRecovery()}">
+                        <p>Leave blank to recover the largest dice first.</p>
+                        <label th:each="die : ${row.recoverableHitDice}" th:with="chosen=${input.recoverHitDice.get(character.id)}">
+                            <span th:text="|d${die.key} to recover|"></span>
+                            <input type="number" min="0" th:max="${die.value}"
+                                   th:name="|recoverHitDice[${character.id}][${die.key}]|"
+                                   th:value="${chosen == null ? null : chosen.get(die.key)}">
+                        </label>
+                    </th:block>
+                </th:block>
+            </fieldset>
+            <label th:if="${preview != null && preview.requiresConfirmation()}">
+                <input type="checkbox" name="confirmWarnings" value="true"> Continue with these warnings
+            </label>
+            <button type="submit">Preview rest</button>
+            <button th:if="${preview != null}" type="submit"
+                    th:formaction="@{/campaigns/{id}/rests(id=${campaign.id})}">Complete rest</button>
+        </form>
+        <p><a th:href="@{/campaigns/{id}(id=${campaign.id})}">Back to campaign</a></p>
+    </section>
+    <div th:fragment="rest-result" th:if="${result != null}">
+        <section id="rest-result">
+            <h2>Rest result</h2>
+            <p th:unless="${result.path('interruptionOutcome').asString().isEmpty()}"
+               th:text="${result.path('interruptionOutcome').asString()}"></p>
+            <ul>
+                <li th:each="event : ${result.path('events')}" th:attr="data-event=${event.path('type').asString()}">
+                    <span th:text="${event.path('type').asString()}"></span>
+                    <span th:if="${event.path('data').has('roll')}" th:text="|total ${event.path('data').path('roll').path('total').asInt()}|"></span>
+                    <span th:if="${event.path('data').has('amount')}" th:text="|amount ${event.path('data').path('amount').asInt()}|"></span>
+                </li>
+            </ul>
+            <a th:href="@{/campaigns/{id}(id=${campaign.id})}">Back to campaign</a>
+        </section>
+        <section id="clock" th:attr="data-version=${version}">
+            <h2>Game clock</h2>
+            <p th:text="|${result.path('gameTimeSeconds').asLong()} seconds elapsed|"></p>
+        </section>
+    </div>
+</main>
+</body>
+</html>

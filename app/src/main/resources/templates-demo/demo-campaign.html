@@ -4,6 +4,10 @@
 <body>
 <main>
     <h1 th:text="${campaign.name}">Campaign</h1>
+    <th:block th:fragment="resumed-session" th:if="${sessionResult != null}">
+        <section th:replace="~{demo-campaign :: session-bar}"></section>
+        <section th:replace="~{demo-campaign :: recap}"></section>
+    </th:block>
     <section id="session-bar" th:fragment="session-bar">
         <h2>Session</h2>
         <p th:if="${sessionResult != null}"
@@ -38,7 +42,12 @@
     </section>
     <section id="clock" th:fragment="clock">
         <h2>Game clock</h2>
+        <p th:text="|Time of day ${timeOfDay}|"></p>
         <p th:text="${clockResult == null ? clock.gameSeconds : clockResult.path('gameTimeSeconds').asLong()}"></p>
+        <ul th:if="${clockResult != null && !clockResult.path('effectsEnded').isEmpty()}">
+            <li th:each="effect : ${clockResult.path('effectsEnded')}"
+                th:text="|${effect.path('data').path('effect').asString()} ended|"></li>
+        </ul>
         <form th:if="${isDm}" th:action="@{/campaigns/{id}/clock/advances(id=${campaign.id})}" method="post">
         <div th:replace="~{demo-command :: envelope}"></div>
             <label>Amount <input name="amount" type="number" min="1" value="1" required></label>
@@ -46,8 +55,18 @@
             <button type="submit">Advance clock</button>
         </form>
     </section>
-    <section>
+    <section id="recap" th:fragment="recap">
         <h2>Recap</h2>
+        <p th:if="${recap.acting != null}" th:text="|${recap.acting}'s turn|"></p>
+        <ul th:unless="${recap.party.isEmpty()}">
+            <li th:each="character : ${recap.party}">
+                <span th:text="|${character.name} · ${character.hp} / ${character.maximumHp} HP|"></span>
+                <ul th:unless="${character.resources.isEmpty()}">
+                    <li th:each="resource : ${character.resources}"
+                        th:text="|${resource.name} · ${resource.remaining} / ${resource.maximum}|"></li>
+                </ul>
+            </li>
+        </ul>
         <p th:if="${scene != null}" th:text="${scene.name}"></p>
         <p th:if="${isDm && scene != null}" th:text="${scene.notes}"></p>
         <ul><li th:each="event : ${events}" th:text="|${event.type} at ${event.gameSeconds} s|"></li></ul>
@@ -55,6 +74,7 @@
     <nav><a th:href="@{/campaigns/{id}/characters(id=${campaign.id})}">Characters</a></nav>
     <nav th:if="${isDm}">
         <a th:href="@{/campaigns/{id}/encounters(id=${campaign.id})}">Encounters</a>
+        <a th:href="@{/campaigns/{id}/rests/new(id=${campaign.id})}">Party rest</a>
         <a th:href="@{/campaigns/{id}/packs(id=${campaign.id})}">Content packs</a>
         <a th:href="@{/campaigns/{id}/players(id=${campaign.id})}">Players and invites</a>
         <a th:href="@{/campaigns/{id}/scenes(id=${campaign.id})}">Scenes</a>

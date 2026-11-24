@@ -10,7 +10,9 @@ import com.github.sbadolankaur.rpg.campaign.persistence.PlayStore;
 import com.github.sbadolankaur.rpg.campaign.persistence.PlayStore.Light;
 import com.github.sbadolankaur.rpg.campaign.persistence.PlayStore.Scene;
 import com.github.sbadolankaur.rpg.campaign.persistence.PlayStore.Session;
+import com.github.sbadolankaur.rpg.engine.kernel.GameClock;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -21,31 +23,46 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CampaignPlay {
-  private static final long MAX_ADVANCE = 366 * 86400L;
+  private final CampaignSettings settings;
   private final Campaigns campaigns;
   private final CampaignCommands commands;
   private final PlayStore store;
+  private final CampaignTimeEffects timeEffects;
+  private final CampaignRecap recap;
   private final com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore reactions;
 
   public CampaignPlay(
       Campaigns campaigns,
       CampaignCommands commands,
+      CampaignSettings settings,
       PlayStore store,
+      CampaignTimeEffects timeEffects,
+      CampaignRecap recap,
       com.github.sbadolankaur.rpg.campaign.persistence.ReactionStore reactions) {
     this.campaigns = campaigns;
     this.commands = commands;
+    this.settings = settings;
     this.store = store;
+    this.timeEffects = timeEffects;
+    this.recap = recap;
     this.reactions = reactions;
   }
 
   @Transactional(readOnly = true)
   public Workspace workspace(UUID campaign, UUID actor) {
     var view = campaigns.requireMember(campaign, actor);
+    var clock = commands.readClock(campaign, actor);
+    var start =
+        LocalTime.parse(settings.effective(campaign, actor).get("startTimeOfDay", String.class));
+    var timeOfDay =
+        LocalTime.ofSecondOfDay(GameClock.timeOfDay(clock.gameSeconds(), start.toSecondOfDay()));
     return new Workspace(
         view,
-        commands.readClock(campaign, actor),
+        clock,
+        timeOfDay,
         store.latestSession(campaign).orElse(null),
-        store.currentScene(campaign, view.role() == CampaignView.Role.DM).orElse(null));
+        store.currentScene(campaign, view.role() == CampaignView.Role.DM).orElse(null),
+        recap.read(campaign, actor, view.role() == CampaignView.Role.DM));
   }
 
   @Transactional(readOnly = true)
@@ -113,18 +130,11 @@ public class CampaignPlay {
         clock -> {
           requireActive(campaign);
           if (amount < 1
-              || amount > MAX_ADVANCE / unit.seconds
+              || amount > GameClock.MAX_ADVANCE / unit.seconds
               || clock.gameSeconds() > Long.MAX_VALUE - amount * unit.seconds) {
             throw new CampaignException(CampaignException.Code.VALIDATION_FAILED);
           }
-          long next = clock.gameSeconds() + amount * unit.seconds;
-          var payload = Map.of("previousGameSeconds", clock.gameSeconds(), "gameTimeSeconds", next);
-          return new Change(
-              next,
-              "ClockAdvanced",
-              Audience.ALL,
-              payload,
-              Map.of("gameTimeSeconds", next, "effectsEnded", List.of()));
+          return timeEffects.advance(campaign, actor, clock.gameSeconds(), amount * unit.seconds);
         });
   }
 
@@ -221,5 +231,10 @@ public class CampaignPlay {
   public record SceneInput(String name, String notes, Light light) {}
 
   public record Workspace(
-      CampaignView campaign, CampaignCommands.Clock clock, Session session, Scene scene) {}
+      CampaignView campaign,
+      CampaignCommands.Clock clock,
+      LocalTime timeOfDay,
+      Session session,
+      Scene scene,
+      CampaignRecap.View recap) {}
 }

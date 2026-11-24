@@ -60,6 +60,13 @@ public class CommandStore {
         .update();
   }
 
+  public long nextEventSequence(UUID campaign) {
+    return jdbc.sql("SELECT COALESCE(MAX(seq), 0) + 1 FROM campaign_event WHERE campaign_id = ?")
+        .param(campaign)
+        .query(Long.class)
+        .single();
+  }
+
   public void addEvent(
       UUID campaign,
       long sequence,

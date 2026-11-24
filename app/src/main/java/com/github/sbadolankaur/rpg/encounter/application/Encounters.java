@@ -144,6 +144,26 @@ public class Encounters {
             : Map.of());
   }
 
+  @Transactional(readOnly = true)
+  public String currentTurn(UUID campaign, UUID actor) {
+    campaigns.requireDm(campaign, actor);
+    return store.list(campaign).stream()
+        .filter(table -> table.phase() == Phase.ACTIVE && table.acting() != null)
+        .findFirst()
+        .map(
+            table ->
+                store.entries(table.id()).stream()
+                    .filter(entry -> entry.id().equals(table.acting()) && present(entry))
+                    .findFirst()
+                    .map(
+                        entry ->
+                            roster
+                                .load(campaign, actor, entry, roster.content(campaign, actor))
+                                .name())
+                    .orElse(null))
+        .orElse(null);
+  }
+
   public List<PlayerEvent> visibleEvents(UUID campaign, UUID id, UUID reader) {
     campaigns.requireMember(campaign, reader);
     commands.require(campaign, id, false);
