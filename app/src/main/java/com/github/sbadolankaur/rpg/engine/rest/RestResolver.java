@@ -526,7 +526,7 @@ public final class RestResolver {
   public static final class Rejected extends RuntimeException {
     private static final long serialVersionUID = 1L;
     private final Problem problem;
-    private final List<UUID> participants;
+    private final UUID[] participants;
     private final String field;
     private final String fieldCode;
 
@@ -537,7 +537,7 @@ public final class RestResolver {
     Rejected(Problem problem, List<UUID> participants, String field, String fieldCode) {
       super(problem.name());
       this.problem = problem;
-      this.participants = List.copyOf(participants);
+      this.participants = participants.toArray(UUID[]::new);
       this.field = field;
       this.fieldCode = fieldCode;
     }
@@ -555,7 +555,7 @@ public final class RestResolver {
     }
 
     public List<UUID> participants() {
-      return participants;
+      return List.of(participants);
     }
   }
 
