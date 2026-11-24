@@ -75,6 +75,11 @@ class ApplicationFlowIT {
 
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  @Autowired private com.github.sbadolankaur.rpg.rest.application.CampaignRests campaignRests;
+
+  @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+  private com.github.sbadolankaur.rpg.campaign.persistence.CommandStore commandStore;
+
   @Autowired private PasswordEncoder passwordEncoder;
 
   @Autowired private ContentPacks contentPacks;
@@ -108,6 +113,537 @@ class ApplicationFlowIT {
     jdbcTemplate.update("DELETE FROM campaign");
     jdbcTemplate.update("DELETE FROM app_user");
     jdbcTemplate.update("UPDATE instance_state SET initialized = FALSE WHERE id = 1");
+  }
+
+  @Test
+  void shortAndLongRestsPersistOnceAndReadEachHitDieMethodOnlyForHealing() throws Exception {
+    UUID dm = characterAccount("rest-dm", true);
+    UUID player = characterAccount("rest-player", false);
+    UUID campaign = campaigns.create(dm, "Rest table").id();
+    joinFixture(campaign, player);
+    String base = "/campaigns/" + campaign;
+    String rests = base + "/rests";
+    UUID fighter = createCombatFighter(base + "/characters", campaign, player, "rest-player");
+    jdbcTemplate.update("UPDATE player_character SET hp_current = 1 WHERE id = ?", fighter);
+    jdbcTemplate.update(
+        "UPDATE pc_resource SET used = 1 WHERE player_character_id = ? AND resource_key = ?",
+        fighter,
+        "srd-5.1:second-wind-uses");
+    play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+    settings.decide(campaign, dm, combatCampaignEnvelope(campaign, dm), "hitDiceMethod", "FIXED");
+    mockMvc.perform(get(rests + "/new").with(user("rest-dm"))).andExpect(status().isOk());
+    mockMvc
+        .perform(get(rests + "/new").with(user("rest-player")))
+        .andExpect(status().isForbidden());
+    long before = commands.readClock(campaign, dm).version();
+    String spend = "spendCount[" + fighter + "]";
+    mockMvc
+        .perform(
+            post(rests + "/previews")
+                .with(user("rest-dm"))
+                .with(csrf())
+                .param("kind", "short")
+                .param("durationMinutes", "60")
+                .param("participantIds", fighter.toString())
+                .param(spend, "1"))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("1 Hit Dice available")));
+    assertThat(commands.readClock(campaign, dm).version()).isEqualTo(before);
+    var action = commands.newActionId();
+    for (int attempt = 0; attempt < 2; attempt++) {
+      mockMvc
+          .perform(
+              post(rests)
+                  .with(user("rest-dm"))
+                  .with(csrf())
+                  .param("kind", "short")
+                  .param("durationMinutes", "60")
+                  .param("participantIds", fighter.toString())
+                  .param(spend, "1")
+                  .param("expectedVersion", String.valueOf(before))
+                  .param("actionId", action.toString()))
+          .andExpect(status().isOk())
+          .andExpect(content().string(org.hamcrest.Matchers.containsString("HitDieSpent")));
+    }
+    mockMvc
+        .perform(
+            post(rests)
+                .with(user("rest-dm"))
+                .with(csrf())
+                .accept("application/problem+json")
+                .param("kind", "short")
+                .param("durationMinutes", "61")
+                .param("participantIds", fighter.toString())
+                .param(spend, "1")
+                .param("expectedVersion", String.valueOf(before))
+                .param("actionId", action.toString()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_CONFLICT"));
+    assertThat(commands.readClock(campaign, dm).gameSeconds()).isEqualTo(3600);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT hp_current FROM player_character WHERE id = ?", Integer.class, fighter))
+        .isEqualTo(10);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT used FROM pc_resource WHERE player_character_id = ? AND resource_key = 'srd-5.1:second-wind-uses'",
+                Integer.class,
+                fighter))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT type FROM campaign_event WHERE action_id = ? ORDER BY seq",
+                String.class,
+                action))
+        .containsExactly(
+            "RestStarted",
+            "ClockAdvanced",
+            "HitDieSpent",
+            "HpRegained",
+            "ResourceRecharged",
+            "RestCompleted");
+    org.mockito.Mockito.verifyNoInteractions(combatDice);
+
+    jdbcTemplate.update(
+        "UPDATE player_character SET exhaustion = 1, hp_temp = 5 WHERE id = ?", fighter);
+    mockMvc
+        .perform(
+            post(rests + "/previews")
+                .with(user("rest-dm"))
+                .with(csrf())
+                .param("kind", "long")
+                .param("durationMinutes", "480")
+                .param("participantIds", fighter.toString()))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(org.hamcrest.Matchers.containsString("Recover up to 1 spent Hit Dice")));
+    mockMvc
+        .perform(
+            action(rests, "rest-dm", campaign, dm)
+                .param("kind", "long")
+                .param("durationMinutes", "480")
+                .param("participantIds", fighter.toString())
+                .param("ateAndDrank[" + fighter + "]", "no"))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForMap(
+                "SELECT hp_current, hp_temp, exhaustion, last_long_rest_end_seconds FROM player_character WHERE id = ?",
+                fighter))
+        .containsEntry("hp_current", 13L)
+        .containsEntry("hp_temp", 0L)
+        .containsEntry("exhaustion", 1L)
+        .containsEntry("last_long_rest_end_seconds", 32400L);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT spent FROM pc_hit_dice WHERE player_character_id = ?",
+                Integer.class,
+                fighter))
+        .isZero();
+    mockMvc
+        .perform(
+            action(rests, "rest-dm", campaign, dm)
+                .accept("application/problem+json")
+                .param("kind", "long")
+                .param("durationMinutes", "480")
+                .param("participantIds", fighter.toString()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors[0].field").value("confirmWarnings"));
+    assertThat(commands.readClock(campaign, dm).gameSeconds()).isEqualTo(32400);
+    mockMvc
+        .perform(
+            action(rests, "rest-dm", campaign, dm)
+                .param("kind", "long")
+                .param("durationMinutes", "480")
+                .param("participantIds", fighter.toString())
+                .param("confirmWarnings", "true"))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT last_long_rest_end_seconds FROM player_character WHERE id = ?",
+                Long.class,
+                fighter))
+        .isEqualTo(32400);
+    mockMvc
+        .perform(get(base).with(user("rest-player")))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("long_rest_no_benefit"))));
+  }
+
+  @Test
+  void seededShortRestsProduceTheSameOrderedAudit() throws Exception {
+    UUID dm = characterAccount("rest-replay", true);
+    var logs = new java.util.ArrayList<java.util.List<String>>();
+    for (int attempt = 0; attempt < 2; attempt++) {
+      UUID campaign = campaigns.create(dm, "Seeded table " + attempt).id();
+      String base = "/campaigns/" + campaign;
+      UUID fighter = createCombatFighter(base + "/characters", campaign, dm, "rest-replay");
+      jdbcTemplate.update("UPDATE player_character SET hp_current = 1 WHERE id = ?", fighter);
+      play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+      settings.decide(
+          campaign, dm, combatCampaignEnvelope(campaign, dm), "hitDiceMethod", "ROLLED");
+
+      var random = new java.util.SplittableRandom(105);
+      org.mockito.Mockito.doAnswer(call -> random.nextInt(call.getArgument(0, Integer.class)))
+          .when(combatDice)
+          .nextInt(org.mockito.ArgumentMatchers.anyInt());
+      var envelope = combatCampaignEnvelope(campaign, dm);
+      mockMvc
+          .perform(
+              post(base + "/rests")
+                  .with(user("rest-replay"))
+                  .with(csrf())
+                  .param("kind", "short")
+                  .param("durationMinutes", "60")
+                  .param("participantIds", fighter.toString())
+                  .param("spendCount[" + fighter + "]", "1")
+                  .param("expectedVersion", String.valueOf(envelope.expectedVersion()))
+                  .param("actionId", envelope.actionId().toString()))
+          .andExpect(status().isOk());
+      logs.add(
+          jdbcTemplate.queryForList(
+              """
+          SELECT jsonb_build_array(type, game_time_seconds, audience, payload - 'characterId')::text
+          FROM campaign_event WHERE action_id = ? ORDER BY seq
+          """,
+              String.class,
+              envelope.actionId()));
+    }
+    assertThat(logs.getFirst())
+        .hasSize(5)
+        .anyMatch(event -> event.contains("HitDieSpent") && event.contains("rolled"));
+    assertThat(logs.getLast()).containsExactlyElementsOf(logs.getFirst());
+  }
+
+  @Test
+  void restTransactionRollsBackAndConcurrentSubmissionsCheckTheVersion() throws Exception {
+    UUID dm = characterAccount("rest-tx", true);
+    UUID campaign = campaigns.create(dm, "Rest transaction").id();
+    String base = "/campaigns/" + campaign;
+    UUID fighter = createCombatFighter(base + "/characters", campaign, dm, "rest-tx");
+    jdbcTemplate.update("UPDATE player_character SET hp_current = 1 WHERE id = ?", fighter);
+    play.start(campaign, dm, combatCampaignEnvelope(campaign, dm));
+    settings.decide(campaign, dm, combatCampaignEnvelope(campaign, dm), "hitDiceMethod", "FIXED");
+    var input =
+        new com.github.sbadolankaur.rpg.rest.application.RestInput(
+            com.github.sbadolankaur.rpg.engine.rest.RestResolver.Kind.SHORT,
+            60,
+            java.util.List.of(fighter),
+            java.util.Map.of(fighter, 1),
+            java.util.Map.of(),
+            false,
+            java.util.Map.of(),
+            java.util.Map.of(),
+            java.util.Map.of(),
+            java.util.List.of(),
+            java.util.List.of());
+    var envelope = combatCampaignEnvelope(campaign, dm);
+    long nextVersion = envelope.expectedVersion() + 1;
+    org.mockito.Mockito.doAnswer(
+            call -> {
+              call.callRealMethod();
+              throw new IllegalStateException("After the clock write");
+            })
+        .when(commandStore)
+        .updateClock(campaign, 3600, nextVersion);
+    assertThatThrownBy(() -> campaignRests.submit(campaign, dm, envelope, input, false))
+        .hasRootCauseInstanceOf(IllegalStateException.class)
+        .hasRootCauseMessage("After the clock write");
+    assertThat(commands.readClock(campaign, dm).gameSeconds()).isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM campaign_event WHERE action_id = ?",
+                Integer.class,
+                envelope.actionId()))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM campaign_action WHERE action_id = ?",
+                Integer.class,
+                envelope.actionId()))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT hp_current FROM player_character WHERE id = ?", Integer.class, fighter))
+        .isOne();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT spent FROM pc_hit_dice WHERE player_character_id = ?",
+                Integer.class,
+                fighter))
+        .isZero();
+    org.mockito.Mockito.doCallRealMethod()
+        .when(commandStore)
+        .updateClock(campaign, 3600, nextVersion);
+
+    try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var barrier = new java.util.concurrent.CyclicBarrier(2);
+      java.util.concurrent.Callable<String> submit =
+          () -> {
+            var attempt = combatCampaignEnvelope(campaign, dm);
+            barrier.await(10, java.util.concurrent.TimeUnit.SECONDS);
+            try {
+              campaignRests.submit(campaign, dm, attempt, input, false);
+              return "complete";
+            } catch (com.github.sbadolankaur.rpg.campaign.application.CampaignException failure) {
+              return failure.code().name();
+            }
+          };
+      var first = pool.submit(submit);
+      var second = pool.submit(submit);
+      assertThat(java.util.List.of(first.get(), second.get()))
+          .containsExactlyInAnyOrder("complete", "CAMPAIGN_VERSION_CONFLICT");
+    }
+    assertThat(commands.readClock(campaign, dm).gameSeconds()).isEqualTo(3600);
+  }
+
+  @Test
+  void resumeReadsTheSameMidEncounterStateFromPostgresAfterRestart() throws Exception {
+    var bout = combatFixture(false);
+    mockMvc
+        .perform(
+            action(
+                    "/campaigns/" + bout.campaign() + "/rests",
+                    "combat-dm",
+                    bout.campaign(),
+                    bout.dm())
+                .param("kind", "long")
+                .param("durationMinutes", "480")
+                .param("participantIds", bout.left().toString()))
+        .andExpect(status().isOk());
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
+    submitBout(bout, "/start");
+    mockMvc
+        .perform(
+            conditionCorrection(
+                    bout, bout.first(), "srd-5.1:blinded", bout.second(), "add-condition")
+                .param("durationKind", "clock")
+                .param("durationAmount", "600"))
+        .andExpect(status().isSeeOther());
+    String persistedEffect = conditionEffects(bout.left());
+    assertThat(persistedEffect).contains("creationOrder", "\"seconds\": 29400");
+    var before = encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 10);
+    var paused = play.workspace(bout.campaign(), bout.dm());
+    UUID sessionId = paused.session().id();
+    play.transition(
+        bout.campaign(),
+        bout.dm(),
+        combatCampaignEnvelope(bout.campaign(), bout.dm()),
+        sessionId,
+        com.github.sbadolankaur.rpg.campaign.application.CampaignPlay.Transition.PAUSE);
+    try (var restarted = restartWithDice(new EncounterDice())) {
+      var resumedPlay =
+          restarted.getBean(com.github.sbadolankaur.rpg.campaign.application.CampaignPlay.class);
+      var resumedCommands =
+          restarted.getBean(
+              com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.class);
+      var resumedEncounters =
+          restarted.getBean(com.github.sbadolankaur.rpg.encounter.application.Encounters.class);
+      assertThat(resumedPlay.workspace(bout.campaign(), bout.dm()).session().state().name())
+          .isEqualTo("PAUSED");
+      var envelope =
+          new com.github.sbadolankaur.rpg.campaign.application.CampaignCommands.Envelope(
+              resumedCommands.newActionId(),
+              resumedCommands.readClock(bout.campaign(), bout.dm()).version());
+      resumedPlay.transition(
+          bout.campaign(),
+          bout.dm(),
+          envelope,
+          sessionId,
+          com.github.sbadolankaur.rpg.campaign.application.CampaignPlay.Transition.RESUME);
+      var after = resumedEncounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 10);
+      assertThat(after.table()).isEqualTo(before.table());
+      assertThat(after.combatants()).isEqualTo(before.combatants());
+      assertThat(conditionEffects(bout.left())).isEqualTo(persistedEffect);
+      assertThat(resumedPlay.workspace(bout.campaign(), bout.dm()).recap())
+          .isEqualTo(paused.recap());
+      assertThat(resumedCommands.readClock(bout.campaign(), bout.dm()).gameSeconds())
+          .isEqualTo(28800);
+      assertThat(
+              restarted
+                  .getBean(com.github.sbadolankaur.rpg.character.persistence.CharacterStore.class)
+                  .lastLongRest(bout.left()))
+          .isEqualTo(28800);
+    }
+  }
+
+  @Test
+  void restsExpireEqualDeadlinesInPersistedCreationOrderBeforeDawn() throws Exception {
+    var bout = combatFixture(false);
+    settings.decide(
+        bout.campaign(),
+        bout.dm(),
+        combatCampaignEnvelope(bout.campaign(), bout.dm()),
+        "dawnTime",
+        "08:05");
+    UUID right =
+        jdbcTemplate.queryForObject(
+            "SELECT character_id FROM combatant WHERE id = ?", UUID.class, bout.second());
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
+    submitBout(bout, "/start");
+    for (UUID target : java.util.List.of(bout.second(), bout.first())) {
+      mockMvc
+          .perform(
+              conditionCorrection(bout, target, "srd-5.1:blinded", target, "add-condition")
+                  .param("durationKind", "clock")
+                  .param("durationAmount", "360"))
+          .andExpect(status().isSeeOther());
+    }
+    submitBout(bout, "/end");
+    var json = tools.jackson.databind.json.JsonMapper.builder().build();
+    long rightOrder = json.readTree(conditionEffects(right)).get(0).path("creationOrder").asLong();
+    long leftOrder =
+        json.readTree(conditionEffects(bout.left())).get(0).path("creationOrder").asLong();
+    assertThat(rightOrder).isPositive().isLessThan(leftOrder);
+
+    var envelope = combatCampaignEnvelope(bout.campaign(), bout.dm());
+    mockMvc
+        .perform(
+            post("/campaigns/" + bout.campaign() + "/rests")
+                .with(user("combat-dm"))
+                .with(csrf())
+                .param("kind", "short")
+                .param("durationMinutes", "60")
+                .param("participantIds", bout.left().toString())
+                .param("expectedVersion", String.valueOf(envelope.expectedVersion()))
+                .param("actionId", envelope.actionId().toString()))
+        .andExpect(status().isOk());
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT type || COALESCE(':' || (payload ->> 'characterId'), '')
+        FROM campaign_event WHERE action_id = ? ORDER BY seq
+        """,
+                String.class,
+                envelope.actionId()))
+        .containsExactly(
+            "RestStarted",
+            "ClockAdvanced",
+            "EffectExpired:" + right,
+            "EffectExpired:" + bout.left(),
+            "DawnReached",
+            "RestCompleted");
+    assertThat(conditionEffects(right)).isEqualTo("[]");
+    assertThat(conditionEffects(bout.left())).isEqualTo("[]");
+  }
+
+  @Test
+  void manualClockExpiresNpcAndPlayerEffectsInTheSameOrderDuringCombat() throws Exception {
+    var bout = combatFixture(true);
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/combatants", bout.id())
+                .param("monsterKey", "step7-test:training-creature"))
+        .andExpect(status().isSeeOther());
+    UUID npc =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE encounter_id = ? AND character_id IS NULL",
+            UUID.class,
+            bout.id());
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 11, 4);
+    submitBout(bout, "/start");
+    for (UUID target : java.util.List.of(npc, bout.first())) {
+      mockMvc
+          .perform(
+              conditionCorrection(bout, target, "srd-5.1:blinded", target, "add-condition")
+                  .param("durationKind", "clock")
+                  .param("durationAmount", "60"))
+          .andExpect(status().isSeeOther());
+    }
+    String campaign = "/campaigns/" + bout.campaign();
+    mockMvc
+        .perform(
+            action(campaign + "/rests", "combat-dm", bout.campaign(), bout.dm())
+                .accept("application/problem+json")
+                .param("kind", "short")
+                .param("durationMinutes", "60")
+                .param("participantIds", bout.left().toString()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("ENCOUNTER_ACTIVE"));
+
+    var envelope = combatCampaignEnvelope(bout.campaign(), bout.dm());
+    long combatVersion = combatVersion(bout.id());
+    play.advance(bout.campaign(), bout.dm(), envelope, 1, ClockUnit.MINUTES);
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT COALESCE(payload ->> 'combatantId', payload ->> 'characterId') FROM campaign_event
+        WHERE action_id = ? AND type = 'EffectExpired' ORDER BY seq
+        """,
+                String.class,
+                envelope.actionId()))
+        .containsExactly(npc.toString(), bout.left().toString());
+    assertThat(conditionEffects(bout.left())).isEqualTo("[]");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT (npc_vitals -> 'effects')::text FROM combatant WHERE id = ?",
+                String.class,
+                npc))
+        .isEqualTo("[]");
+    assertThat(combatVersion(bout.id())).isEqualTo(combatVersion + 1);
+  }
+
+  @Test
+  void advancingAndUndoingACombatRoundExpiresAndRestoresAnOffRosterEffect() throws Exception {
+    var bout = combatFixture(false);
+    UUID outside =
+        createCombatFighter(
+            "/campaigns/" + bout.campaign() + "/characters",
+            bout.campaign(),
+            bout.dm(),
+            "combat-dm");
+    jdbcTemplate.update(
+        """
+        UPDATE player_character SET condition_effects = CAST(? AS jsonb) WHERE id = ?
+        """,
+        """
+        [{"key":"srd-5.1:blinded","end":{"kind":"CLOCK","seconds":6},"creationOrder":1}]
+        """,
+        outside);
+    jdbcTemplate.update(
+        """
+        UPDATE player_character SET condition_effects = CAST(? AS jsonb) WHERE id = ?
+        """,
+        """
+        [{"key":"srd-5.1:deafened","end":{"kind":"CLOCK","seconds":6},"creationOrder":2}]
+        """,
+        bout.left());
+    org.mockito.Mockito.when(combatDice.nextInt(20)).thenReturn(18, 8);
+    submitBout(bout, "/start");
+    for (UUID actor : java.util.List.of(bout.first(), bout.second())) {
+      mockMvc
+          .perform(
+              combatAction(bout.url() + "/end-turn", bout.id()).param("actorId", actor.toString()))
+          .andExpect(status().isSeeOther());
+    }
+    assertThat(commands.readClock(bout.campaign(), bout.dm()).gameSeconds()).isEqualTo(6);
+    assertThat(conditionEffects(outside)).isEqualTo("[]");
+    assertThat(conditionEffects(bout.left())).isEqualTo("[]");
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+        SELECT type FROM combat_event WHERE encounter_id = ?
+          AND type IN ('EffectExpired','ConditionsExpired') ORDER BY seq
+        """,
+                String.class,
+                bout.id()))
+        .containsExactly("EffectExpired", "ConditionsExpired");
+    UUID latest =
+        encounters.view(bout.campaign(), bout.id(), bout.dm(), Long.MAX_VALUE, 50).reversible();
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/overrides", bout.id())
+                .param("kind", "undo-last")
+                .param("entryId", latest.toString())
+                .param("reason", "Replay the turn"))
+        .andExpect(status().isSeeOther());
+    assertThat(commands.readClock(bout.campaign(), bout.dm()).gameSeconds()).isZero();
+    assertThat(conditionEffects(outside)).contains("srd-5.1:blinded", "\"creationOrder\": 1");
+    assertThat(conditionEffects(bout.left())).contains("srd-5.1:deafened", "\"creationOrder\": 2");
   }
 
   @Test
@@ -263,7 +799,7 @@ class ApplicationFlowIT {
                     .with(csrf())
                     .header("HX-Request", "true")
                     .param("action", "upgrade")
-                    .param("targetVersion", "0.3.0"))
+                    .param("targetVersion", "0.3.1"))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Confirm upgrade")))
             .andReturn();
@@ -273,20 +809,20 @@ class ApplicationFlowIT {
     mockMvc
         .perform(
             action(apply, "upgrade-player", campaign, player)
-                .param("targetVersion", "0.3.0")
+                .param("targetVersion", "0.3.1")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isForbidden());
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.3.0")
+                .param("targetVersion", "0.3.1")
                 .param("reviewHash", "expired-review"))
         .andExpect(status().isConflict());
     assertThat(contentPacks.open(campaign).find("class", "srd-5.1:fighter")).isEmpty();
     mockMvc
         .perform(
             action(apply, "upgrade-dm", campaign, dm)
-                .param("targetVersion", "0.3.0")
+                .param("targetVersion", "0.3.1")
                 .param("reviewHash", preview.hash()))
         .andExpect(status().isSeeOther())
         .andExpect(redirectedUrl(packs));
@@ -2826,6 +3362,19 @@ class ApplicationFlowIT {
     mockMvc
         .perform(
             action(
+                    "/campaigns/" + bout.campaign() + "/rests",
+                    "combat-dm",
+                    bout.campaign(),
+                    bout.dm())
+                .accept("application/problem+json")
+                .param("kind", "short")
+                .param("durationMinutes", "60")
+                .param("participantIds", bout.left().toString()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("REACTION_PENDING"));
+    mockMvc
+        .perform(
+            action(
                     "/campaigns/" + bout.campaign() + "/characters/" + bout.left() + "/edits",
                     "combat-dm",
                     bout.campaign(),
@@ -3487,32 +4036,32 @@ class ApplicationFlowIT {
       throws Exception {
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
+                "SELECT count(*) FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
                 Integer.class))
         .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForList(
                 """
                 SELECT d.key FROM content_definition d JOIN content_pack p ON p.id = d.pack_id
-                WHERE d.kind = 'class' AND p.pack_key = 'srd-5.1' AND p.version = '0.3.0'
+                WHERE d.kind = 'class' AND p.pack_key = 'srd-5.1' AND p.version = '0.3.1'
                 """,
                 String.class))
         .containsExactlyInAnyOrder(
             "srd-5.1:bard", "srd-5.1:fighter", "srd-5.1:paladin", "srd-5.1:rogue");
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
+                "SELECT version FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
                 String.class))
-        .isEqualTo("0.3.0");
+        .isEqualTo("0.3.1");
     String manifest =
         jdbcTemplate.queryForObject(
-            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.0'",
+            "SELECT manifest::text FROM content_pack WHERE pack_key = 'srd-5.1' AND version = '0.3.1'",
             String.class);
     String notice = contentPacks.notice();
     var changed =
         new ContentPack(
             "srd-5.1",
-            "0.3.0",
+            "0.3.1",
             "sha256:" + "1".repeat(64),
             "srd-5.1",
             "CC-BY-4.0",

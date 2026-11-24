@@ -81,7 +81,11 @@ class PlayController {
     var reply = play.transition(id, actor, form.envelope(), sessionId, action);
     workspace(id, actor, model);
     model.addAttribute("sessionResult", reply.data());
-    return CampaignWeb.region(request, "demo-campaign :: session-bar", "/campaigns/" + id);
+    String fragment =
+        action == Transition.RESUME
+            ? "demo-campaign :: resumed-session"
+            : "demo-campaign :: session-bar";
+    return CampaignWeb.region(request, fragment, "/campaigns/" + id);
   }
 
   @PostMapping("/clock/advances")
@@ -166,8 +170,10 @@ class PlayController {
     var view = play.workspace(id, actor);
     model.addAttribute("campaign", view.campaign());
     model.addAttribute("clock", view.clock());
+    model.addAttribute("timeOfDay", view.timeOfDay());
     model.addAttribute("gameSession", view.session());
     model.addAttribute("scene", view.scene());
+    model.addAttribute("recap", view.recap());
     model.addAttribute("isDm", view.campaign().role() == CampaignView.Role.DM);
     model.addAttribute("events", commands.recentEvents(id, actor));
     model.addAttribute("version", view.clock().version());

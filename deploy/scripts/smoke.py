@@ -18,7 +18,7 @@ class CsrfParser(HTMLParser):
         if tag != "input":
             return
         values = dict(attrs)
-        if values.get("name") in ("_csrf", "formToken"):
+        if values.get("name") in ("_csrf", "formToken", "actionId", "expectedVersion"):
             self.tokens[values["name"]] = values.get("value")
 
 
@@ -39,6 +39,62 @@ def form_tokens(opener, url):
     if not parser.tokens.get("_csrf"):
         raise RuntimeError(f"No CSRF token found in {url}")
     return parser.tokens
+
+
+def page(opener, url, values=None):
+    data = None if values is None else urllib.parse.urlencode(values, doseq=True).encode("utf-8")
+    with request(opener, url, data) as response:
+        return response.geturl(), response.read().decode("utf-8")
+
+
+def command(opener, form_url, route, **fields):
+    tokens = form_tokens(opener, form_url)
+    envelope = {name: tokens[name] for name in ("_csrf", "actionId", "expectedVersion")}
+    return page(opener, route, envelope | fields)
+
+
+def verify_rests(opener, base_url):
+    campaign_list = f"{base_url}/campaigns"
+    setup, _ = page(opener, campaign_list, form_tokens(opener, campaign_list) | {"name": "Smoke table"})
+    if not setup.endswith("/setup"):
+        raise RuntimeError("Campaign setup did not open.")
+    campaign = setup.removesuffix("/setup")
+    command(opener, setup, setup, step=1, skip="true")
+    command(opener, campaign, campaign + "/sessions")
+    command(opener, campaign + "/settings", campaign + "/settings/hitDiceMethod/decisions", value="FIXED")
+    characters = campaign + "/characters"
+    sheet, _ = command(
+        opener, characters + "/new", characters,
+        step="review", speciesKey="srd-5.1:human", classKey="srd-5.1:fighter",
+        fightingStyleKey="srd-5.1:defense", abilityMethod="STANDARD_ARRAY",
+        abilityScores=[14, 13, 15, 8, 12, 10], skillChoices=["athletics", "perception"],
+        languageChoices="elvish", equipmentChoices=[
+            "srd-5.1:fighter-kit-0-0", "srd-5.1:fighter-kit-1-0",
+            "srd-5.1:fighter-kit-2-0", "srd-5.1:fighter-kit-3-0",
+        ], name="Smoke Fighter",
+    )
+    character = sheet.rsplit("/", 1)[-1]
+    command(opener, sheet, sheet + "/edits", section="hit-points", currentHp=1, temporaryHp=0)
+
+    rests = campaign + "/rests"
+    for kind, minutes, expected_hp, clock, event in (
+        ("short", 60, 10, 3600, "HitDieSpent"),
+        ("long", 480, 13, 32400, "HitDiceRecovered"),
+    ):
+        new_form = rests + "/new?kind=" + kind
+        options = dict(kind=kind, durationMinutes=minutes, participantIds=character)
+        if kind == "short":
+            options[f"spendCount[{character}]"] = 1
+        _, preview = command(opener, new_form, rests + "/previews", **options)
+        if 'id="rest-preview"' not in preview:
+            raise RuntimeError(f"The {kind} rest preview did not render.")
+        _, result = command(opener, new_form, rests, **options)
+        if f'data-event="{event}"' not in result or f"{clock} seconds elapsed" not in result:
+            raise RuntimeError(f"The {kind} rest result or clock was wrong.")
+        _, character_sheet = page(opener, sheet)
+        if f"{expected_hp} / 13" not in character_sheet:
+            raise RuntimeError(f"The {kind} rest did not restore the expected hit points.")
+    print("Short rest, long rest, Hit Dice, and game clock passed.")
 
 
 def wait_until_ready(opener, base_url):
@@ -97,6 +153,7 @@ def run(base_url):
         if "<h1>Campaigns</h1>" not in body:
             raise RuntimeError("The authenticated campaign list did not render.")
     print("Login and authenticated workspace passed.")
+    verify_rests(opener, base_url)
 
 
 if __name__ == "__main__":

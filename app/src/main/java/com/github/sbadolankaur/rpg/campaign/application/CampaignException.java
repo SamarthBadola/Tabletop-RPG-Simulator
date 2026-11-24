@@ -82,6 +82,9 @@ public final class CampaignException extends RuntimeException {
     TARGET_OUT_OF_RANGE,
     TOTAL_COVER,
     INVALID_TARGET,
+    REST_NOT_ALLOWED,
+    REST_TOO_SHORT,
+    HIT_DICE_UNAVAILABLE,
     SETTING_DECISION_REQUIRED
   }
 }

@@ -7,6 +7,7 @@ import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -89,7 +90,7 @@ public class CampaignCommands {
       }
       return new Reply(clock.version(), json.readTree(action.result()), true);
     }
-    if (kind == Kind.CLOCK_ADVANCE && reactions.campaignHasWindow(campaign)
+    if ((kind == Kind.CLOCK_ADVANCE || kind == Kind.REST) && reactions.campaignHasWindow(campaign)
         || (kind == Kind.SCENE_ACTIVATE || kind == Kind.SESSION_END)
             && reactions.campaignHasSceneWindow(campaign)) {
       throw new CampaignException(CampaignException.Code.REACTION_PENDING);
@@ -109,16 +110,30 @@ public class CampaignCommands {
         json.writeValueAsString(change.result()),
         json.writeValueAsString(change.settingsRead()),
         now);
-    if (change.event() != null) {
-      store.addEvent(
-          campaign,
-          next,
-          envelope.actionId(),
-          change.event(),
-          change.gameSeconds(),
-          change.audience().name(),
-          json.writeValueAsString(change.payload()),
-          now);
+    if (change.event() != null || !change.events().isEmpty()) {
+      long sequence = Math.max(next, store.nextEventSequence(campaign));
+      if (change.event() != null) {
+        store.addEvent(
+            campaign,
+            sequence++,
+            envelope.actionId(),
+            change.event(),
+            change.gameSeconds(),
+            change.audience().name(),
+            json.writeValueAsString(change.payload()),
+            now);
+      }
+      for (var event : change.events()) {
+        store.addEvent(
+            campaign,
+            sequence++,
+            envelope.actionId(),
+            event.type(),
+            event.seconds(),
+            event.audience().name(),
+            json.writeValueAsString(event.payload()),
+            now);
+      }
     }
     store.updateClock(campaign, change.gameSeconds(), next);
     return new Reply(next, json.valueToTree(change.result()), false);
@@ -137,6 +152,7 @@ public class CampaignCommands {
     SESSION_RESUME,
     SESSION_END,
     CLOCK_ADVANCE,
+    REST,
     INVITE_REVOKE,
     SCENE_CREATE,
     SCENE_EDIT,
@@ -166,20 +182,38 @@ public class CampaignCommands {
 
   public record Reply(long version, JsonNode data, boolean replay) {}
 
+  public record Event(String type, long seconds, Audience audience, Object payload) {}
+
   public record Change(
       long gameSeconds,
       String event,
       Audience audience,
       Object payload,
       Object result,
-      Map<String, Object> settingsRead) {
+      Map<String, Object> settingsRead,
+      List<Event> events) {
+    public Change(
+        long gameSeconds,
+        String event,
+        Audience audience,
+        Object payload,
+        Object result,
+        Map<String, Object> settingsRead) {
+      this(gameSeconds, event, audience, payload, result, settingsRead, List.of());
+    }
+
+    public Change {
+      settingsRead = Map.copyOf(settingsRead);
+      events = List.copyOf(events);
+    }
+
     public Change(
         long gameSeconds, String event, Audience audience, Object payload, Object result) {
       this(gameSeconds, event, audience, payload, result, Map.of());
     }
 
     public Change withSettingsRead(Map<String, Object> reads) {
-      return new Change(gameSeconds, event, audience, payload, result, Map.copyOf(reads));
+      return new Change(gameSeconds, event, audience, payload, result, reads, events);
     }
 
     public static Change at(

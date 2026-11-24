@@ -144,7 +144,9 @@ public final class CombatFeatures {
     var held = target.vitals().inspiration();
     if (held != null && held.active(context.seconds)) throw invalidInput("targetId");
     CombatActions.spend(context, TurnBudget::bonusAction);
-    var die = BardicInspiration.grant(actor.classLevel("srd-5.1:bard"), context.seconds);
+    var die =
+        BardicInspiration.grant(actor.classLevel("srd-5.1:bard"), context.seconds)
+            .created(context.nextEffectCreationOrder());
     context.vitals(target, target.vitals().inspiration(die));
     context.dm(
         "BardicInspirationGranted",

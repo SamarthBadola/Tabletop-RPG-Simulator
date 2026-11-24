@@ -18,7 +18,7 @@ class PackLoaderTest {
       throws Exception {
     var files = new HashMap<>(PackInput.readFolder(Path.of("src/main/resources/content/srd-5.1")));
     var pack = loader.load(files, true, List.of());
-    assertThat(pack.version()).isEqualTo("0.3.0");
+    assertThat(pack.version()).isEqualTo("0.3.1");
     assertThat(pack.definitions())
         .anySatisfy(
             def -> {
@@ -56,7 +56,7 @@ class PackLoaderTest {
     } catch (ContentInvalid invalid) {
       throw new AssertionError(invalid.findings().toString(), invalid);
     }
-    assertThat(pack.version()).isEqualTo("0.3.0");
+    assertThat(pack.version()).isEqualTo("0.3.1");
     var keys = pack.definitions().stream().map(definition -> definition.key()).toList();
     assertThat(keys)
         .contains(
@@ -66,6 +66,33 @@ class PackLoaderTest {
             "srd-5.1:oath-of-devotion",
             "srd-5.1:bard",
             "srd-5.1:college-of-lore");
+  }
+
+  @Test
+  void bundledClassResourcesUseTheVerifiedRestRechargeEvents() throws Exception {
+    var pack = loader.load(BundledContent.resources(), true, List.of());
+    var shortAndLong =
+        List.of(
+            Map.of("on", "SHORT_REST", "restore", "all"),
+            Map.of("on", "LONG_REST", "restore", "all"));
+    var longOnly = List.of(Map.of("on", "LONG_REST", "restore", "all"));
+    for (String key : List.of("second-wind-uses", "action-surge-uses", "channel-divinity-uses"))
+      assertRecharge(pack, key, shortAndLong);
+    for (String key : List.of("divine-sense-uses", "lay-on-hands-pool", "bardic-inspiration-uses"))
+      assertRecharge(pack, key, longOnly);
+  }
+
+  private static void assertRecharge(
+      ContentPack pack, String key, List<Map<String, String>> expected) {
+    var resource =
+        pack.definitions().stream()
+            .filter(
+                definition ->
+                    definition.kind().equals("resource")
+                        && definition.key().equals("srd-5.1:" + key))
+            .findFirst()
+            .orElseThrow();
+    assertThat(resource.fields().get("recharge")).isEqualTo(expected);
   }
 
   @Test

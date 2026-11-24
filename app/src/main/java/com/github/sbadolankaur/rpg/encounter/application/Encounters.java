@@ -44,7 +44,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class Encounters {
-  private static final int REMOVED = Integer.MAX_VALUE;
   static final Comparator<Entry> ORDER =
       Comparator.<Entry, Integer>comparing(
               Entry::initiative, Comparator.nullsLast(Comparator.reverseOrder()))
@@ -142,6 +141,26 @@ public class Encounters {
             ? afflictions.activeCures(id).stream()
                 .collect(Collectors.groupingBy(CureChoice::target))
             : Map.of());
+  }
+
+  @Transactional(readOnly = true)
+  public String currentTurn(UUID campaign, UUID actor) {
+    campaigns.requireDm(campaign, actor);
+    return store.list(campaign).stream()
+        .filter(table -> table.phase() == Phase.ACTIVE && table.acting() != null)
+        .findFirst()
+        .map(
+            table ->
+                store.entries(table.id()).stream()
+                    .filter(entry -> entry.id().equals(table.acting()) && present(entry))
+                    .findFirst()
+                    .map(
+                        entry ->
+                            roster
+                                .load(campaign, actor, entry, roster.content(campaign, actor))
+                                .name())
+                    .orElse(null))
+        .orElse(null);
   }
 
   public List<PlayerEvent> visibleEvents(UUID campaign, UUID id, UUID reader) {
@@ -305,7 +324,7 @@ public class Encounters {
           else {
             CombatEffects.leaveEncounter(context, context.creature(combatant));
             var leaving = context.creature(combatant).entry();
-            context.update(leaving.tactics(leaving.tactics().assigned(REMOVED)));
+            context.update(leaving.removed());
           }
           context.dm("CombatantRemoved", Map.of("combatantId", combatant));
           if (combatant.equals(context.table.acting())) nextTurn(context);
@@ -367,6 +386,9 @@ public class Encounters {
   private static int initiative(Context context, UUID id, int modifier, RollMode mode) {
     var roll = CombatRolls.d20("Initiative modifier", modifier, mode, context.random());
     context.dice("Initiative", id, roll);
+    context.recharge(
+        context.creature(id),
+        com.github.sbadolankaur.rpg.engine.rest.RestResolver.Trigger.ROLL_INITIATIVE);
     return roll.total();
   }
 
@@ -504,7 +526,7 @@ public class Encounters {
   }
 
   static boolean present(Entry entry) {
-    return entry.tactics().firstRound() != REMOVED;
+    return entry.present();
   }
 
   static List<Entry> ties(Iterable<Entry> roster) {
@@ -532,6 +554,7 @@ public class Encounters {
       return;
     }
     int round = context.table.round();
+    long previous = context.seconds;
     var possible = eligible(remaining, round);
     if (possible.isEmpty()) {
       round++;
@@ -543,6 +566,7 @@ public class Encounters {
     Entry next = possible.getFirst();
     context.update(next.tactics(next.tactics().start(round)));
     context.table = context.table.position(Phase.ACTIVE, round, next.id(), TurnBudget.start());
+    context.sweepRoundClock(previous);
     CombatEffects.expire(context, next.id(), Boundary.START);
     context.dm("TurnStarted", Map.of("combatantId", next.id()));
     var creature = context.creature(next.id());
