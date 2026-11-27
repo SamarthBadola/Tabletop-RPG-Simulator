@@ -121,7 +121,7 @@ public class CharacterStore {
                         row.getBoolean(5),
                         row.getBoolean(6),
                         row.getInt(7),
-                        row.getObject(8, Integer.class),
+                        row.getObject(8) == null ? null : Integer.valueOf(row.getInt(8)),
                         row.getObject(9, UUID.class)))
             .list();
     List<Resource> resources =
