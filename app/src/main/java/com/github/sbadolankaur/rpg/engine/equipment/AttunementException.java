@@ -2,6 +2,8 @@ package com.github.sbadolankaur.rpg.engine.equipment;
 
 /** An attunement that the rules refuse (RS-EQP-032). */
 public final class AttunementException extends RuntimeException {
+  private static final long serialVersionUID = 1L;
+
   public enum Code {
     TOO_MANY_ITEMS,
     ATTUNED_TO_ANOTHER,

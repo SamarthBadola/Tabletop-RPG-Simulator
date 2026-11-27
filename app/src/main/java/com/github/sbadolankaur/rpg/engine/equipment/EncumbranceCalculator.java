@@ -29,6 +29,8 @@ public final class EncumbranceCalculator {
 
   /** Thrown when a STANDARD or VARIANT limit refuses to take on more weight. */
   public static final class OverCapacityException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
     private final long weight;
     private final long limit;
 
