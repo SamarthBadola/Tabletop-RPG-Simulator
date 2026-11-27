@@ -3999,6 +3999,117 @@ class ApplicationFlowIT {
     return request;
   }
 
+  @Test
+  void unidentifiedItemsStayHiddenFromPlayersUntilTheDmIdentifiesThem() throws Exception {
+    UUID dm = characterAccount("equip-dm", true);
+    UUID owner = characterAccount("equip-player", false);
+    UUID campaign = campaigns.create(dm, "Equipment table").id();
+    joinFixture(campaign, owner);
+    var created =
+        mockMvc
+            .perform(
+                action("/campaigns/" + campaign + "/characters", "equip-player", campaign, owner)
+                    .param("step", "review")
+                    .param("speciesKey", "srd-5.1:human")
+                    .param("classKey", "srd-5.1:fighter")
+                    .param("fightingStyleKey", "srd-5.1:two-weapon-fighting")
+                    .param("abilityMethod", "STANDARD_ARRAY")
+                    .param("abilityScores", "12", "14", "15", "8", "13", "10")
+                    .param("skillChoices", "athletics", "perception")
+                    .param("languageChoices", "elvish")
+                    .param("equipmentChoices", "srd-5.1:starting-gold")
+                    .param("name", "Mira"))
+            .andExpect(status().isSeeOther())
+            .andReturn();
+    String sheet = created.getResponse().getRedirectedUrl();
+    UUID character = jdbcTemplate.queryForObject("SELECT id FROM player_character", UUID.class);
+    UUID ring = UUID.randomUUID();
+    UUID secondRing = UUID.randomUUID();
+    for (UUID id : java.util.List.of(ring, secondRing)) {
+      jdbcTemplate.update(
+          """
+          INSERT INTO inventory_item(id, player_character_id, item_key, quantity, identified)
+          VALUES (?, ?, 'srd-5.1:ring-of-protection', 1, FALSE)
+          """,
+          id,
+          character);
+    }
+    String edits = sheet + "/edits";
+
+    mockMvc
+        .perform(get(sheet).with(user("equip-dm")))
+        .andExpect(status().isOk())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Ring of Protection")));
+    mockMvc
+        .perform(get(sheet).with(user("equip-player")))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Ring of Protection"))))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("ring-of-protection"))));
+
+    mockMvc
+        .perform(
+            action(edits, "equip-player", campaign, owner)
+                .param("section", "attune")
+                .param("itemId", ring.toString()))
+        .andExpect(status().isSeeOther());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT attuned_to FROM inventory_item WHERE id = ?", UUID.class, ring))
+        .isEqualTo(character);
+    mockMvc
+        .perform(
+            action(edits, "equip-player", campaign, owner)
+                .param("section", "attune")
+                .param("itemId", secondRing.toString())
+                .accept("application/problem+json"))
+        .andExpect(status().isBadRequest());
+
+    mockMvc
+        .perform(
+            action(edits, "equip-player", campaign, owner)
+                .param("section", "identify")
+                .param("itemId", ring.toString())
+                .accept("application/problem+json"))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            action(edits, "equip-dm", campaign, dm)
+                .param("section", "identify")
+                .param("itemId", ring.toString()))
+        .andExpect(status().isSeeOther());
+    mockMvc
+        .perform(get(sheet).with(user("equip-player")))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("Ring of Protection")));
+
+    String total =
+        "SELECT copper + silver * 10 + electrum * 50 + gold * 100 + platinum * 1000"
+            + " FROM player_character";
+    long before = jdbcTemplate.queryForObject(total, Long.class);
+    mockMvc
+        .perform(
+            action(edits, "equip-player", campaign, owner)
+                .param("section", "pay")
+                .param("cost", "150"))
+        .andExpect(status().isSeeOther());
+    assertThat(jdbcTemplate.queryForObject(total, Long.class)).isEqualTo(before - 150);
+    mockMvc
+        .perform(
+            action(edits, "equip-player", campaign, owner)
+                .param("section", "pay")
+                .param("cost", "2000000000")
+                .accept("application/problem+json"))
+        .andExpect(status().isBadRequest());
+    assertThat(jdbcTemplate.queryForObject(total, Long.class)).isEqualTo(before - 150);
+  }
+
   private MockHttpServletRequestBuilder action(
       String url, String username, UUID campaign, UUID actor) {
     return post(url)
