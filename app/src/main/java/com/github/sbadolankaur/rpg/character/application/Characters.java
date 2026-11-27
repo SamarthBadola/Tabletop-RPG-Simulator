@@ -23,6 +23,12 @@ import com.github.sbadolankaur.rpg.engine.character.CharacterRules;
 import com.github.sbadolankaur.rpg.engine.content.ContentExpression;
 import com.github.sbadolankaur.rpg.engine.content.ContentSet;
 import com.github.sbadolankaur.rpg.engine.dice.DiceExpression;
+import com.github.sbadolankaur.rpg.engine.equipment.AttunedItem;
+import com.github.sbadolankaur.rpg.engine.equipment.Attunement;
+import com.github.sbadolankaur.rpg.engine.equipment.AttunementException;
+import com.github.sbadolankaur.rpg.engine.equipment.CurrencyLedger;
+import com.github.sbadolankaur.rpg.engine.equipment.Denomination;
+import com.github.sbadolankaur.rpg.engine.equipment.InsufficientFundsException;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AbilityScores;
 import com.github.sbadolankaur.rpg.engine.kernel.HitPointRules;
@@ -635,11 +641,70 @@ public class Characters {
           if (store.inActiveEncounter(id) && !form.section().equals("details")) {
             throw new CampaignException(Code.ENCOUNTER_ACTIVE);
           }
+          long elapsed = 0;
           switch (form.section()) {
             case "details" -> store.rename(id, name(form.name()));
             case "inventory" -> {
               validateEquipment(state, catalog, form.equipment());
               store.equip(id, form.equipment());
+            }
+            case "attune" -> {
+              var item = heldItem(state, form.itemId());
+              if (!catalog.require("item", item.key()).flag("requiresAttunement")) throw invalid();
+              var attuned =
+                  state.inventory().stream()
+                      .filter(row -> id.equals(row.attunedTo()))
+                      .map(row -> new AttunedItem(row.id().toString(), row.key()))
+                      .toList();
+              boolean alive = state.header().hp() > 0 || state.combat().failures() < 3;
+              try {
+                elapsed =
+                    Attunement.attune(
+                            new Attunement.Snapshot(id.toString(), alive, false, attuned),
+                            new Attunement.Candidate(
+                                item.id().toString(),
+                                item.key(),
+                                item.attunedTo() == null ? null : item.attunedTo().toString(),
+                                true))
+                        .clockAdvanceSeconds();
+              } catch (AttunementException refused) {
+                throw invalid();
+              }
+              store.setAttunedTo(item.id(), id);
+            }
+            case "unattune" -> {
+              var item = heldItem(state, form.itemId());
+              if (!id.equals(item.attunedTo())) throw invalid();
+              store.setAttunedTo(item.id(), null);
+            }
+            case "identify" -> {
+              requireDm(rights);
+              store.setIdentified(heldItem(state, form.itemId()).id(), true);
+            }
+            case "pay" -> {
+              if (form.cost() == null || form.cost() < 1) throw invalid();
+              var held = store.coins(id);
+              var ledger =
+                  CurrencyLedger.of(
+                      Map.of(
+                          Denomination.CP, held.copper(),
+                          Denomination.SP, held.silver(),
+                          Denomination.EP, held.electrum(),
+                          Denomination.GP, held.gold(),
+                          Denomination.PP, held.platinum()));
+              try {
+                var after = ledger.pay(form.cost(), form.useElectrum()).ledger();
+                store.saveCoins(
+                    id,
+                    new CharacterStore.Coins(
+                        after.count(Denomination.CP),
+                        after.count(Denomination.SP),
+                        after.count(Denomination.EP),
+                        after.count(Denomination.GP),
+                        after.count(Denomination.PP)));
+              } catch (InsufficientFundsException refused) {
+                throw invalid();
+              }
             }
             case "resources" -> {
               if (form.used() == null
@@ -700,13 +765,21 @@ public class Characters {
             }
             default -> throw invalid();
           }
-          return Change.at(
-              clock,
+          return new Change(
+              clock.gameSeconds() + elapsed,
               "CharacterEdited",
               Audience.DM,
               Map.of("characterId", id, "edit", form),
               Map.of("characterId", id));
         });
+  }
+
+  private static CharacterStore.Item heldItem(State state, UUID itemId) {
+    if (itemId == null) throw invalid();
+    return state.inventory().stream()
+        .filter(row -> row.id().equals(itemId))
+        .findFirst()
+        .orElseThrow(Characters::invalid);
   }
 
   private static void validateEquipment(
@@ -872,5 +945,8 @@ public class Characters {
       String conditionKey,
       boolean addCondition,
       String resourceKey,
-      Integer used) {}
+      Integer used,
+      UUID itemId,
+      Integer cost,
+      boolean useElectrum) {}
 }

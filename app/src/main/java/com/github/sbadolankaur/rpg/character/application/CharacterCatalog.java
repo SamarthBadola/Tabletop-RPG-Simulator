@@ -142,6 +142,10 @@ public final class CharacterCatalog {
       return fields.get(key) instanceof String value ? value : "";
     }
 
+    boolean flag(String key) {
+      return fields.get(key) instanceof Boolean value && value;
+    }
+
     int number(String key) {
       return fields.get(key) instanceof Number value ? Math.toIntExact(value.longValue()) : 0;
     }
