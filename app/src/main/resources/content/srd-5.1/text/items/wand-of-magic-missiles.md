@@ -1,0 +1,1 @@
+Wand of Magic Missiles. The wand has 7 charges. Spend 1 charge to cast Magic Missile at 1st level, and 1 more charge for each level above. It regains 1d6 + 1 charges at dawn. If you spend the last charge, roll a d20. On a 1, the wand crumbles to ashes.

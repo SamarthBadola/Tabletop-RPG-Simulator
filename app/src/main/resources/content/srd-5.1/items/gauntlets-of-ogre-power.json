@@ -1,0 +1,27 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:gauntlets-of-ogre-power",
+  "name": "Gauntlets of Ogre Power",
+  "text": {
+    "file": "text/items/gauntlets-of-ogre-power.md"
+  },
+  "cost": 0,
+  "weight": 200,
+  "tier": 2,
+  "category": "magic",
+  "rarity": "uncommon",
+  "requiresAttunement": true,
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ability:str",
+      "operation": "MAX",
+      "value": 19,
+      "appliesWhen": "attuned"
+    }
+  ],
+  "unidentified": {
+    "name": "Gauntlets",
+    "text": "A pair of sturdy leather gauntlets."
+  }
+}

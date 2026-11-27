@@ -1,0 +1,23 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:potion-of-healing-superior",
+  "name": "Potion of Healing (Superior)",
+  "text": {
+    "file": "text/items/potion-of-healing-superior.md"
+  },
+  "cost": 0,
+  "weight": 50,
+  "tier": 1,
+  "category": "consumable",
+  "rarity": "rare",
+  "effects": [
+    {
+      "type": "heal",
+      "amount": "8d4+8"
+    }
+  ],
+  "unidentified": {
+    "name": "Potion",
+    "text": "A small vial of liquid."
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:potion-of-healing",
+  "name": "Potion of Healing",
+  "text": {
+    "file": "text/items/potion-of-healing.md"
+  },
+  "cost": 0,
+  "weight": 50,
+  "tier": 1,
+  "category": "consumable",
+  "rarity": "common",
+  "effects": [
+    {
+      "type": "heal",
+      "amount": "2d4+2"
+    }
+  ],
+  "unidentified": {
+    "name": "Potion",
+    "text": "A small vial of liquid."
+  }
+}

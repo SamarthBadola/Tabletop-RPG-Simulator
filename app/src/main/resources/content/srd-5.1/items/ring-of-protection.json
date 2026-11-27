@@ -1,0 +1,69 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:ring-of-protection",
+  "name": "Ring of Protection",
+  "text": {
+    "file": "text/items/ring-of-protection.md"
+  },
+  "cost": 0,
+  "weight": 0,
+  "tier": 2,
+  "category": "magic",
+  "rarity": "rare",
+  "requiresAttunement": true,
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ac",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "attuned"
+    },
+    {
+      "type": "modifier",
+      "stat": "save:str",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "attuned"
+    },
+    {
+      "type": "modifier",
+      "stat": "save:dex",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "attuned"
+    },
+    {
+      "type": "modifier",
+      "stat": "save:con",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "attuned"
+    },
+    {
+      "type": "modifier",
+      "stat": "save:int",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "attuned"
+    },
+    {
+      "type": "modifier",
+      "stat": "save:wis",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "attuned"
+    },
+    {
+      "type": "modifier",
+      "stat": "save:cha",
+      "operation": "ADD",
+      "value": 1,
+      "appliesWhen": "attuned"
+    }
+  ],
+  "unidentified": {
+    "name": "Ring",
+    "text": "A plain, unmarked ring."
+  }
+}
