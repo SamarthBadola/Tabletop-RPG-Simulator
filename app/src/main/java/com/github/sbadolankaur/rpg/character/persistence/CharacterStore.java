@@ -21,7 +21,8 @@ public class CharacterStore {
   private static final String HEADER =
       """
         SELECT id, campaign_id, owner_id, name, species_key, background_key, fighting_style_key,
-               hp_current, hp_temp, copper, xp
+               hp_current, hp_temp,
+               copper + silver * 10 + electrum * 50 + gold * 100 + platinum * 1000 AS copper, xp
         FROM player_character
         """;
   private final JdbcClient jdbc;
@@ -542,6 +543,52 @@ public class CharacterStore {
           .update();
   }
 
+  /** The coins a character holds, by denomination. */
+  public Coins coins(UUID id) {
+    return jdbc.sql(
+            """
+            SELECT copper, silver, electrum, gold, platinum FROM player_character WHERE id = ?
+            """)
+        .param(id)
+        .query(
+            (row, index) ->
+                new Coins(
+                    row.getInt("copper"),
+                    row.getInt("silver"),
+                    row.getInt("electrum"),
+                    row.getInt("gold"),
+                    row.getInt("platinum")))
+        .single();
+  }
+
+  public void saveCoins(UUID id, Coins coins) {
+    jdbc.sql(
+            """
+            UPDATE player_character
+            SET copper = ?, silver = ?, electrum = ?, gold = ?, platinum = ?
+            WHERE id = ?
+            """)
+        .params(
+            coins.copper(), coins.silver(), coins.electrum(), coins.gold(), coins.platinum(), id)
+        .update();
+  }
+
+  public void setAttunedTo(UUID item, UUID character) {
+    jdbc.sql("UPDATE inventory_item SET attuned_to = ? WHERE id = ?")
+        .params(character, item)
+        .update();
+  }
+
+  public void setIdentified(UUID item, boolean identified) {
+    jdbc.sql("UPDATE inventory_item SET identified = ? WHERE id = ?")
+        .params(identified, item)
+        .update();
+  }
+
+  public void setCharges(UUID item, Integer charges) {
+    jdbc.sql("UPDATE inventory_item SET charges = ? WHERE id = ?").params(charges, item).update();
+  }
+
   private static Header header(ResultSet row, int index) throws SQLException {
     return new Header(
         row.getObject("id", UUID.class),
@@ -569,6 +616,32 @@ public class CharacterStore {
       int temporaryHp,
       long copper,
       long xp) {}
+
+  /** Coins by denomination. */
+  public record Coins(int copper, int silver, int electrum, int gold, int platinum) {
+    public Coins {
+      if (copper < 0 || silver < 0 || electrum < 0 || gold < 0 || platinum < 0) {
+        throw new IllegalArgumentException("A coin count cannot be negative");
+      }
+    }
+
+    /**
+     * A starting purse: gold, silver and copper, so that no one starts with thousands of copper.
+     */
+    public static Coins fromCopper(long total) {
+      if (total < 0) throw new IllegalArgumentException("A purse cannot be negative");
+      return new Coins(
+          Math.toIntExact(total % 10),
+          Math.toIntExact(total % 100 / 10),
+          0,
+          Math.toIntExact(total / 100),
+          0);
+    }
+
+    public long totalCopper() {
+      return copper + silver * 10L + electrum * 50L + gold * 100L + platinum * 1000L;
+    }
+  }
 
   public record ClassLevel(String key, String subclass, int level) {}
 

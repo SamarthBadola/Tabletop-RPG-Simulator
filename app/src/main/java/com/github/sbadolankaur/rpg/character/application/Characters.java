@@ -247,6 +247,7 @@ public class Characters {
               proficiencies,
               inventory(catalog, starter.items()),
               catalog.resources(form.classKey(), 1));
+          store.saveCoins(id, CharacterStore.Coins.fromCopper(copper));
           if (form.abilityMethod().rolled()) store.consumeRoll(campaign, actor);
           return Change.at(
                   clock,
