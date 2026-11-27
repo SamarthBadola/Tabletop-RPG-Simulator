@@ -20,10 +20,10 @@ import tools.jackson.databind.json.JsonMapper;
 public class CharacterStore {
   private static final String HEADER =
       """
-      SELECT id, campaign_id, owner_id, name, species_key, background_key, fighting_style_key,
-             hp_current, hp_temp, copper, xp
-      FROM player_character
-      """;
+        SELECT id, campaign_id, owner_id, name, species_key, background_key, fighting_style_key,
+               hp_current, hp_temp, copper, xp
+        FROM player_character
+        """;
   private final JdbcClient jdbc;
   private final JsonMapper json;
 
@@ -69,8 +69,8 @@ public class CharacterStore {
     List<ClassLevel> classes =
         jdbc.sql(
                 """
-        SELECT class_key, subclass_key, level FROM pc_class WHERE player_character_id = ? ORDER BY class_key
-        """)
+            SELECT class_key, subclass_key, level FROM pc_class WHERE player_character_id = ? ORDER BY class_key
+            """)
             .param(id)
             .query(
                 (row, index) -> new ClassLevel(row.getString(1), row.getString(2), row.getInt(3)))
@@ -78,24 +78,24 @@ public class CharacterStore {
     List<Integer> levels =
         jdbc.sql(
                 """
-        SELECT raw_hit_points FROM pc_class_level WHERE player_character_id = ? ORDER BY character_level
-        """)
+            SELECT raw_hit_points FROM pc_class_level WHERE player_character_id = ? ORDER BY character_level
+            """)
             .param(id)
             .query(Integer.class)
             .list();
     var spentHitDice =
         jdbc.sql(
                 """
-        SELECT die_size, spent FROM pc_hit_dice WHERE player_character_id = ? ORDER BY die_size
-        """)
+            SELECT die_size, spent FROM pc_hit_dice WHERE player_character_id = ? ORDER BY die_size
+            """)
             .param(id)
             .query((row, index) -> new SpentHitDice(row.getInt(1), row.getInt(2)))
             .list();
     List<Proficiency> proficiencies =
         jdbc.sql(
                 """
-        SELECT kind, key, source FROM pc_proficiency WHERE player_character_id = ? ORDER BY kind, key, source
-        """)
+            SELECT kind, key, source FROM pc_proficiency WHERE player_character_id = ? ORDER BY kind, key, source
+            """)
             .param(id)
             .query(
                 (row, index) ->
@@ -104,9 +104,11 @@ public class CharacterStore {
     List<Item> inventory =
         jdbc.sql(
                 """
-        SELECT id, item_key, quantity, equipment_slot FROM inventory_item
-        WHERE player_character_id = ? ORDER BY item_key, id
-        """)
+            SELECT id, item_key, quantity, equipment_slot, identified, silvered, corrosion,
+                   charges, attuned_to
+            FROM inventory_item
+            WHERE player_character_id = ? ORDER BY item_key, id
+            """)
             .param(id)
             .query(
                 (row, index) ->
@@ -114,30 +116,35 @@ public class CharacterStore {
                         row.getObject(1, UUID.class),
                         row.getString(2),
                         row.getInt(3),
-                        row.getString(4)))
+                        row.getString(4),
+                        row.getBoolean(5),
+                        row.getBoolean(6),
+                        row.getInt(7),
+                        row.getObject(8, Integer.class),
+                        row.getObject(9, UUID.class)))
             .list();
     List<Resource> resources =
         jdbc.sql(
                 """
-        SELECT resource_key, used FROM pc_resource WHERE player_character_id = ? ORDER BY resource_key
-        """)
+            SELECT resource_key, used FROM pc_resource WHERE player_character_id = ? ORDER BY resource_key
+            """)
             .param(id)
             .query((row, index) -> new Resource(row.getString(1), row.getInt(2)))
             .list();
     List<String> conditions =
         jdbc.sql(
                 """
-        SELECT condition_key FROM pc_condition WHERE player_character_id = ? ORDER BY condition_key
-        """)
+            SELECT condition_key FROM pc_condition WHERE player_character_id = ? ORDER BY condition_key
+            """)
             .param(id)
             .query(String.class)
             .list();
     List<String> feats =
         jdbc.sql(
                 """
-            SELECT feat_key FROM pc_asi
-            WHERE player_character_id = ? AND feat_key IS NOT NULL ORDER BY feat_key
-            """)
+                SELECT feat_key FROM pc_asi
+                WHERE player_character_id = ? AND feat_key IS NOT NULL ORDER BY feat_key
+                """)
             .param(id)
             .query(String.class)
             .list();
@@ -167,10 +174,10 @@ public class CharacterStore {
       List<String> resources) {
     jdbc.sql(
             """
-        INSERT INTO player_character (id,campaign_id,owner_id,name,species_key,background_key,
-            fighting_style_key,hp_current,copper)
-        VALUES (:id,:campaign,:owner,:name,:species,:background,:style,:hp,:money)
-        """)
+            INSERT INTO player_character (id,campaign_id,owner_id,name,species_key,background_key,
+                fighting_style_key,hp_current,copper)
+            VALUES (:id,:campaign,:owner,:name,:species,:background,:style,:hp,:money)
+            """)
         .param("id", character.id())
         .param("campaign", character.campaign())
         .param("owner", character.owner())
@@ -186,8 +193,8 @@ public class CharacterStore {
         (ability, value) ->
             jdbc.sql(
                     """
-        INSERT INTO pc_ability VALUES (?, ?, ?)
-        """)
+            INSERT INTO pc_ability VALUES (?, ?, ?)
+            """)
                 .params(id, ability.name(), value)
                 .update());
     jdbc.sql("INSERT INTO pc_class(player_character_id,class_key,level) VALUES (?, ?, 1)")
@@ -202,8 +209,8 @@ public class CharacterStore {
         item ->
             jdbc.sql(
                     """
-            INSERT INTO inventory_item(id,player_character_id,item_key,quantity) VALUES (?, ?, ?, ?)
-            """)
+                INSERT INTO inventory_item(id,player_character_id,item_key,quantity) VALUES (?, ?, ?, ?)
+                """)
                 .params(item.id(), id, item.key(), item.quantity())
                 .update());
     addResources(id, resources);
@@ -219,8 +226,8 @@ public class CharacterStore {
     for (var proficiency : proficiencies)
       jdbc.sql(
               """
-        INSERT INTO pc_proficiency VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING
-        """)
+              INSERT INTO pc_proficiency VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING
+              """)
           .params(id, proficiency.kind(), proficiency.key(), proficiency.source())
           .update();
   }
@@ -260,9 +267,9 @@ public class CharacterStore {
   public void grant(UUID character, String classKey, UUID dm) {
     jdbc.sql(
             """
-        INSERT INTO pc_level_grant(player_character_id,class_key,granted_by) VALUES (?, ?, ?)
-        ON CONFLICT (player_character_id) DO NOTHING
-        """)
+            INSERT INTO pc_level_grant(player_character_id,class_key,granted_by) VALUES (?, ?, ?)
+            ON CONFLICT (player_character_id) DO NOTHING
+            """)
         .params(character, classKey, dm)
         .update();
   }
@@ -278,9 +285,9 @@ public class CharacterStore {
       List<String> resources) {
     jdbc.sql(
             """
-        UPDATE pc_class SET level = :level, subclass_key = :subclass
-        WHERE player_character_id = :id AND class_key = :class
-        """)
+            UPDATE pc_class SET level = :level, subclass_key = :subclass
+            WHERE player_character_id = :id AND class_key = :class
+            """)
         .param("level", level.level())
         .param("subclass", level.subclass())
         .param("id", id)
@@ -290,9 +297,9 @@ public class CharacterStore {
     if (!improvements.isEmpty() || feat != null)
       jdbc.sql(
               """
-        INSERT INTO pc_asi(player_character_id,class_key,class_level,increases,feat_key)
-        VALUES (:id,:class,:level,CAST(:increases AS JSONB),:feat)
-        """)
+              INSERT INTO pc_asi(player_character_id,class_key,class_level,increases,feat_key)
+              VALUES (:id,:class,:level,CAST(:increases AS JSONB),:feat)
+              """)
           .param("id", id)
           .param("class", level.key())
           .param("level", level.level())
@@ -325,9 +332,9 @@ public class CharacterStore {
   public void spentHitDice(UUID id, int size, int spent) {
     jdbc.sql(
             """
-        INSERT INTO pc_hit_dice (player_character_id, die_size, spent) VALUES (?, ?, ?)
-        ON CONFLICT (player_character_id, die_size) DO UPDATE SET spent = EXCLUDED.spent
-        """)
+            INSERT INTO pc_hit_dice (player_character_id, die_size, spent) VALUES (?, ?, ?)
+            ON CONFLICT (player_character_id, die_size) DO UPDATE SET spent = EXCLUDED.spent
+            """)
         .params(id, size, spent)
         .update();
   }
@@ -341,11 +348,11 @@ public class CharacterStore {
   public CombatMetadata combatMetadata(UUID id) {
     return jdbc.sql(
             """
-        SELECT p.owner_id, p.death_successes, p.death_failures, p.stable_recovery_at,
-            p.exhaustion, p.condition_effects::text, g.game_seconds, p.bardic_inspiration::text,
-            p.stable_recovery_order
-        FROM player_character p JOIN game_clock g ON g.campaign_id = p.campaign_id WHERE p.id = ?
-        """)
+            SELECT p.owner_id, p.death_successes, p.death_failures, p.stable_recovery_at,
+                p.exhaustion, p.condition_effects::text, g.game_seconds, p.bardic_inspiration::text,
+                p.stable_recovery_order
+            FROM player_character p JOIN game_clock g ON g.campaign_id = p.campaign_id WHERE p.id = ?
+            """)
         .param(id)
         .query(
             (row, index) ->
@@ -378,10 +385,10 @@ public class CharacterStore {
       long recoveryOrder) {
     jdbc.sql(
             """
-        UPDATE player_character SET hp_current=?, hp_temp=?, death_successes=?, death_failures=?,
-          stable_recovery_at=?, exhaustion=?, condition_effects=CAST(? AS jsonb),
-          bardic_inspiration=CAST(? AS jsonb), stable_recovery_order=? WHERE id=?
-        """)
+            UPDATE player_character SET hp_current=?, hp_temp=?, death_successes=?, death_failures=?,
+              stable_recovery_at=?, exhaustion=?, condition_effects=CAST(? AS jsonb),
+              bardic_inspiration=CAST(? AS jsonb), stable_recovery_order=? WHERE id=?
+            """)
         .params(
             hp,
             temporary,
@@ -400,9 +407,9 @@ public class CharacterStore {
     var slots = new java.util.HashMap<UUID, String>();
     jdbc.sql(
             """
-        SELECT id, equipment_slot FROM inventory_item
-        WHERE player_character_id = ? AND equipment_slot IS NOT NULL
-        """)
+            SELECT id, equipment_slot FROM inventory_item
+            WHERE player_character_id = ? AND equipment_slot IS NOT NULL
+            """)
         .param(id)
         .query((row, index) -> Map.entry(row.getObject(1, UUID.class), row.getString(2)))
         .list()
@@ -413,9 +420,9 @@ public class CharacterStore {
   public void dropHeld(UUID id) {
     jdbc.sql(
             """
-        UPDATE inventory_item SET equipment_slot = NULL
-        WHERE player_character_id = ? AND equipment_slot IN ('MAIN_HAND', 'OFF_HAND', 'BOTH_HANDS')
-        """)
+            UPDATE inventory_item SET equipment_slot = NULL
+            WHERE player_character_id = ? AND equipment_slot IN ('MAIN_HAND', 'OFF_HAND', 'BOTH_HANDS')
+            """)
         .param(id)
         .update();
   }
@@ -423,10 +430,10 @@ public class CharacterStore {
   public boolean inActiveEncounter(UUID id) {
     return jdbc.sql(
             """
-        SELECT EXISTS (SELECT 1 FROM combatant c JOIN encounter e ON e.id = c.encounter_id
-          WHERE c.character_id = ? AND e.state IN ('INITIATIVE', 'ACTIVE')
-            AND (c.tactics->>'firstRound')::bigint <> ?)
-        """)
+            SELECT EXISTS (SELECT 1 FROM combatant c JOIN encounter e ON e.id = c.encounter_id
+              WHERE c.character_id = ? AND e.state IN ('INITIATIVE', 'ACTIVE')
+                AND (c.tactics->>'firstRound')::bigint <> ?)
+            """)
         .params(id, Integer.MAX_VALUE)
         .query(Boolean.class)
         .single();
@@ -451,8 +458,8 @@ public class CharacterStore {
         (item, slot) ->
             jdbc.sql(
                     """
-        UPDATE inventory_item SET equipment_slot = ? WHERE id = ? AND player_character_id = ?
-        """)
+            UPDATE inventory_item SET equipment_slot = ? WHERE id = ? AND player_character_id = ?
+            """)
                 .params(slot, item, id)
                 .update());
   }
@@ -462,8 +469,8 @@ public class CharacterStore {
         (ability, score) ->
             jdbc.sql(
                     """
-        UPDATE pc_ability SET score = ? WHERE player_character_id = ? AND ability = ?
-        """)
+            UPDATE pc_ability SET score = ? WHERE player_character_id = ? AND ability = ?
+            """)
                 .params(score, id, ability.name())
                 .update());
   }
@@ -479,8 +486,8 @@ public class CharacterStore {
   public boolean alwaysPassReaction(UUID id, String feature) {
     return jdbc.sql(
             """
-        SELECT EXISTS(SELECT 1 FROM character_reaction_preference WHERE character_id = ? AND feature_key = ?)
-        """)
+            SELECT EXISTS(SELECT 1 FROM character_reaction_preference WHERE character_id = ? AND feature_key = ?)
+            """)
         .params(id, feature)
         .query(Boolean.class)
         .single();
@@ -506,9 +513,9 @@ public class CharacterStore {
   public void spellSlot(UUID id, int level, int used) {
     jdbc.sql(
             """
-        INSERT INTO pc_slot (player_character_id, slot_level, used) VALUES (?, ?, ?)
-        ON CONFLICT (player_character_id, slot_level) DO UPDATE SET used = EXCLUDED.used
-        """)
+            INSERT INTO pc_slot (player_character_id, slot_level, used) VALUES (?, ?, ?)
+            ON CONFLICT (player_character_id, slot_level) DO UPDATE SET used = EXCLUDED.used
+            """)
         .params(id, level, used)
         .update();
   }
@@ -529,8 +536,8 @@ public class CharacterStore {
     for (String resource : resources)
       jdbc.sql(
               """
-        INSERT INTO pc_resource(player_character_id,resource_key) VALUES (?, ?) ON CONFLICT DO NOTHING
-        """)
+              INSERT INTO pc_resource(player_character_id,resource_key) VALUES (?, ?) ON CONFLICT DO NOTHING
+              """)
           .params(id, resource)
           .update();
   }
@@ -567,7 +574,20 @@ public class CharacterStore {
 
   public record Proficiency(String kind, String key, String source) {}
 
-  public record Item(UUID id, String key, int quantity, String slot) {}
+  public record Item(
+      UUID id,
+      String key,
+      int quantity,
+      String slot,
+      boolean identified,
+      boolean silvered,
+      int corrosion,
+      Integer charges,
+      UUID attunedTo) {
+    public Item(UUID id, String key, int quantity, String slot) {
+      this(id, key, quantity, slot, true, false, 0, null, null);
+    }
+  }
 
   public record Resource(String key, int used) {}
 
