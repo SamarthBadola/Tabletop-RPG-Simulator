@@ -902,7 +902,13 @@ class ApplicationFlowIT {
         .isZero();
     assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM inventory_item", Integer.class))
         .isZero();
-    assertThat(jdbcTemplate.queryForObject("SELECT copper FROM player_character", Integer.class))
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT copper + silver * 10 + electrum * 50 + gold * 100 + platinum * 1000
+                FROM player_character
+                """,
+                Integer.class))
         .isBetween(5000, 20000);
   }
 
