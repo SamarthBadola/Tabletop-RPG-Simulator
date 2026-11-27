@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:lance",
+  "name": "Lance",
+  "text": {
+    "file": "text/items/lance.md"
+  },
+  "cost": 1000,
+  "weight": 600,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d12",
+    "damageType": "piercing",
+    "properties": [
+      "reach",
+      "special"
+    ]
+  }
+}

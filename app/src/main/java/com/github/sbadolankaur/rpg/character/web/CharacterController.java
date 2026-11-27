@@ -392,7 +392,10 @@ class CharacterController {
           optional("conditionKey"),
           flag("addCondition"),
           optional("resourceKey"),
-          integer("used"));
+          integer("used"),
+          optional("itemId") == null ? null : uuid(optional("itemId")),
+          integer("cost"),
+          flag("useElectrum"));
     }
   }
 }

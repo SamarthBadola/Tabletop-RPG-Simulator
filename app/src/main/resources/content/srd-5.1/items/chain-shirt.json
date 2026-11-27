@@ -1,0 +1,16 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:chain-shirt",
+  "name": "Chain shirt",
+  "text": {
+    "file": "text/items/chain-shirt.md"
+  },
+  "cost": 5000,
+  "weight": 2000,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 13,
+    "dexterity": "capped"
+  }
+}

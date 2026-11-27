@@ -1,0 +1,26 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:dart",
+  "name": "Dart",
+  "text": {
+    "file": "text/items/dart.md"
+  },
+  "cost": 5,
+  "weight": 25,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "ranged",
+    "proficiencyGroup": "simple",
+    "damage": "1d4",
+    "damageType": "piercing",
+    "properties": [
+      "finesse",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    }
+  }
+}

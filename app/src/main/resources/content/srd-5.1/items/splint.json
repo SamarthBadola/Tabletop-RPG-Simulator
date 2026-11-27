@@ -1,0 +1,18 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:splint",
+  "name": "Splint",
+  "text": {
+    "file": "text/items/splint.md"
+  },
+  "cost": 20000,
+  "weight": 6000,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 17,
+    "dexterity": "none",
+    "strengthRequired": 15,
+    "stealthDisadvantage": true
+  }
+}

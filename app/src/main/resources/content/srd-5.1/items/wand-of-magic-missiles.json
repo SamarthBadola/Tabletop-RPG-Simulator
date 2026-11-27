@@ -1,0 +1,20 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:wand-of-magic-missiles",
+  "name": "Wand of Magic Missiles",
+  "text": {
+    "file": "text/items/wand-of-magic-missiles.md"
+  },
+  "cost": 0,
+  "weight": 100,
+  "tier": 1,
+  "category": "magic",
+  "rarity": "uncommon",
+  "charges": {
+    "max": "7"
+  },
+  "unidentified": {
+    "name": "Wand",
+    "text": "A slender wooden wand."
+  }
+}

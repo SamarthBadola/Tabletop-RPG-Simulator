@@ -1,0 +1,17 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:half-plate",
+  "name": "Half plate",
+  "text": {
+    "file": "text/items/half-plate.md"
+  },
+  "cost": 75000,
+  "weight": 4000,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 15,
+    "dexterity": "capped",
+    "stealthDisadvantage": true
+  }
+}

@@ -8,6 +8,12 @@ import com.github.sbadolankaur.rpg.engine.character.CharacterRules.AttackLine;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
 import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
+import com.github.sbadolankaur.rpg.engine.equipment.ArmorCategory;
+import com.github.sbadolankaur.rpg.engine.equipment.ArmorClassCalculator;
+import com.github.sbadolankaur.rpg.engine.equipment.ArmorSpec;
+import com.github.sbadolankaur.rpg.engine.equipment.DexterityRule;
+import com.github.sbadolankaur.rpg.engine.equipment.ItemEffects;
+import com.github.sbadolankaur.rpg.engine.equipment.PlayerViewFilter;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AbilityScores;
 import com.github.sbadolankaur.rpg.engine.kernel.ProficiencyBonus;
@@ -15,6 +21,7 @@ import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -108,14 +115,58 @@ public final class CharacterSheets {
         effects.stream()
             .anyMatch(
                 effect -> modifier(effect, "ac") && effect.text("activeWhen").equals("armor_worn"));
+    var dexterityRule =
+        armor == null
+            ? null
+            : DexterityRule.valueOf(armor.text("dexterity").toUpperCase(Locale.ROOT));
+    var armorSpec =
+        armor == null
+            ? null
+            : new ArmorSpec(
+                armor.text("name"),
+                switch (dexterityRule) {
+                  case FULL -> ArmorCategory.LIGHT;
+                  case CAPPED -> ArmorCategory.MEDIUM;
+                  case NONE -> ArmorCategory.HEAVY;
+                },
+                armor.number("baseAc"),
+                dexterityRule,
+                armor.number("strengthRequired"),
+                false);
+    var modifiers = new ArrayList<ArmorClassCalculator.Modifier>();
+    if (defensive)
+      modifiers.add(
+          new ArmorClassCalculator.Modifier(
+              "Defense", 1, ArmorClassCalculator.When.WHILE_ARMOR_WORN));
+    var magicItems = new ArrayList<ItemEffects.ActiveItem>();
+    for (var item : state.inventory()) {
+      var data = catalog.require("item", item.key());
+      boolean needsAttunement = data.flag("requiresAttunement");
+      var bonuses =
+          data.rows("effects").stream()
+              .filter(effect -> modifier(effect, "ac") && effect.text("operation").equals("ADD"))
+              .map(effect -> new ItemEffects.Bonus("ac", effect.number("value")))
+              .toList();
+      if (bonuses.isEmpty()) continue;
+      magicItems.add(
+          new ItemEffects.ActiveItem(
+              item.key(),
+              item.id().toString(),
+              item.slot() != null || needsAttunement,
+              needsAttunement,
+              header.id().equals(item.attunedTo()),
+              bonuses));
+    }
+    int magicArmorClass = ItemEffects.gather(magicItems).getOrDefault("ac", 0);
+    if (magicArmorClass != 0)
+      modifiers.add(
+          new ArmorClassCalculator.Modifier(
+              "Magic items", magicArmorClass, ArmorClassCalculator.When.ALWAYS));
     int armorClass =
-        CharacterRules.armorClass(
-            scores,
-            armor == null
-                ? null
-                : new CharacterRules.Armor(armor.number("baseAc"), armor.text("dexterity")),
-            shield,
-            defensive);
+        ArmorClassCalculator.compute(
+                new ArmorClassCalculator.Input(
+                    scores, armorSpec, 0, shield, 0, List.of(), modifiers, List.of()))
+            .total();
     int speed = catalog.require("species", header.species()).number("speed");
     if (armor != null && scores.score(Ability.STR) < armor.number("strengthRequired"))
       speed = Math.max(0, speed - 10);
@@ -297,13 +348,54 @@ public final class CharacterSheets {
         Map.copyOf(skills),
         List.copyOf(featureLines),
         List.copyOf(attackLines),
-        inventory,
+        shownInventory(inventory, state, catalog, settings, dm),
         hitDice,
         resources,
         conditions,
         state.conditions(),
         state.grantedClass(),
         dm);
+  }
+
+  /**
+   * What the viewer may see of the inventory (RS-EQP-035, E-109). A player sees the plain look of
+   * an unidentified item: its name is the mundane one and its category and key say nothing about
+   * it. The engine keeps using the real list, because the effects still apply.
+   */
+  private static List<InventoryLine> shownInventory(
+      List<InventoryLine> inventory,
+      State state,
+      CharacterCatalog catalog,
+      SettingsView settings,
+      boolean dm) {
+    boolean hide = "HIDDEN".equals(settings.get("unidentifiedItems", String.class));
+    var audience = dm ? PlayerViewFilter.Audience.DM : PlayerViewFilter.Audience.PLAYER;
+    var unidentified = new java.util.HashSet<UUID>();
+    for (var item : state.inventory()) if (!item.identified()) unidentified.add(item.id());
+    return inventory.stream()
+        .map(
+            line -> {
+              if (dm || !hide || !unidentified.contains(line.id())) return line;
+              String plain =
+                  catalog.require("item", line.key()).object("unidentified").text("name");
+              var facts =
+                  new PlayerViewFilter.ItemFacts(
+                      line.name(),
+                      plain.isEmpty() ? "Unidentified item" : plain,
+                      false,
+                      0,
+                      false,
+                      List.of(),
+                      null);
+              return new InventoryLine(
+                  line.id(),
+                  "unidentified",
+                  PlayerViewFilter.view(facts, audience, true).name(),
+                  "gear",
+                  line.quantity(),
+                  line.slot());
+            })
+        .toList();
   }
 
   private static int resourceLimit(String key, State state, AbilityScores scores) {

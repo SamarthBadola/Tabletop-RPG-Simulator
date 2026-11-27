@@ -1,0 +1,23 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:potion-of-healing-greater",
+  "name": "Potion of Healing (Greater)",
+  "text": {
+    "file": "text/items/potion-of-healing-greater.md"
+  },
+  "cost": 0,
+  "weight": 50,
+  "tier": 2,
+  "category": "consumable",
+  "rarity": "uncommon",
+  "effects": [
+    {
+      "type": "heal",
+      "amount": "4d4+4"
+    }
+  ],
+  "unidentified": {
+    "name": "Potion",
+    "text": "A small vial of liquid."
+  }
+}

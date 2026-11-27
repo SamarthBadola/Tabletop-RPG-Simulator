@@ -31,4 +31,20 @@ class SettingsRegistryTest {
     assertThatThrownBy(() -> SettingsRegistry.require("campaignId"))
         .isInstanceOf(CampaignException.class);
   }
+
+  @Test
+  void theEquipmentSettingsExistWithTheSpecDefaults() {
+    assertThat(SettingsRegistry.require("encumbranceRule").defaultValue()).isEqualTo("OFF");
+    assertThat(SettingsRegistry.require("encumbranceRule").tier())
+        .isEqualTo(SettingsRegistry.Tier.STRUCTURAL);
+    assertThat(SettingsRegistry.require("objectInteraction").defaultValue())
+        .isEqualTo("ONE_PER_TURN");
+    assertThat(SettingsRegistry.require("armorChangeInEncounter").defaultValue())
+        .isEqualTo("BLOCKED");
+    assertThat(SettingsRegistry.require("ammunitionRecovery").defaultValue()).isEqualTo("HALF");
+    assertThat(SettingsRegistry.require("unidentifiedItems").defaultValue()).isEqualTo("HIDDEN");
+    assertThat(SettingsRegistry.require("ammunitionRecovery").parse("NONE")).isEqualTo("NONE");
+    assertThatThrownBy(() -> SettingsRegistry.require("unidentifiedItems").parse("MAYBE"))
+        .isInstanceOf(CampaignException.class);
+  }
 }

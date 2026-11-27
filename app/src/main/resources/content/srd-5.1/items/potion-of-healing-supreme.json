@@ -1,0 +1,23 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:potion-of-healing-supreme",
+  "name": "Potion of Healing (Supreme)",
+  "text": {
+    "file": "text/items/potion-of-healing-supreme.md"
+  },
+  "cost": 0,
+  "weight": 50,
+  "tier": 2,
+  "category": "consumable",
+  "rarity": "very_rare",
+  "effects": [
+    {
+      "type": "heal",
+      "amount": "10d4+20"
+    }
+  ],
+  "unidentified": {
+    "name": "Potion",
+    "text": "A small vial of liquid."
+  }
+}

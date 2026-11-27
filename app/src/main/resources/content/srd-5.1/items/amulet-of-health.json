@@ -1,0 +1,27 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:amulet-of-health",
+  "name": "Amulet of Health",
+  "text": {
+    "file": "text/items/amulet-of-health.md"
+  },
+  "cost": 0,
+  "weight": 100,
+  "tier": 2,
+  "category": "magic",
+  "rarity": "rare",
+  "requiresAttunement": true,
+  "effects": [
+    {
+      "type": "modifier",
+      "stat": "ability:constitution",
+      "operation": "MAX",
+      "value": 19,
+      "appliesWhen": "attuned"
+    }
+  ],
+  "unidentified": {
+    "name": "Amulet",
+    "text": "A plain amulet on a chain."
+  }
+}

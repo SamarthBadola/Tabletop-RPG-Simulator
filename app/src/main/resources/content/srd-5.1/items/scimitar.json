@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:scimitar",
+  "name": "Scimitar",
+  "text": {
+    "file": "text/items/scimitar.md"
+  },
+  "cost": 2500,
+  "weight": 300,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d6",
+    "damageType": "slashing",
+    "properties": [
+      "finesse",
+      "light"
+    ]
+  }
+}

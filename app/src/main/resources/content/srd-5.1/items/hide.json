@@ -1,0 +1,16 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:hide",
+  "name": "Hide",
+  "text": {
+    "file": "text/items/hide.md"
+  },
+  "cost": 1000,
+  "weight": 1200,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 12,
+    "dexterity": "capped"
+  }
+}

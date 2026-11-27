@@ -1,0 +1,21 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:sickle",
+  "name": "Sickle",
+  "text": {
+    "file": "text/items/sickle.md"
+  },
+  "cost": 100,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d4",
+    "damageType": "slashing",
+    "properties": [
+      "light"
+    ]
+  }
+}

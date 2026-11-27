@@ -1,0 +1,26 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:blowgun",
+  "name": "Blowgun",
+  "text": {
+    "file": "text/items/blowgun.md"
+  },
+  "cost": 1000,
+  "weight": 100,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "ranged",
+    "proficiencyGroup": "martial",
+    "damage": "1",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "loading"
+    ],
+    "range": {
+      "normal": 25,
+      "long": 100
+    }
+  }
+}

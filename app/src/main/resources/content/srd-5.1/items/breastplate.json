@@ -1,0 +1,16 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:breastplate",
+  "name": "Breastplate",
+  "text": {
+    "file": "text/items/breastplate.md"
+  },
+  "cost": 40000,
+  "weight": 2000,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 14,
+    "dexterity": "capped"
+  }
+}

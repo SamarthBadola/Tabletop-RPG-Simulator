@@ -1,0 +1,26 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:light-hammer",
+  "name": "Light hammer",
+  "text": {
+    "file": "text/items/light-hammer.md"
+  },
+  "cost": 200,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d4",
+    "damageType": "bludgeoning",
+    "properties": [
+      "light",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    }
+  }
+}

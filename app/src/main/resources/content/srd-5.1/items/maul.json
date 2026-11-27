@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:maul",
+  "name": "Maul",
+  "text": {
+    "file": "text/items/maul.md"
+  },
+  "cost": 1000,
+  "weight": 1000,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "2d6",
+    "damageType": "bludgeoning",
+    "properties": [
+      "heavy",
+      "two_handed"
+    ]
+  }
+}

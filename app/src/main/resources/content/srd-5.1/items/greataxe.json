@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:greataxe",
+  "name": "Greataxe",
+  "text": {
+    "file": "text/items/greataxe.md"
+  },
+  "cost": 3000,
+  "weight": 700,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d12",
+    "damageType": "slashing",
+    "properties": [
+      "heavy",
+      "two_handed"
+    ]
+  }
+}

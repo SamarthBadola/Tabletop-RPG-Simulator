@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:quarterstaff",
+  "name": "Quarterstaff",
+  "text": {
+    "file": "text/items/quarterstaff.md"
+  },
+  "cost": 20,
+  "weight": 400,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d6",
+    "damageType": "bludgeoning",
+    "properties": [
+      "versatile"
+    ],
+    "versatileDamage": "1d8"
+  }
+}

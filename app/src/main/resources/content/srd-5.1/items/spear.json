@@ -1,0 +1,27 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:spear",
+  "name": "Spear",
+  "text": {
+    "file": "text/items/spear.md"
+  },
+  "cost": 100,
+  "weight": 300,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "thrown",
+      "versatile"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "versatileDamage": "1d8"
+  }
+}

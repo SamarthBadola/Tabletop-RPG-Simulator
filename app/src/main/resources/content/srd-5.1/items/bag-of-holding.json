@@ -1,0 +1,20 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:bag-of-holding",
+  "name": "Bag of Holding",
+  "text": {
+    "file": "text/items/bag-of-holding.md"
+  },
+  "cost": 0,
+  "weight": 1500,
+  "tier": 1,
+  "category": "magic",
+  "rarity": "uncommon",
+  "container": {
+    "capacity": 50000
+  },
+  "unidentified": {
+    "name": "Bag",
+    "text": "A large cloth bag."
+  }
+}
