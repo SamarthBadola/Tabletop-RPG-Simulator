@@ -295,6 +295,63 @@ public final class SettingsRegistry {
             "Exclude thrown attacks."));
     add(
         all,
+        choice(
+            "encumbranceRule",
+            "Encumbrance",
+            "OFF",
+            Tier.STRUCTURAL,
+            "OFF",
+            "Carried weight is not tracked.",
+            "STANDARD",
+            "A character cannot carry more than the carrying capacity.",
+            "VARIANT",
+            "Weight beyond set thresholds slows the character and can add disadvantage."));
+    add(
+        all,
+        choice(
+            "objectInteraction",
+            "Object interactions",
+            "ONE_PER_TURN",
+            Tier.SILENT,
+            "ONE_PER_TURN",
+            "One free object interaction each turn.",
+            "PER_ATTACK",
+            "One free interaction with each attack, such as drawing a weapon."));
+    add(
+        all,
+        choice(
+            "armorChangeInEncounter",
+            "Changing armor in an encounter",
+            "BLOCKED",
+            Tier.SILENT,
+            "BLOCKED",
+            "Armor cannot be donned or doffed in an encounter.",
+            "DM_OVERRIDE",
+            "The DM can allow an armor change in an encounter."));
+    add(
+        all,
+        choice(
+            "ammunitionRecovery",
+            "Ammunition recovery",
+            "HALF",
+            Tier.SILENT,
+            "HALF",
+            "Recover half of the expended ammunition after a battle.",
+            "NONE",
+            "Expended ammunition is not recovered."));
+    add(
+        all,
+        choice(
+            "unidentifiedItems",
+            "Unidentified items",
+            "HIDDEN",
+            Tier.SILENT,
+            "HIDDEN",
+            "Players do not see the properties of an unidentified item.",
+            "SHOWN",
+            "Players see every item in full."));
+    add(
+        all,
         integer(
             "roundAdvanceSeconds",
             "Game clock advance per round",
