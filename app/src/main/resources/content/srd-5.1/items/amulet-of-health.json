@@ -14,7 +14,7 @@
   "effects": [
     {
       "type": "modifier",
-      "stat": "ability:con",
+      "stat": "ability:constitution",
       "operation": "MAX",
       "value": 19,
       "appliesWhen": "attuned"

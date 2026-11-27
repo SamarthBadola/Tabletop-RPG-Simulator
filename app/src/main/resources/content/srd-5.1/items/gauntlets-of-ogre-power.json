@@ -14,7 +14,7 @@
   "effects": [
     {
       "type": "modifier",
-      "stat": "ability:str",
+      "stat": "ability:strength",
       "operation": "MAX",
       "value": 19,
       "appliesWhen": "attuned"
