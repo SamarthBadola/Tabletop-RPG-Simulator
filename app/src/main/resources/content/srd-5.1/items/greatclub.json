@@ -1,0 +1,21 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:greatclub",
+  "name": "Greatclub",
+  "text": {
+    "file": "text/items/greatclub.md"
+  },
+  "cost": 20,
+  "weight": 1000,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d8",
+    "damageType": "bludgeoning",
+    "properties": [
+      "two_handed"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:whip",
+  "name": "Whip",
+  "text": {
+    "file": "text/items/whip.md"
+  },
+  "cost": 200,
+  "weight": 300,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d4",
+    "damageType": "slashing",
+    "properties": [
+      "finesse",
+      "reach"
+    ]
+  }
+}

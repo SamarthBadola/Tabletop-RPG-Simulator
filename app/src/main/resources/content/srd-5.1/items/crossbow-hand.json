@@ -1,0 +1,27 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:crossbow-hand",
+  "name": "Crossbow, hand",
+  "text": {
+    "file": "text/items/crossbow-hand.md"
+  },
+  "cost": 7500,
+  "weight": 300,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "ranged",
+    "proficiencyGroup": "martial",
+    "damage": "1d6",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "light",
+      "loading"
+    ],
+    "range": {
+      "normal": 30,
+      "long": 120
+    }
+  }
+}

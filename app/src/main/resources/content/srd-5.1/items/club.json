@@ -1,0 +1,21 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:club",
+  "name": "Club",
+  "text": {
+    "file": "text/items/club.md"
+  },
+  "cost": 10,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "simple",
+    "damage": "1d4",
+    "damageType": "bludgeoning",
+    "properties": [
+      "light"
+    ]
+  }
+}

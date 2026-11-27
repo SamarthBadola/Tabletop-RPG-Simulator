@@ -1,0 +1,17 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:padded",
+  "name": "Padded",
+  "text": {
+    "file": "text/items/padded.md"
+  },
+  "cost": 500,
+  "weight": 800,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 11,
+    "dexterity": "full",
+    "stealthDisadvantage": true
+  }
+}

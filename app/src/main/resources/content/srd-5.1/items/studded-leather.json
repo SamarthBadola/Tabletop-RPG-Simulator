@@ -1,0 +1,16 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:studded-leather",
+  "name": "Studded leather",
+  "text": {
+    "file": "text/items/studded-leather.md"
+  },
+  "cost": 4500,
+  "weight": 1300,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 12,
+    "dexterity": "full"
+  }
+}

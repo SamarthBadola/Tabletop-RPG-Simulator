@@ -1,0 +1,18 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:morningstar",
+  "name": "Morningstar",
+  "text": {
+    "file": "text/items/morningstar.md"
+  },
+  "cost": 1500,
+  "weight": 400,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d8",
+    "damageType": "piercing"
+  }
+}

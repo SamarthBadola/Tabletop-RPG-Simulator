@@ -1,0 +1,17 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:ring-mail",
+  "name": "Ring mail",
+  "text": {
+    "file": "text/items/ring-mail.md"
+  },
+  "cost": 3000,
+  "weight": 4000,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 14,
+    "dexterity": "none",
+    "stealthDisadvantage": true
+  }
+}

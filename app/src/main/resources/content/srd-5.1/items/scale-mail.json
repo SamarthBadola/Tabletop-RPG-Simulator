@@ -1,0 +1,17 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:scale-mail",
+  "name": "Scale mail",
+  "text": {
+    "file": "text/items/scale-mail.md"
+  },
+  "cost": 5000,
+  "weight": 4500,
+  "tier": 0,
+  "category": "armor",
+  "armorData": {
+    "baseAc": 14,
+    "dexterity": "capped",
+    "stealthDisadvantage": true
+  }
+}

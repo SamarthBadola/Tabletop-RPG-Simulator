@@ -1,0 +1,18 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:flail",
+  "name": "Flail",
+  "text": {
+    "file": "text/items/flail.md"
+  },
+  "cost": 1000,
+  "weight": 200,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "melee",
+    "proficiencyGroup": "martial",
+    "damage": "1d8",
+    "damageType": "bludgeoning"
+  }
+}

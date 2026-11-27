@@ -1,0 +1,28 @@
+{
+  "kind": "item",
+  "key": "srd-5.1:crossbow-heavy",
+  "name": "Crossbow, heavy",
+  "text": {
+    "file": "text/items/crossbow-heavy.md"
+  },
+  "cost": 5000,
+  "weight": 1800,
+  "tier": 0,
+  "category": "weapon",
+  "weaponData": {
+    "kind": "ranged",
+    "proficiencyGroup": "martial",
+    "damage": "1d10",
+    "damageType": "piercing",
+    "properties": [
+      "ammunition",
+      "heavy",
+      "loading",
+      "two_handed"
+    ],
+    "range": {
+      "normal": 100,
+      "long": 400
+    }
+  }
+}
