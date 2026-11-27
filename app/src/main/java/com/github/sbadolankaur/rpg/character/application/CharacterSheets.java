@@ -8,6 +8,10 @@ import com.github.sbadolankaur.rpg.engine.character.CharacterRules.AttackLine;
 import com.github.sbadolankaur.rpg.engine.combat.CombatConditions;
 import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance;
 import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
+import com.github.sbadolankaur.rpg.engine.equipment.ArmorCategory;
+import com.github.sbadolankaur.rpg.engine.equipment.ArmorClassCalculator;
+import com.github.sbadolankaur.rpg.engine.equipment.ArmorSpec;
+import com.github.sbadolankaur.rpg.engine.equipment.DexterityRule;
 import com.github.sbadolankaur.rpg.engine.kernel.Ability;
 import com.github.sbadolankaur.rpg.engine.kernel.AbilityScores;
 import com.github.sbadolankaur.rpg.engine.kernel.ProficiencyBonus;
@@ -15,6 +19,7 @@ import com.github.sbadolankaur.rpg.engine.kernel.SettingsView;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -108,14 +113,34 @@ public final class CharacterSheets {
         effects.stream()
             .anyMatch(
                 effect -> modifier(effect, "ac") && effect.text("activeWhen").equals("armor_worn"));
+    var dexterityRule =
+        armor == null
+            ? null
+            : DexterityRule.valueOf(armor.text("dexterity").toUpperCase(Locale.ROOT));
+    var armorSpec =
+        armor == null
+            ? null
+            : new ArmorSpec(
+                armor.text("name"),
+                switch (dexterityRule) {
+                  case FULL -> ArmorCategory.LIGHT;
+                  case CAPPED -> ArmorCategory.MEDIUM;
+                  case NONE -> ArmorCategory.HEAVY;
+                },
+                armor.number("baseAc"),
+                dexterityRule,
+                armor.number("strengthRequired"),
+                false);
+    var modifiers = new ArrayList<ArmorClassCalculator.Modifier>();
+    if (defensive)
+      modifiers.add(
+          new ArmorClassCalculator.Modifier(
+              "Defense", 1, ArmorClassCalculator.When.WHILE_ARMOR_WORN));
     int armorClass =
-        CharacterRules.armorClass(
-            scores,
-            armor == null
-                ? null
-                : new CharacterRules.Armor(armor.number("baseAc"), armor.text("dexterity")),
-            shield,
-            defensive);
+        ArmorClassCalculator.compute(
+                new ArmorClassCalculator.Input(
+                    scores, armorSpec, 0, shield, 0, List.of(), modifiers, List.of()))
+            .total();
     int speed = catalog.require("species", header.species()).number("speed");
     if (armor != null && scores.score(Ability.STR) < armor.number("strengthRequired"))
       speed = Math.max(0, speed - 10);
