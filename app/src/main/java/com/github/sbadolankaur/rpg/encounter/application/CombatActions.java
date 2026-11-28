@@ -27,6 +27,9 @@ import com.github.sbadolankaur.rpg.engine.kernel.AdvantageSources;
 import com.github.sbadolankaur.rpg.engine.kernel.CheckRules;
 import com.github.sbadolankaur.rpg.engine.kernel.D20Test;
 import com.github.sbadolankaur.rpg.engine.kernel.ProficiencyBonus;
+import com.github.sbadolankaur.rpg.engine.monster.HookedDamage;
+import com.github.sbadolankaur.rpg.engine.monster.Regeneration;
+import com.github.sbadolankaur.rpg.engine.monster.ZeroHitPointHook;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Offer;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Option;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Point;
@@ -155,7 +158,13 @@ public class CombatActions {
     if (!slots.isEmpty() || request.smiteSlotLevel() != null) preflight.add(DivineSmite.SETTING);
     if (target.vitals().health().current() == 0 && target.vitals().health().temporary() > 0)
       preflight.add("temporaryHpAbsorbsDeathSaveFailure");
+    if (MonsterHooks.defender(context, target).undeadFortitude() && !request.knockOut())
+      preflight.add("autoOutcomeOnNat20Checks");
     context.preflight(preflight);
+    D20Test.NaturalMode hookNaturalMode =
+        preflight.contains("autoOutcomeOnNat20Checks")
+            ? D20Test.NaturalMode.valueOf(context.setting("autoOutcomeOnNat20Checks", String.class))
+            : null;
     String smiteTiming = DivineSmite.validate(context, weapon, request.smiteSlotLevel(), slots);
     String criticalMode = context.setting("criticalDiceMode", String.class);
     boolean absorb =
@@ -295,12 +304,28 @@ public class CombatActions {
         applied.put(type, amount);
         total = Math.addExact(total, amount);
       }
-      var after =
+      var plain =
           target
               .vitals()
               .health()
               .damage(total, attack.critical(), target.deathMode(), request.knockOut(), absorb);
+      var hook =
+          HookedDamage.resolve(
+              target.vitals().health(),
+              plain,
+              target.deathMode(),
+              applied,
+              attack.critical(),
+              request.knockOut(),
+              MonsterHooks.defender(context, target),
+              new Regeneration.State(
+                  target.entry().dyingByTrait(), target.entry().regenSuppressed()),
+              (ability, dc) -> hookSave(context, defender, ability, dc, hookNaturalMode));
+      var after = hook.damage();
       context.health(defender, after.health());
+      MonsterHooks.writeMarks(context, request.target(), hook);
+      if (hook.result() != ZeroHitPointHook.Result.NONE)
+        context.result("zeroHitPointHook", hook.result().name());
       if (total > 0 && defender.conditions().contains("srd-5.1:turned"))
         CombatEffects.remove(context, context.creature(request.target()), "srd-5.1:turned", null);
       context.dm(
@@ -1162,6 +1187,24 @@ public class CombatActions {
   private static boolean defense(Creature target, String kind, String type, boolean magical) {
     return target.defenses().stream()
         .anyMatch(defense -> defense.kind().equals(kind) && defense.applies(type, magical));
+  }
+
+  /** The saving throw of a zero-hit-point trait. It is rolled like any other saving throw. */
+  static boolean hookSave(
+      Context context,
+      Creature creature,
+      Ability ability,
+      int dc,
+      D20Test.NaturalMode naturalMode) {
+    if (CombatConditions.forcedSaveFailure(creature.conditions(), ability)) return false;
+    var sources = saveSources(context, creature, ability);
+    var roll =
+        CombatRolls.coveredSave(
+            creature.saves().get(ability), Cover.NONE, sources.mode(), context.random());
+    context.dice("Saving throw", creature.entry().id(), roll);
+    Boolean success = D20Test.resolve(roll, dc, D20Test.Kind.SAVING_THROW, naturalMode).success();
+    roll = CombatFeatures.inspireRoll(context, creature, roll, Point.AFTER_SAVE_ROLL, success);
+    return D20Test.resolve(roll, dc, D20Test.Kind.SAVING_THROW, naturalMode).success();
   }
 
   static void spend(Context context, UnaryOperator<TurnBudget> spend) {
