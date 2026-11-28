@@ -34,6 +34,10 @@ public final class EncounterState {
     }
   }
 
+  /**
+   * One combatant of an encounter. {@code dyingByTrait} and {@code regenSuppressed} are the marks
+   * of Regeneration (RS-MON-015); they stay false for every creature without that trait.
+   */
   public record Entry(
       UUID id,
       UUID character,
@@ -42,8 +46,22 @@ public final class EncounterState {
       Integer initiative,
       Integer tie,
       Tactics tactics,
-      Vitals npcVitals) {
+      Vitals npcVitals,
+      boolean dyingByTrait,
+      boolean regenSuppressed) {
     private static final int REMOVED = Integer.MAX_VALUE;
+
+    public Entry(
+        UUID id,
+        UUID character,
+        String monster,
+        int ordinal,
+        Integer initiative,
+        Integer tie,
+        Tactics tactics,
+        Vitals npcVitals) {
+      this(id, character, monster, ordinal, initiative, tie, tactics, npcVitals, false, false);
+    }
 
     public boolean present() {
       return tactics.firstRound() != REMOVED;
@@ -54,15 +72,59 @@ public final class EncounterState {
     }
 
     public Entry initiative(Integer next, Integer tie) {
-      return new Entry(id, character, monster, ordinal, next, tie, tactics, npcVitals);
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          next,
+          tie,
+          tactics,
+          npcVitals,
+          dyingByTrait,
+          regenSuppressed);
     }
 
     public Entry tactics(Tactics next) {
-      return new Entry(id, character, monster, ordinal, initiative, tie, next, npcVitals);
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          next,
+          npcVitals,
+          dyingByTrait,
+          regenSuppressed);
     }
 
     public Entry vitals(Vitals next) {
-      return new Entry(id, character, monster, ordinal, initiative, tie, tactics, next);
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          tactics,
+          next,
+          dyingByTrait,
+          regenSuppressed);
+    }
+
+    public Entry marks(boolean nextDyingByTrait, boolean nextRegenSuppressed) {
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          tactics,
+          npcVitals,
+          nextDyingByTrait,
+          nextRegenSuppressed);
     }
   }
 
