@@ -1,0 +1,100 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:ghast",
+  "name": "Ghast",
+  "size": "medium",
+  "type": "undead",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 13
+  },
+  "hp": {
+    "dice": "8d8",
+    "average": 36
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 16,
+    "dex": 17,
+    "con": 10,
+    "int": 11,
+    "wis": 10,
+    "cha": 8
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "necrotic"
+      ]
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+  },
+  "languages": "Common",
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Stench",
+      "text": "Any creature that starts its turn within 5 feet of the ghast must succeed on a DC 10 Constitution saving throw or be poisoned until the start of its next turn. On a successful saving throw, the creature is immune to the ghast’s Stench for 24 hours.",
+      "save": {
+        "ability": "con",
+        "dc": "10",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Turning Defiance",
+      "text": "The ghast and any ghouls within 30 feet of it have advantage on saving throws against effects that turn undead."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +3 to hit, reach 5 ft., one creature. Hit: 12 (2d8 + 3) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "3",
+        "hits": [
+          {
+            "roll": "2d8+3",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) slashing damage. If the target is a creature other than an undead, it must succeed on a DC 10 Constitution saving throw or be paralyzed for 1 minute. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "2d6+3",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: charmed, exhaustion, poisoned"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:deer",
+  "name": "Deer",
+  "size": "medium",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 13
+  },
+  "hp": {
+    "dice": "1d8",
+    "average": 4
+  },
+  "speeds": {
+    "walk": 50
+  },
+  "abilities": {
+    "str": 11,
+    "dex": 16,
+    "con": 11,
+    "int": 2,
+    "wis": 14,
+    "cha": 5
+  },
+  "senses": {
+    "passivePerception": 12
+  },
+  "challenge": {
+    "cr": 0,
+    "xp": 10,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 2 (1d4) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "2",
+        "hits": [
+          {
+            "roll": "1d4",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

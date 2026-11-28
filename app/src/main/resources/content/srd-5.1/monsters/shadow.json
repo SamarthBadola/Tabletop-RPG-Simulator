@@ -1,0 +1,106 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:shadow",
+  "name": "Shadow",
+  "size": "medium",
+  "type": "undead",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "3d8+3",
+    "average": 16
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 6,
+    "dex": 14,
+    "con": 13,
+    "int": 6,
+    "wis": 10,
+    "cha": 8
+  },
+  "skills": {
+    "stealth": 4
+  },
+  "damageModifiers": [
+    {
+      "kind": "vulnerability",
+      "types": [
+        "radiant"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "acid",
+        "cold",
+        "fire",
+        "lightning",
+        "thunder"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "necrotic",
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Amorphous",
+      "text": "The shadow can move through a space as narrow as 1 inch wide without squeezing."
+    },
+    {
+      "name": "Shadow Stealth",
+      "text": "While in dim light or darkness, the shadow can take the Hide action as a bonus action."
+    },
+    {
+      "name": "Sunlight Weakness",
+      "text": "While in sunlight, the shadow has disadvantage on attack rolls, ability checks, and saving throws."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Strength Drain",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 9 (2d6 + 2) necrotic damage, and the target’s Strength score is reduced by 1d4. The target dies if this reduces its Strength to 0. Otherwise, the reduction lasts until the target finishes a short or long rest. If a non-evil humanoid dies from this attack, a new shadow rises from the corpse 1d4 hours later.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "2d6+2",
+            "damageType": "necrotic"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: exhaustion, frightened, grappled, paralyzed, petrified, poisoned, prone, restrained"
+  ]
+}

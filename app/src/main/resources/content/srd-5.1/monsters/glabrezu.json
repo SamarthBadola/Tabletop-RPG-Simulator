@@ -1,0 +1,116 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:glabrezu",
+  "name": "Glabrezu",
+  "size": "large",
+  "type": "fiend",
+  "alignment": "chaotic_evil",
+  "tags": [
+    "demon"
+  ],
+  "ac": {
+    "value": 17,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "15d10+75",
+    "average": 157
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 20,
+    "dex": 15,
+    "con": 21,
+    "int": 19,
+    "wis": 17,
+    "cha": 16
+  },
+  "saves": {
+    "str": 9,
+    "con": 9,
+    "wis": 7,
+    "cha": 7
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold",
+        "fire",
+        "lightning"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "truesight": 120,
+    "passivePerception": 13
+  },
+  "languages": "Abyssal, telepathy 120 ft.",
+  "challenge": {
+    "cr": 9,
+    "xp": 5000,
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Innate Spellcasting",
+      "text": "The glabrezu’s spellcasting ability is Intelligence (spell save DC 16). The glabrezu can innately cast the following spells, requiring no material components: At will: darkness, detect magic, dispel magic 1/day each: confusion, fly, power word stun Magic Resistance. The glabrezu has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The glabrezu makes four attacks: two with its pincers and two with its fists. Alternatively, it makes two attacks with its pincers and casts one spell."
+    },
+    {
+      "name": "Pincer",
+      "text": "Melee Weapon Attack: +9 to hit, reach 10 ft., one target. Hit: 16 (2d10 + 5) bludgeoning damage. If the target is a Medium or smaller creature, it is grappled (escape DC 15). The glabrezu has two pincers, each of which can grapple only one target.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "9",
+        "hits": [
+          {
+            "roll": "2d10+5",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Fist",
+      "text": "Melee Weapon Attack: +9 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "9",
+        "hits": [
+          {
+            "roll": "2d4+2",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}

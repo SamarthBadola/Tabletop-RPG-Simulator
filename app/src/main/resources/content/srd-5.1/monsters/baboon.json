@@ -1,0 +1,58 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:baboon",
+  "name": "Baboon",
+  "size": "small",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "1d6",
+    "average": 3
+  },
+  "speeds": {
+    "walk": 30,
+    "climb": 30
+  },
+  "abilities": {
+    "str": 8,
+    "dex": 14,
+    "con": 11,
+    "int": 4,
+    "wis": 12,
+    "cha": 6
+  },
+  "senses": {
+    "passivePerception": 11
+  },
+  "challenge": {
+    "cr": 0,
+    "xp": 10,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Pack Tactics",
+      "text": "The baboon has advantage on an attack roll against a creature if at least one of the baboon’s allies is within 5 feet of the creature and the ally isn’t incapacitated."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +1 to hit, reach 5 ft., one target. Hit: 1 (1d4 − 1) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "1",
+        "hits": [
+          {
+            "roll": "1d4-1",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

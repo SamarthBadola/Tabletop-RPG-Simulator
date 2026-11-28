@@ -1,0 +1,99 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:gorgon",
+  "name": "Gorgon",
+  "size": "large",
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 19,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "12d10+48",
+    "average": 114
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 20,
+    "dex": 11,
+    "con": 18,
+    "int": 2,
+    "wis": 12,
+    "cha": 7
+  },
+  "skills": {
+    "perception": 4
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 14
+  },
+  "challenge": {
+    "cr": 5,
+    "xp": 1800,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Trampling Charge",
+      "text": "If the gorgon moves at least 20 feet straight toward a creature and then hits it with a gore attack on the same turn, that target must succeed on a DC 16 Strength saving throw or be knocked prone. If the target is prone, the gorgon can make one attack with its hooves against it as a bonus action.",
+      "save": {
+        "ability": "str",
+        "dc": "16",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Gore",
+      "text": "Melee Weapon Attack: +8 to hit, reach 5 ft., one target. Hit: 18 (2d12 + 5) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "2d12+5",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Hooves",
+      "text": "Melee Weapon Attack: +8 to hit, reach 5 ft., one target. Hit: 16 (2d10 + 5) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "2d10+5",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Petrifying Breath",
+      "text": "The gorgon exhales petrifying gas in a 30-foot cone. Each creature in that area must succeed on a DC 13 Constitution saving throw. On a failed save, a target begins to turn to stone and is restrained. The restrained target must repeat the saving throw at the end of its next turn. On a success, the effect ends on the target. On a failure, the target is petrified until freed by the greater restoration spell or other magic.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 5
+      },
+      "save": {
+        "ability": "con",
+        "dc": "13",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: petrified"
+  ]
+}

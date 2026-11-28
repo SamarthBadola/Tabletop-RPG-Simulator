@@ -31,4 +31,17 @@ class SettingsRegistryTest {
     assertThatThrownBy(() -> SettingsRegistry.require("campaignId"))
         .isInstanceOf(CampaignException.class);
   }
+
+  @Test
+  void monsterSettingsDefaultToAveragesAndAutoFailOverride() {
+    var hp = SettingsRegistry.require("monsterHp");
+    assertThat(hp.defaultValue()).isEqualTo("AVERAGE");
+    assertThat(hp.tier()).isEqualTo(SettingsRegistry.Tier.STRUCTURAL);
+    assertThat(hp.parse("ROLLED")).isEqualTo("ROLLED");
+    assertThatThrownBy(() -> hp.parse("MAX")).isInstanceOf(CampaignException.class);
+    var legendary = SettingsRegistry.require("legendaryResistanceOverridesAutoFail");
+    assertThat(legendary.defaultValue()).isEqualTo(true);
+    assertThat(legendary.tier()).isEqualTo(SettingsRegistry.Tier.ASK_ON_FIRST_USE);
+    assertThat(legendary.parse("false")).isEqualTo(false);
+  }
 }

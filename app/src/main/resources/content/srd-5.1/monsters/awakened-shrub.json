@@ -1,0 +1,72 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:awakened-shrub",
+  "name": "Awakened Shrub",
+  "size": "small",
+  "type": "plant",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 9
+  },
+  "hp": {
+    "dice": "3d6",
+    "average": 10
+  },
+  "speeds": {
+    "walk": 20
+  },
+  "abilities": {
+    "str": 3,
+    "dex": 8,
+    "con": 11,
+    "int": 10,
+    "wis": 10,
+    "cha": 6
+  },
+  "damageModifiers": [
+    {
+      "kind": "vulnerability",
+      "types": [
+        "fire"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "piercing"
+      ]
+    }
+  ],
+  "senses": {
+    "passivePerception": 10
+  },
+  "languages": "one language known by its creator",
+  "challenge": {
+    "cr": 0,
+    "xp": 10,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "False Appearance",
+      "text": "While the shrub remains motionless, it is indistinguishable from a normal shrub."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Rake",
+      "text": "Melee Weapon Attack: +1 to hit, reach 5 ft., one target. Hit: 1 (1d4 − 1) slashing damage. An awakened shrub is an ordinary shrub given sentience and mobility by the awaken spell or similar magic.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "1",
+        "hits": [
+          {
+            "roll": "1d4-1",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "kind": "monster",
+  "key": "step7-test:legendary-creature",
+  "name": "Legendary training creature",
+  "size": "large",
+  "type": "dragon",
+  "alignment": "unaligned",
+  "ac": {"value": 14},
+  "hp": {"dice": "4d10+8", "average": 30},
+  "speeds": {"walk": 30},
+  "abilities": {"str": 14, "dex": 10, "con": 14, "int": 10, "wis": 10, "cha": 10},
+  "challenge": {"cr": 3, "xp": 700, "proficiencyBonus": 2},
+  "actions": [
+    {
+      "name": "Tail",
+      "text": "A tail attack for scripted legendary action tests.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "reach": 10,
+        "hits": [{"roll": "1d4", "damageType": "bludgeoning"}]
+      }
+    }
+  ],
+  "legendaryActions": {
+    "uses": 3,
+    "entries": [
+      {"name": "Detect", "text": "The creature makes a Wisdom (Perception) check.", "cost": 1},
+      {
+        "name": "Tail Attack",
+        "text": "The creature makes a tail attack.",
+        "cost": 1,
+        "attacks": ["Tail"]
+      }
+    ]
+  }
+}

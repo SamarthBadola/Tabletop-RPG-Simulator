@@ -1,0 +1,106 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:air-elemental",
+  "name": "Air Elemental",
+  "size": "large",
+  "type": "elemental",
+  "alignment": "neutral",
+  "ac": {
+    "value": 15
+  },
+  "hp": {
+    "dice": "12d10+24",
+    "average": 90
+  },
+  "speeds": {
+    "walk": 0,
+    "fly": 90,
+    "hover": true
+  },
+  "abilities": {
+    "str": 14,
+    "dex": 20,
+    "con": 14,
+    "int": 6,
+    "wis": 10,
+    "cha": 6
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "lightning",
+        "thunder"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+  },
+  "languages": "Auran",
+  "challenge": {
+    "cr": 5,
+    "xp": 1800,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Air Form",
+      "text": "The elemental can enter a hostile creature’s space and stop there. It can move through a space as narrow as 1 inch wide without squeezing."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The elemental makes two slam attacks."
+    },
+    {
+      "name": "Slam",
+      "text": "Melee Weapon Attack: +8 to hit, reach 5 ft., one target. Hit: 14 (2d8 + 5) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "2d8+5",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Whirlwind",
+      "text": "Each creature in the elemental’s space must make a DC 13 Strength saving throw. On a failure, a target takes 15 (3d8 + 2) bludgeoning damage and is flung up 20 feet away from the elemental in a random direction and knocked prone. If a thrown target strikes an object, such as a wall or floor, the target takes 3 (1d6) bludgeoning damage for every 10 feet it was thrown. If the target is thrown at another creature, that creature must succeed on a DC 13 Dexterity saving throw or take the same damage and be knocked prone. If the saving throw is successful, the target takes half the bludgeoning damage and isn’t flung away or knocked prone.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 4
+      },
+      "save": {
+        "ability": "str",
+        "dc": "13",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: exhaustion, grappled, paralyzed, petrified, poisoned, prone, restrained, unconscious"
+  ]
+}

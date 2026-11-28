@@ -1,0 +1,94 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:shambling-mound",
+  "name": "Shambling Mound",
+  "size": "large",
+  "type": "plant",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 15,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "16d10+48",
+    "average": 136
+  },
+  "speeds": {
+    "walk": 20,
+    "swim": 20
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 8,
+    "con": 16,
+    "int": 5,
+    "wis": 10,
+    "cha": 5
+  },
+  "skills": {
+    "stealth": 2
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold",
+        "fire"
+      ]
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "lightning"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 60,
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": 5,
+    "xp": 1800,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Lightning Absorption",
+      "text": "Whenever the shambling mound is subjected to lightning damage, it takes no damage and regains a number of hit points equal to the lightning damage dealt."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The shambling mound makes two slam attacks. If both attacks hit a Medium or smaller target, the target is grappled (escape DC 14), and the shambling mound uses its Engulf on it."
+    },
+    {
+      "name": "Slam",
+      "text": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "2d8+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Engulf",
+      "text": "The shambling mound engulfs a Medium or smaller creature grappled by it. The engulfed target is blinded, restrained, and unable to breathe, and it must succeed on a DC 14 Constitution saving throw at the start of each of the mound’s turns or take 13 (2d8 + 4) bludgeoning damage. If the mound moves, the engulfed target moves with it. The mound can have only one creature engulfed at a time.",
+      "save": {
+        "ability": "con",
+        "dc": "14",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: blinded, deafened, exhaustion"
+  ]
+}

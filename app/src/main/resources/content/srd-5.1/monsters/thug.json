@@ -1,0 +1,90 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:thug",
+  "name": "Thug",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 11,
+    "source": "leather armor"
+  },
+  "hp": {
+    "dice": "5d8+10",
+    "average": 32
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 15,
+    "dex": 11,
+    "con": 14,
+    "int": 10,
+    "wis": 10,
+    "cha": 11
+  },
+  "skills": {
+    "intimidation": 2
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "languages": "any one language (usually Common)",
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Pack Tactics",
+      "text": "The thug has advantage on an attack roll against a creature if at least one of the thug’s allies is within 5 feet of the creature and the ally isn’t incapacitated."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The thug makes two melee attacks."
+    },
+    {
+      "name": "Mace",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 5 (1d6 + 2) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d6+2",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Heavy Crossbow",
+      "text": "Ranged Weapon Attack: +2 to hit, range 100/400 ft., one target. Hit: 5 (1d10) piercing damage. Thugs are ruthless enforcers skilled at intimidation and violence. They work for money and have few scruples.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "2",
+        "hits": [
+          {
+            "roll": "1d10",
+            "damageType": "piercing"
+          }
+        ],
+        "range": {
+          "normal": 100,
+          "long": 400
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any non-good alignment"
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:wereboar",
+  "name": "Wereboar",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "neutral_evil",
+  "tags": [
+    "human",
+    "shapechanger"
+  ],
+  "ac": {
+    "value": 10
+  },
+  "hp": {
+    "dice": "12d8+24",
+    "average": 78
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 17,
+    "dex": 10,
+    "con": 15,
+    "int": 10,
+    "wis": 11,
+    "cha": 8
+  },
+  "skills": {
+    "perception": 2
+  },
+  "damageModifiers": [
+    {
+      "kind": "immunity",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "silvered"
+    }
+  ],
+  "languages": "Common (can’t speak in boar form)",
+  "challenge": {
+    "cr": 4,
+    "xp": 1100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Shapechanger",
+      "text": "The wereboar can use its action to polymorph into a boar-humanoid hybrid or into a boar, or back into its true form, which is humanoid. Its statistics, other than its AC, are the same in each form. Any equipment it is wearing or carrying isn’t transformed. It reverts to its true form if it dies."
+    },
+    {
+      "name": "Charge (Boar or Hybrid Form Only)",
+      "text": "If the wereboar moves at least 15 feet straight toward a target and then hits it with its tusks on the same turn, the target takes an extra 7 (2d6) slashing damage. If the target is a creature, it must succeed on a DC 13 Strength saving throw or be knocked prone.",
+      "save": {
+        "ability": "str",
+        "dc": "13",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Relentless",
+      "text": "If the wereboar takes 14 damage or less that would reduce it to 0 hit points, it is reduced to 1 hit point instead.",
+      "limit": {
+        "per": "short_rest",
+        "uses": "1"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack (Humanoid or Hybrid Form Only)",
+      "text": "The wereboar makes two attacks, only one of which can be with its tusks."
+    },
+    {
+      "name": "Maul (Humanoid or Hybrid Form Only)",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "2d6+3",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Tusks (Boar or Hybrid Form Only)",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) slashing damage. If the target is a humanoid, it must succeed on a DC 12 Constitution saving throw or be cursed with wereboar lycanthropy.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "2d6+3",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Armor Class: 10 in humanoid form, 11 (natural armor) in boar or hybrid form",
+    "Speed: 30 ft. (40 ft. in boar form)"
+  ]
+}

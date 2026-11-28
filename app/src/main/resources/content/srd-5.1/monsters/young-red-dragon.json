@@ -1,0 +1,112 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:young-red-dragon",
+  "name": "Young Red Dragon",
+  "size": "large",
+  "type": "dragon",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 18,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "17d10+85",
+    "average": 178
+  },
+  "speeds": {
+    "walk": 40,
+    "climb": 40,
+    "fly": 80
+  },
+  "abilities": {
+    "str": 23,
+    "dex": 10,
+    "con": 21,
+    "int": 14,
+    "wis": 11,
+    "cha": 19
+  },
+  "saves": {
+    "dex": 4,
+    "con": 9,
+    "wis": 4,
+    "cha": 8
+  },
+  "skills": {
+    "perception": 8,
+    "stealth": 4
+  },
+  "damageModifiers": [
+    {
+      "kind": "immunity",
+      "types": [
+        "fire"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 30,
+    "darkvision": 120,
+    "passivePerception": 18
+  },
+  "languages": "Common, Draconic",
+  "challenge": {
+    "cr": 10,
+    "xp": 5900,
+    "proficiencyBonus": 4
+  },
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The dragon makes three attacks: one with its bite and two with its claws."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +10 to hit, reach 10 ft., one target. Hit: 17 (2d10 + 6) piercing damage plus 3 (1d6) fire damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "10",
+        "hits": [
+          {
+            "roll": "2d10+6",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "1d6",
+            "damageType": "fire"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Claw",
+      "text": "Melee Weapon Attack: +10 to hit, reach 5 ft., one target. Hit: 13 (2d6 + 6) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "10",
+        "hits": [
+          {
+            "roll": "2d6+6",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Fire Breath",
+      "text": "The dragon exhales fire in a 30-foot cone. Each creature in that area must make a DC 17 Dexterity saving throw, taking 56 (16d6) fire damage on a failed save, or half as much damage on a successful one.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 5
+      },
+      "save": {
+        "ability": "dex",
+        "dc": "17",
+        "onSuccess": "half"
+      }
+    }
+  ]
+}

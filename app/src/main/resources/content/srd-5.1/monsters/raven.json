@@ -1,0 +1,50 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:raven",
+  "name": "Raven",
+  "size": "tiny",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "1d4-1",
+    "average": 1
+  },
+  "speeds": {
+    "walk": 10,
+    "fly": 50
+  },
+  "abilities": {
+    "str": 2,
+    "dex": 14,
+    "con": 8,
+    "int": 2,
+    "wis": 12,
+    "cha": 6
+  },
+  "skills": {
+    "perception": 3
+  },
+  "senses": {
+    "passivePerception": 13
+  },
+  "challenge": {
+    "cr": 0,
+    "xp": 10,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mimicry",
+      "text": "The raven can mimic simple sounds it has heard, such as a person whispering, a baby crying, or an animal chittering. A creature that hears the sounds can tell they are imitations with a successful DC 10 Wisdom (Insight) check."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Beak",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 1 piercing damage."
+    }
+  ]
+}

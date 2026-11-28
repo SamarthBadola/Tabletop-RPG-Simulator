@@ -1,0 +1,48 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:badger",
+  "name": "Badger",
+  "size": "tiny",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 10
+  },
+  "hp": {
+    "dice": "1d4+1",
+    "average": 3
+  },
+  "speeds": {
+    "walk": 20,
+    "burrow": 5
+  },
+  "abilities": {
+    "str": 4,
+    "dex": 11,
+    "con": 12,
+    "int": 2,
+    "wis": 12,
+    "cha": 5
+  },
+  "senses": {
+    "darkvision": 30,
+    "passivePerception": 11
+  },
+  "challenge": {
+    "cr": 0,
+    "xp": 10,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Keen Smell",
+      "text": "The badger has advantage on Wisdom (Perception) checks that rely on smell."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 1 piercing damage."
+    }
+  ]
+}

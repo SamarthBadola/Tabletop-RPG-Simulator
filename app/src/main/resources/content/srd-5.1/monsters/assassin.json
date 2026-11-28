@@ -1,0 +1,121 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:assassin",
+  "name": "Assassin",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 15,
+    "source": "studded leather"
+  },
+  "hp": {
+    "dice": "12d8+24",
+    "average": 78
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 11,
+    "dex": 16,
+    "con": 14,
+    "int": 13,
+    "wis": 11,
+    "cha": 10
+  },
+  "saves": {
+    "dex": 6,
+    "int": 4
+  },
+  "skills": {
+    "acrobatics": 6,
+    "deception": 3,
+    "perception": 3,
+    "stealth": 9
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "passivePerception": 13
+  },
+  "languages": "Thieves’ cant plus any two languages",
+  "challenge": {
+    "cr": 8,
+    "xp": 3900,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Assassinate",
+      "text": "During its first turn, the assassin has advantage on attack rolls against any creature that hasn’t taken a turn. Any hit the assassin scores against a surprised creature is a critical hit."
+    },
+    {
+      "name": "Evasion",
+      "text": "If the assassin is subjected to an effect that allows it to make a Dexterity saving throw to take only half damage, the assassin instead takes no damage if it succeeds on the saving throw, and only half damage if it fails."
+    },
+    {
+      "name": "Sneak Attack",
+      "text": "Once per turn, the assassin deals an extra 14 (4d6) damage when it hits a target with a weapon attack and has advantage on the attack roll, or when the target is within 5 feet of an ally of the assassin that isn’t incapacitated and the assassin doesn’t have disadvantage on the attack roll."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The assassin makes two shortsword attacks."
+    },
+    {
+      "name": "Shortsword",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) piercing damage, and the target must make a DC 15 Constitution saving throw, taking 24 (7d6) poison damage on a failed save, or half as much damage on a successful one.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "1d6+3",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "7d6",
+            "damageType": "poison"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Light Crossbow",
+      "text": "Ranged Weapon Attack: +6 to hit, range 80/320 ft., one target. Hit: 7 (1d8 + 3) piercing damage, and the target must make a DC 15 Constitution saving throw, taking 24 (7d6) poison damage on a failed save, or half as much damage on a successful one. Trained in the use of poison, assassins are remorseless killers who work for nobles, guildmasters, sovereigns, and anyone else who can afford them.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "1d8+3",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "7d6",
+            "damageType": "poison"
+          }
+        ],
+        "range": {
+          "normal": 80,
+          "long": 320
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any non-good alignment"
+  ]
+}

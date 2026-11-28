@@ -1,0 +1,62 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:crocodile",
+  "name": "Crocodile",
+  "size": "large",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 12,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "3d10+3",
+    "average": 19
+  },
+  "speeds": {
+    "walk": 20,
+    "swim": 30
+  },
+  "abilities": {
+    "str": 15,
+    "dex": 10,
+    "con": 13,
+    "int": 2,
+    "wis": 10,
+    "cha": 5
+  },
+  "skills": {
+    "stealth": 2
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Hold Breath",
+      "text": "The crocodile can hold its breath for 15 minutes."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 7 (1d10 + 2) piercing damage, and the target is grappled (escape DC 12). Until this grapple ends, the target is restrained, and the crocodile can’t bite another target.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d10+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

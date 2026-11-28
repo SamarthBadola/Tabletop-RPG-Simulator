@@ -1,0 +1,176 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:solar",
+  "name": "Solar",
+  "size": "large",
+  "type": "celestial",
+  "alignment": "lawful_good",
+  "ac": {
+    "value": 21,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "18d10+144",
+    "average": 243
+  },
+  "speeds": {
+    "walk": 50,
+    "fly": 150
+  },
+  "abilities": {
+    "str": 26,
+    "dex": 22,
+    "con": 26,
+    "int": 25,
+    "wis": 25,
+    "cha": 30
+  },
+  "saves": {
+    "int": 14,
+    "wis": 14,
+    "cha": 17
+  },
+  "skills": {
+    "perception": 14
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "radiant"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "necrotic",
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "truesight": 120,
+    "passivePerception": 24
+  },
+  "languages": "all, telepathy 120 ft.",
+  "challenge": {
+    "cr": 21,
+    "xp": 33000,
+    "proficiencyBonus": 7
+  },
+  "traits": [
+    {
+      "name": "Angelic Weapons",
+      "text": "The solar’s weapon attacks are magical. When the solar hits with any weapon, the weapon deals an extra 6d8 radiant damage (included in the attack)."
+    },
+    {
+      "name": "Divine Awareness",
+      "text": "The solar knows if it hears a lie."
+    },
+    {
+      "name": "Innate Spellcasting",
+      "text": "The solar’s spellcasting ability is Charisma (spell save DC 25). It can innately cast the following spells, requiring no material components: At will: detect evil and good, invisibility (self only) 3/day each: blade barrier, dispel evil and good, resurrection 1/day each: commune, control weather Magic Resistance. The solar has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The solar makes two greatsword attacks."
+    },
+    {
+      "name": "Greatsword",
+      "text": "Melee Weapon Attack: +15 to hit, reach 5 ft., one target. Hit: 22 (4d6 + 8) slashing damage plus 27 (6d8) radiant damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "15",
+        "hits": [
+          {
+            "roll": "4d6+8",
+            "damageType": "slashing"
+          },
+          {
+            "roll": "6d8",
+            "damageType": "radiant"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Slaying Longbow",
+      "text": "Ranged Weapon Attack: +13 to hit, range 150/600 ft., one target. Hit: 15 (2d8 + 6) piercing damage plus 27 (6d8) radiant damage. If the target is a creature that has 100 hit points or fewer, it must succeed on a DC 15 Constitution saving throw or die.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "13",
+        "hits": [
+          {
+            "roll": "2d8+6",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "6d8",
+            "damageType": "radiant"
+          }
+        ],
+        "range": {
+          "normal": 150,
+          "long": 600
+        }
+      }
+    },
+    {
+      "name": "Flying Sword",
+      "text": "The solar releases its greatsword to hover magically in an unoccupied space within 5 feet of it. If the solar can see the sword, the solar can mentally command it as a bonus action to fly up to 50 feet and either make one attack against a target or return to the solar’s hands. If the hovering sword is targeted by any effect, the solar is considered to be holding it. The hovering sword falls if the solar dies."
+    },
+    {
+      "name": "Healing Touch",
+      "text": "The solar touches another creature. The target magically regains 40 (8d8 + 4) hit points and is freed from any curse, disease, poison, blindness, or deafness.",
+      "limit": {
+        "per": "long_rest",
+        "uses": "4"
+      }
+    }
+  ],
+  "legendaryActions": {
+    "uses": 3,
+    "entries": [
+      {
+        "name": "Teleport",
+        "text": "The solar magically teleports, along with any equipment it is wearing or carrying, up to 120 feet to an unoccupied space it can see.",
+        "cost": 1
+      },
+      {
+        "name": "Searing Burst",
+        "text": "The solar emits magical, divine energy. Each creature of its choice in a 10-foot radius must make a DC 23 Dexterity saving throw, taking 14 (4d6) fire damage plus 14 (4d6) radiant damage on a failed save, or half as much damage on a successful one.",
+        "cost": 2,
+        "save": {
+          "ability": "dex",
+          "dc": "23",
+          "onSuccess": "half"
+        }
+      },
+      {
+        "name": "Blinding Gaze",
+        "text": "The solar targets one creature it can see within 30 feet of it. If the target can see it, the target must succeed on a DC 15 Constitution saving throw or be blinded until magic such as the lesser restoration spell removes the blindness.",
+        "cost": 3,
+        "save": {
+          "ability": "con",
+          "dc": "15",
+          "onSuccess": "none"
+        }
+      }
+    ]
+  },
+  "notes": [
+    "Condition immunities: charmed, exhaustion, frightened, poisoned"
+  ]
+}

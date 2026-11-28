@@ -1,0 +1,71 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:killer-whale",
+  "name": "Killer Whale",
+  "size": "huge",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 12,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "12d12+12",
+    "average": 90
+  },
+  "speeds": {
+    "walk": 0,
+    "swim": 60
+  },
+  "abilities": {
+    "str": 19,
+    "dex": 10,
+    "con": 13,
+    "int": 3,
+    "wis": 12,
+    "cha": 7
+  },
+  "skills": {
+    "perception": 3
+  },
+  "senses": {
+    "blindsight": 120,
+    "passivePerception": 13
+  },
+  "challenge": {
+    "cr": 3,
+    "xp": 700,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Echolocation",
+      "text": "The whale can’t use its blindsight while deafened."
+    },
+    {
+      "name": "Hold Breath",
+      "text": "The whale can hold its breath for 30 minutes."
+    },
+    {
+      "name": "Keen Hearing",
+      "text": "The whale has advantage on Wisdom (Perception) checks that rely on hearing."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 21 (5d6 + 4) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "5d6+4",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

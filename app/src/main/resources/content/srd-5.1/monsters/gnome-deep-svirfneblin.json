@@ -1,0 +1,94 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:gnome-deep-svirfneblin",
+  "name": "Gnome, Deep (Svirfneblin)",
+  "size": "small",
+  "type": "humanoid",
+  "alignment": "neutral_good",
+  "tags": [
+    "gnome"
+  ],
+  "ac": {
+    "value": 15,
+    "source": "chain shirt"
+  },
+  "hp": {
+    "dice": "3d6+6",
+    "average": 16
+  },
+  "speeds": {
+    "walk": 20
+  },
+  "abilities": {
+    "str": 15,
+    "dex": 14,
+    "con": 14,
+    "int": 12,
+    "wis": 10,
+    "cha": 9
+  },
+  "skills": {
+    "investigation": 3,
+    "perception": 2,
+    "stealth": 4
+  },
+  "senses": {
+    "darkvision": 120,
+    "passivePerception": 12
+  },
+  "languages": "Gnomish, Terran, Undercommon",
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Stone Camouflage",
+      "text": "The gnome has advantage on Dexterity (Stealth) checks made to hide in rocky terrain."
+    },
+    {
+      "name": "Gnome Cunning",
+      "text": "The gnome has advantage on Intelligence, Wisdom, and Charisma saving throws against magic."
+    },
+    {
+      "name": "Innate Spellcasting",
+      "text": "The gnome’s innate spellcasting ability is Intelligence (spell save DC 11). It can innately cast the following spells, requiring no material components: At will: nondetection (self only) 1/day each: blindness/deafness, blur, disguise self"
+    }
+  ],
+  "actions": [
+    {
+      "name": "War Pick",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d8+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Poisoned Dart",
+      "text": "Ranged Weapon Attack: +4 to hit, range 30/120 ft., one creature. Hit: 4 (1d4 + 2) piercing damage, and the target must succeed on a DC 12 Constitution saving throw or be poisoned for 1 minute. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "piercing"
+          }
+        ],
+        "range": {
+          "normal": 30,
+          "long": 120
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:vrock",
+  "name": "Vrock",
+  "size": "large",
+  "type": "fiend",
+  "alignment": "chaotic_evil",
+  "tags": [
+    "demon"
+  ],
+  "ac": {
+    "value": 15,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "11d10+44",
+    "average": 104
+  },
+  "speeds": {
+    "walk": 40,
+    "fly": 60
+  },
+  "abilities": {
+    "str": 17,
+    "dex": 15,
+    "con": 18,
+    "int": 8,
+    "wis": 13,
+    "cha": 8
+  },
+  "saves": {
+    "dex": 5,
+    "wis": 4,
+    "cha": 2
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold",
+        "fire",
+        "lightning"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 120,
+    "passivePerception": 11
+  },
+  "languages": "Abyssal, telepathy 120 ft.",
+  "challenge": {
+    "cr": 6,
+    "xp": 2300,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Magic Resistance",
+      "text": "The vrock has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The vrock makes two attacks: one with its beak and one with its talons."
+    },
+    {
+      "name": "Beak",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d6+3",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Talons",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 14 (2d10 + 3) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d10+3",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Spores",
+      "text": "A 15-foot-radius cloud of toxic spores extends out from the vrock. The spores spread around corners. Each creature in that area must succeed on a DC 14 Constitution saving throw or become poisoned. While poisoned in this way, a target takes 5 (1d10) poison damage at the start of each of its turns. A target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success. Emptying a vial of holy water on the target also ends the effect on it.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 6
+      },
+      "save": {
+        "ability": "con",
+        "dc": "14",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Stunning Screech",
+      "text": "The vrock emits a horrific screech. Each creature within 20 feet of it that can hear it and that isn’t a demon must succeed on a DC 14 Constitution saving throw or be stunned until the end of the vrock’s next turn.",
+      "limit": {
+        "per": "long_rest",
+        "uses": "1"
+      },
+      "save": {
+        "ability": "con",
+        "dc": "14",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}

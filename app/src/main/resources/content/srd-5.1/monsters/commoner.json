@@ -1,0 +1,58 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:commoner",
+  "name": "Commoner",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 10
+  },
+  "hp": {
+    "dice": "1d8",
+    "average": 4
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 10,
+    "dex": 10,
+    "con": 10,
+    "int": 10,
+    "wis": 10,
+    "cha": 10
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "languages": "any one language (usually Common)",
+  "challenge": {
+    "cr": 0,
+    "xp": 10,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Club",
+      "text": "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 2 (1d4) bludgeoning damage. Commoners include peasants, serfs, slaves, servants, pilgrims, merchants, artisans, and hermits.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "2",
+        "hits": [
+          {
+            "roll": "1d4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any alignment"
+  ]
+}

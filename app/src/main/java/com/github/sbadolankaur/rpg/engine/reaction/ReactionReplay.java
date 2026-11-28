@@ -160,7 +160,8 @@ public final class ReactionReplay {
     AFTER_CHECK_ROLL,
     ON_CAST,
     AFTER_DAMAGE_TAKEN,
-    ON_READIED_TRIGGER
+    ON_READIED_TRIGGER,
+    ON_TURN_END
   }
 
   public enum Step {

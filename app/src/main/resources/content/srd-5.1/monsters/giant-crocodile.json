@@ -1,0 +1,81 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:giant-crocodile",
+  "name": "Giant Crocodile",
+  "size": "huge",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 14,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "9d12+27",
+    "average": 85
+  },
+  "speeds": {
+    "walk": 30,
+    "swim": 50
+  },
+  "abilities": {
+    "str": 21,
+    "dex": 9,
+    "con": 17,
+    "int": 2,
+    "wis": 10,
+    "cha": 7
+  },
+  "skills": {
+    "stealth": 5
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": 5,
+    "xp": 1800,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Hold Breath",
+      "text": "The crocodile can hold its breath for 30 minutes."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The crocodile makes two attacks: one with its bite and one with its tail."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +8 to hit, reach 5 ft., one target. Hit: 21 (3d10 + 5) piercing damage, and the target is grappled (escape DC 16). Until this grapple ends, the target is restrained, and the crocodile can’t bite another target.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "3d10+5",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Tail",
+      "text": "Melee Weapon Attack: +8 to hit, reach 10 ft., one target not grappled by the crocodile. Hit: 14 (2d8 + 5) bludgeoning damage. If the target is a creature, it must succeed on a DC 16 Strength saving throw or be knocked prone.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "2d8+5",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 10
+      }
+    }
+  ]
+}

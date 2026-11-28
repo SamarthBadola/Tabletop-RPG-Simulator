@@ -1,0 +1,127 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:bone-devil",
+  "name": "Bone Devil",
+  "size": "large",
+  "type": "fiend",
+  "alignment": "lawful_evil",
+  "tags": [
+    "devil"
+  ],
+  "ac": {
+    "value": 19,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "15d10+60",
+    "average": 142
+  },
+  "speeds": {
+    "walk": 40,
+    "fly": 40
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 16,
+    "con": 18,
+    "int": 13,
+    "wis": 14,
+    "cha": 16
+  },
+  "saves": {
+    "int": 5,
+    "wis": 6,
+    "cha": 7
+  },
+  "skills": {
+    "deception": 7,
+    "insight": 6
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "silvered"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "fire",
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 120,
+    "passivePerception": 12
+  },
+  "languages": "Infernal, telepathy 120 ft.",
+  "challenge": {
+    "cr": 9,
+    "xp": 5000,
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Devil’s Sight",
+      "text": "Magical darkness doesn’t impede the devil’s darkvision."
+    },
+    {
+      "name": "Magic Resistance",
+      "text": "The devil has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The devil makes three attacks: two with its claws and one with its sting."
+    },
+    {
+      "name": "Claw",
+      "text": "Melee Weapon Attack: +8 to hit, reach 10 ft., one target. Hit: 8 (1d8 + 4) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "1d8+4",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Sting",
+      "text": "Melee Weapon Attack: +8 to hit, reach 10 ft., one target. Hit: 13 (2d8 + 4) piercing damage plus 17 (5d6) poison damage, and the target must succeed on a DC 14 Constitution saving throw or become poisoned for 1 minute. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "2d8+4",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "5d6",
+            "damageType": "poison"
+          }
+        ],
+        "reach": 10
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}

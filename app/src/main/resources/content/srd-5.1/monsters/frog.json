@@ -1,0 +1,50 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:frog",
+  "name": "Frog",
+  "size": "tiny",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 11
+  },
+  "hp": {
+    "dice": "1d4-1",
+    "average": 1
+  },
+  "speeds": {
+    "walk": 20,
+    "swim": 20
+  },
+  "abilities": {
+    "str": 1,
+    "dex": 13,
+    "con": 8,
+    "int": 1,
+    "wis": 8,
+    "cha": 3
+  },
+  "skills": {
+    "perception": 1,
+    "stealth": 3
+  },
+  "senses": {
+    "darkvision": 30,
+    "passivePerception": 11
+  },
+  "challenge": {
+    "cr": 0,
+    "xp": 0,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Amphibious",
+      "text": "The frog can breathe air and water."
+    },
+    {
+      "name": "Standing Leap",
+      "text": "The frog’s long jump is up to 10 feet and its high jump is up to 5 feet, with or without a running start. A frog has no effective attacks. It feeds on small insects and typically dwells near water, in trees, or underground. The frog’s statistics can also be used to represent a toad."
+    }
+  ]
+}

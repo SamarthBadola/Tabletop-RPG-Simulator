@@ -1,0 +1,92 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:frost-giant",
+  "name": "Frost Giant",
+  "size": "huge",
+  "type": "giant",
+  "alignment": "neutral_evil",
+  "ac": {
+    "value": 15,
+    "source": "patchwork armor"
+  },
+  "hp": {
+    "dice": "12d12+60",
+    "average": 138
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 23,
+    "dex": 9,
+    "con": 21,
+    "int": 9,
+    "wis": 10,
+    "cha": 12
+  },
+  "saves": {
+    "con": 8,
+    "wis": 3,
+    "cha": 4
+  },
+  "skills": {
+    "athletics": 9,
+    "perception": 3
+  },
+  "damageModifiers": [
+    {
+      "kind": "immunity",
+      "types": [
+        "cold"
+      ]
+    }
+  ],
+  "senses": {
+    "passivePerception": 13
+  },
+  "languages": "Giant",
+  "challenge": {
+    "cr": 8,
+    "xp": 3900,
+    "proficiencyBonus": 3
+  },
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The giant makes two greataxe attacks."
+    },
+    {
+      "name": "Greataxe",
+      "text": "Melee Weapon Attack: +9 to hit, reach 10 ft., one target. Hit: 25 (3d12 + 6) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "9",
+        "hits": [
+          {
+            "roll": "3d12+6",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Rock",
+      "text": "Ranged Weapon Attack: +9 to hit, range 60/240 ft., one target. Hit: 28 (4d10 + 6) bludgeoning damage.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "9",
+        "hits": [
+          {
+            "roll": "4d10+6",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "range": {
+          "normal": 60,
+          "long": 240
+        }
+      }
+    }
+  ]
+}

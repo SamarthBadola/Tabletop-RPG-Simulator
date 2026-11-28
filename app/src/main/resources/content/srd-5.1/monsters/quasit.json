@@ -1,0 +1,119 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:quasit",
+  "name": "Quasit",
+  "size": "tiny",
+  "type": "fiend",
+  "alignment": "chaotic_evil",
+  "tags": [
+    "demon",
+    "shapechanger"
+  ],
+  "ac": {
+    "value": 13
+  },
+  "hp": {
+    "dice": "3d4",
+    "average": 7
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 5,
+    "dex": 17,
+    "con": 10,
+    "int": 7,
+    "wis": 10,
+    "cha": 10
+  },
+  "skills": {
+    "stealth": 5
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold",
+        "fire",
+        "lightning"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 120,
+    "passivePerception": 10
+  },
+  "languages": "Abyssal, Common",
+  "challenge": {
+    "cr": 1,
+    "xp": 200,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Shapechanger",
+      "text": "The quasit can use its action to polymorph into a beast form that resembles a bat (speed 10 ft. fly 40 ft.), a centipede (40 ft., climb 40 ft.), or a toad (40 ft., swim 40 ft.), or back into its true form. Its statistics are the same in each form, except for the speed changes noted. Any equipment it is wearing or carrying isn’t transformed. It reverts to its true form if it dies."
+    },
+    {
+      "name": "Magic Resistance",
+      "text": "The quasit has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Claws (Bite in Beast Form)",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d4 + 3) piercing damage, and the target must succeed on a DC 10 Constitution saving throw or take 5 (2d4) poison damage and become poisoned for 1 minute. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+3",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "2d4",
+            "damageType": "poison"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Scare",
+      "text": "One creature of the quasit’s choice within 20 feet of it must succeed on a DC 10 Wisdom saving throw or be frightened for 1 minute. The target can repeat the saving throw at the end of each of its turns, with disadvantage if the quasit is within line of sight, ending the effect on itself on a success.",
+      "limit": {
+        "per": "long_rest",
+        "uses": "1"
+      },
+      "save": {
+        "ability": "wis",
+        "dc": "10",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Invisibility",
+      "text": "The quasit magically turns invisible until it attacks or uses Scare, or until its concentration ends (as if concentrating on a spell). Any equipment the quasit wears or carries is invisible with it."
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}

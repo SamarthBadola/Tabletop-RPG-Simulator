@@ -1,0 +1,95 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:wyvern",
+  "name": "Wyvern",
+  "size": "large",
+  "type": "dragon",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 13,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "13d10+39",
+    "average": 110
+  },
+  "speeds": {
+    "walk": 20,
+    "fly": 80
+  },
+  "abilities": {
+    "str": 19,
+    "dex": 10,
+    "con": 16,
+    "int": 5,
+    "wis": 12,
+    "cha": 6
+  },
+  "skills": {
+    "perception": 4
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 14
+  },
+  "challenge": {
+    "cr": 6,
+    "xp": 2300,
+    "proficiencyBonus": 3
+  },
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The wyvern makes two attacks: one with its bite and one with its stinger. While flying, it can use its claws in place of one other attack."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +7 to hit, reach 10 ft., one creature. Hit: 11 (2d6 + 4) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "2d8+4",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Stinger",
+      "text": "Melee Weapon Attack: +7 to hit, reach 10 ft., one creature. Hit: 11 (2d6 + 4) piercing damage. The target must make a DC 15 Constitution saving throw, taking 24 (7d6) poison damage on a failed save, or half as much damage on a successful one.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "7d6",
+            "damageType": "poison"
+          }
+        ],
+        "reach": 10
+      }
+    }
+  ]
+}

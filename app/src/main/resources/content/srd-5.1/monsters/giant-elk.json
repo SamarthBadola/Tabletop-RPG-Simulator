@@ -1,0 +1,82 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:giant-elk",
+  "name": "Giant Elk",
+  "size": "huge",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 14,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "5d12+10",
+    "average": 42
+  },
+  "speeds": {
+    "walk": 60
+  },
+  "abilities": {
+    "str": 19,
+    "dex": 16,
+    "con": 14,
+    "int": 7,
+    "wis": 14,
+    "cha": 10
+  },
+  "skills": {
+    "perception": 4
+  },
+  "senses": {
+    "passivePerception": 14
+  },
+  "languages": "Giant Elk, understands Common, Elvish, and Sylvan but can’t speak them",
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Charge",
+      "text": "If the elk moves at least 20 feet straight toward a target and then hits it with a ram attack on the same turn, the target takes an extra 7 (2d6) damage. If the target is a creature, it must succeed on a DC 14 Strength saving throw or be knocked prone.",
+      "save": {
+        "ability": "str",
+        "dc": "14",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Ram",
+      "text": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 11 (2d6 + 4) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Hooves",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one prone creature. Hit: 22 (4d8 + 4) bludgeoning damage. The majestic giant elk is rare to the point that its appearance is often taken as a foreshadowing of an important event, such as the birth of a king. Legends tell of gods that take the form of giant elk when visiting the Material Plane. Many cultures therefore believe that to hunt these creatures is to invite divine wrath.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "4d8+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

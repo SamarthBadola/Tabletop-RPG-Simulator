@@ -1,0 +1,70 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:warhorse-skeleton",
+  "name": "Warhorse Skeleton",
+  "size": "large",
+  "type": "undead",
+  "alignment": "lawful_evil",
+  "ac": {
+    "value": 13,
+    "source": "barding scraps"
+  },
+  "hp": {
+    "dice": "3d10+6",
+    "average": 22
+  },
+  "speeds": {
+    "walk": 60
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 12,
+    "con": 15,
+    "int": 2,
+    "wis": 8,
+    "cha": 5
+  },
+  "damageModifiers": [
+    {
+      "kind": "vulnerability",
+      "types": [
+        "bludgeoning"
+      ]
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 9
+  },
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Hooves",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: exhaustion, poisoned"
+  ]
+}

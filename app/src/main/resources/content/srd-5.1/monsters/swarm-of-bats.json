@@ -1,0 +1,87 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:swarm-of-bats",
+  "name": "Swarm of Bats",
+  "size": "medium",
+  "type": "beast",
+  "alignment": "unaligned",
+  "tags": [
+    "swarm"
+  ],
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "5d8",
+    "average": 22
+  },
+  "speeds": {
+    "walk": 0,
+    "fly": 30
+  },
+  "abilities": {
+    "str": 5,
+    "dex": 15,
+    "con": 10,
+    "int": 2,
+    "wis": 12,
+    "cha": 4
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 60,
+    "passivePerception": 11
+  },
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Echolocation",
+      "text": "The swarm can’t use its blindsight while deafened."
+    },
+    {
+      "name": "Keen Hearing",
+      "text": "The swarm has advantage on Wisdom (Perception) checks that rely on hearing."
+    },
+    {
+      "name": "Swarm",
+      "text": "The swarm can occupy another creature’s space and vice versa, and the swarm can move through any opening large enough for a Tiny bat. The swarm can’t regain hit points or gain temporary hit points."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bites",
+      "text": "Melee Weapon Attack: +4 to hit, reach 0 ft., one creature in the swarm’s space. Hit: 5 (2d4) piercing damage, or 2 (1d4) piercing damage if the swarm has half of its hit points or fewer.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "2d4",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "1d4",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 0
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: charmed, frightened, grappled, paralyzed, petrified, prone, restrained, stunned"
+  ]
+}

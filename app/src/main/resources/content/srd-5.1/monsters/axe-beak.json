@@ -1,0 +1,51 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:axe-beak",
+  "name": "Axe Beak",
+  "size": "large",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 11
+  },
+  "hp": {
+    "dice": "3d10+3",
+    "average": 19
+  },
+  "speeds": {
+    "walk": 50
+  },
+  "abilities": {
+    "str": 14,
+    "dex": 12,
+    "con": 12,
+    "int": 2,
+    "wis": 10,
+    "cha": 5
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Beak",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) slashing damage. An axe beak is a tall flightless bird with strong legs and a heavy, wedge-‑shaped beak. It has a nasty disposition and tends to attack any unfamiliar creature that wanders too close.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d8+2",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

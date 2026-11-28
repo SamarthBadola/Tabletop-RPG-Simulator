@@ -1,0 +1,80 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:swarm-of-insects",
+  "name": "Swarm of Insects",
+  "size": "medium",
+  "type": "beast",
+  "alignment": "unaligned",
+  "tags": [
+    "swarm"
+  ],
+  "ac": {
+    "value": 12,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "5d8",
+    "average": 22
+  },
+  "speeds": {
+    "walk": 20,
+    "climb": 20
+  },
+  "abilities": {
+    "str": 3,
+    "dex": 13,
+    "con": 10,
+    "int": 1,
+    "wis": 7,
+    "cha": 1
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 10,
+    "passivePerception": 8
+  },
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Swarm",
+      "text": "The swarm can occupy another creature’s space and vice versa, and the swarm can move through any opening large enough for a Tiny insect. The swarm can’t regain hit points or gain temporary hit points."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bites",
+      "text": "Melee Weapon Attack: +3 to hit, reach 0 ft., one target in the swarm’s space. Hit: 10 (4d4) piercing damage, or 5 (2d4) piercing damage if the swarm has half of its hit points or fewer.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "3",
+        "hits": [
+          {
+            "roll": "4d4",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "2d4",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 0
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: charmed, frightened, grappled, paralyzed, petrified, prone, restrained, stunned"
+  ]
+}

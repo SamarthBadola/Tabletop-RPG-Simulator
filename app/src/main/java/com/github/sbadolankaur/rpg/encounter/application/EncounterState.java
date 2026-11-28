@@ -34,6 +34,11 @@ public final class EncounterState {
     }
   }
 
+  /**
+   * One combatant of an encounter. {@code dyingByTrait} and {@code regenSuppressed} are the marks
+   * of Regeneration (RS-MON-015); they stay false for every creature without that trait. {@code
+   * legendaryPoints} stays 0 for a creature without legendary actions.
+   */
   public record Entry(
       UUID id,
       UUID character,
@@ -42,8 +47,23 @@ public final class EncounterState {
       Integer initiative,
       Integer tie,
       Tactics tactics,
-      Vitals npcVitals) {
+      Vitals npcVitals,
+      boolean dyingByTrait,
+      boolean regenSuppressed,
+      int legendaryPoints) {
     private static final int REMOVED = Integer.MAX_VALUE;
+
+    public Entry(
+        UUID id,
+        UUID character,
+        String monster,
+        int ordinal,
+        Integer initiative,
+        Integer tie,
+        Tactics tactics,
+        Vitals npcVitals) {
+      this(id, character, monster, ordinal, initiative, tie, tactics, npcVitals, false, false, 0);
+    }
 
     public boolean present() {
       return tactics.firstRound() != REMOVED;
@@ -54,15 +74,79 @@ public final class EncounterState {
     }
 
     public Entry initiative(Integer next, Integer tie) {
-      return new Entry(id, character, monster, ordinal, next, tie, tactics, npcVitals);
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          next,
+          tie,
+          tactics,
+          npcVitals,
+          dyingByTrait,
+          regenSuppressed,
+          legendaryPoints);
     }
 
     public Entry tactics(Tactics next) {
-      return new Entry(id, character, monster, ordinal, initiative, tie, next, npcVitals);
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          next,
+          npcVitals,
+          dyingByTrait,
+          regenSuppressed,
+          legendaryPoints);
     }
 
     public Entry vitals(Vitals next) {
-      return new Entry(id, character, monster, ordinal, initiative, tie, tactics, next);
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          tactics,
+          next,
+          dyingByTrait,
+          regenSuppressed,
+          legendaryPoints);
+    }
+
+    public Entry marks(boolean nextDyingByTrait, boolean nextRegenSuppressed) {
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          tactics,
+          npcVitals,
+          nextDyingByTrait,
+          nextRegenSuppressed,
+          legendaryPoints);
+    }
+
+    /** The unspent legendary action points of a creature that has them (RS-MON-028). */
+    public Entry legendary(int points) {
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          tactics,
+          npcVitals,
+          dyingByTrait,
+          regenSuppressed,
+          points);
     }
   }
 

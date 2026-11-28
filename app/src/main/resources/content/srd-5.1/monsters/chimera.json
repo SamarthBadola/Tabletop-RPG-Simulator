@@ -1,0 +1,106 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:chimera",
+  "name": "Chimera",
+  "size": "large",
+  "type": "monstrosity",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 14,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "12d10+48",
+    "average": 114
+  },
+  "speeds": {
+    "walk": 30,
+    "fly": 60
+  },
+  "abilities": {
+    "str": 19,
+    "dex": 11,
+    "con": 19,
+    "int": 3,
+    "wis": 14,
+    "cha": 10
+  },
+  "skills": {
+    "perception": 8
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 18
+  },
+  "languages": "understands Draconic but can’t speak",
+  "challenge": {
+    "cr": 6,
+    "xp": 2300,
+    "proficiencyBonus": 3
+  },
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The chimera makes three attacks: one with its bite, one with its horns, and one with its claws. When its fire breath is available, it can use the breath in place of its bite or horns."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Horns",
+      "text": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 10 (1d12 + 4) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "1d12+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Fire Breath",
+      "text": "The dragon head exhales fire in a 15-foot cone. Each creature in that area must make a DC 15 Dexterity saving throw, taking 31 (7d8) fire damage on a failed save, or half as much damage on a successful one.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 5
+      },
+      "save": {
+        "ability": "dex",
+        "dc": "15",
+        "onSuccess": "half"
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:tribal-warrior",
+  "name": "Tribal Warrior",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 12,
+    "source": "hide armor"
+  },
+  "hp": {
+    "dice": "2d8+2",
+    "average": 11
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 13,
+    "dex": 11,
+    "con": 12,
+    "int": 8,
+    "wis": 11,
+    "cha": 8
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "languages": "any one language",
+  "challenge": {
+    "cr": "1/8",
+    "xp": 25,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Pack Tactics",
+      "text": "The warrior has advantage on an attack roll against a creature if at least one of the warrior’s allies is within 5 feet of the creature and the ally isn’t incapacitated."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Spear",
+      "text": "Melee or Ranged Weapon Attack: +3 to hit, reach 5 ft. or range 20/60 ft., one target. Hit: 4 (1d6 + 1) piercing damage, or 5 (1d8 + 1) piercing damage if used with two hands to make a melee attack. Tribal warriors live beyond civilization, most often subsisting on fishing and hunting. Each tribe acts in accordance with the wishes of its chief, who is the greatest or oldest warrior of the tribe or a tribe member blessed by the gods.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "3",
+        "hits": [
+          {
+            "roll": "1d6+1",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "1d8+1",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5,
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any alignment"
+  ]
+}

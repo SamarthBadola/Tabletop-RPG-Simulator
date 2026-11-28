@@ -1,0 +1,98 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:manticore",
+  "name": "Manticore",
+  "size": "large",
+  "type": "monstrosity",
+  "alignment": "lawful_evil",
+  "ac": {
+    "value": 14,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "8d10+24",
+    "average": 68
+  },
+  "speeds": {
+    "walk": 30,
+    "fly": 50
+  },
+  "abilities": {
+    "str": 17,
+    "dex": 16,
+    "con": 17,
+    "int": 7,
+    "wis": 12,
+    "cha": 8
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 11
+  },
+  "languages": "Common",
+  "challenge": {
+    "cr": 3,
+    "xp": 700,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Tail Spike Regrowth",
+      "text": "The manticore has twenty-four tail spikes. Used spikes regrow when the manticore finishes a long rest."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The manticore makes three attacks: one with its bite and two with its claws or three with its tail spikes."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d8+3",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claw",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d6+3",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Tail Spike",
+      "text": "Ranged Weapon Attack: +5 to hit, range 100/200 ft., one target. Hit: 7 (1d8 + 3) piercing damage.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d8+3",
+            "damageType": "piercing"
+          }
+        ],
+        "range": {
+          "normal": 100,
+          "long": 200
+        }
+      }
+    }
+  ]
+}

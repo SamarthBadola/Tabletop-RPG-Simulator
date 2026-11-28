@@ -1,0 +1,82 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:cult-fanatic",
+  "name": "Cult Fanatic",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 13,
+    "source": "leather armor"
+  },
+  "hp": {
+    "dice": "6d8+6",
+    "average": 33
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 11,
+    "dex": 14,
+    "con": 12,
+    "int": 10,
+    "wis": 13,
+    "cha": 14
+  },
+  "skills": {
+    "deception": 4,
+    "persuasion": 4,
+    "religion": 2
+  },
+  "senses": {
+    "passivePerception": 11
+  },
+  "languages": "any one language (usually Common)",
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Dark Devotion",
+      "text": "The fanatic has advantage on saving throws against being charmed or frightened."
+    },
+    {
+      "name": "Spellcasting",
+      "text": "The fanatic is a 4th-level spellcaster. Its spellcasting ability is Wisdom (spell save DC 11, +3 to hit with spell attacks). The fanatic has the following cleric spells prepared: Cantrips (at will): light, sacred flame, thaumaturgy 1st level (4 slots): command, inflict wounds, shield of faith 2nd level (3 slots): hold person, spiritual weapon"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The fanatic makes two melee attacks."
+    },
+    {
+      "name": "Dagger",
+      "text": "Melee or Ranged Weapon Attack: +4 to hit, reach 5 ft. or range 20/60 ft., one creature. Hit: 4 (1d4 + 2) piercing damage. Fanatics are often part of a cult’s leadership, using their charisma and dogma to influence and prey on those of weak will. Most are interested in personal power above all else.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5,
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any non-good alignment"
+  ]
+}

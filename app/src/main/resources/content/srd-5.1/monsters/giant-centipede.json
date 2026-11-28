@@ -1,0 +1,58 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:giant-centipede",
+  "name": "Giant Centipede",
+  "size": "small",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 13,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "1d6+1",
+    "average": 4
+  },
+  "speeds": {
+    "walk": 30,
+    "climb": 30
+  },
+  "abilities": {
+    "str": 5,
+    "dex": 14,
+    "con": 12,
+    "int": 1,
+    "wis": 7,
+    "cha": 3
+  },
+  "senses": {
+    "blindsight": 30,
+    "passivePerception": 8
+  },
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 4 (1d4 + 2) piercing damage, and the target must succeed on a DC 11 Constitution saving throw or take 10 (3d6) poison damage. If the poison damage reduces the target to 0 hit points, the target is stable but poisoned for 1 hour, even after regaining hit points, and is paralyzed while poisoned in this way.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "3d6",
+            "damageType": "poison"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:marilith",
+  "name": "Marilith",
+  "size": "large",
+  "type": "fiend",
+  "alignment": "chaotic_evil",
+  "tags": [
+    "demon"
+  ],
+  "ac": {
+    "value": 18,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "18d10+90",
+    "average": 189
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 20,
+    "con": 20,
+    "int": 18,
+    "wis": 16,
+    "cha": 20
+  },
+  "saves": {
+    "str": 9,
+    "con": 10,
+    "wis": 8,
+    "cha": 10
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold",
+        "fire",
+        "lightning"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "truesight": 120,
+    "passivePerception": 13
+  },
+  "languages": "Abyssal, telepathy 120 ft.",
+  "challenge": {
+    "cr": 16,
+    "xp": 15000,
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Magic Resistance",
+      "text": "The marilith has advantage on saving throws against spells and other magical effects."
+    },
+    {
+      "name": "Magic Weapons",
+      "text": "The marilith’s weapon attacks are magical."
+    },
+    {
+      "name": "Reactive",
+      "text": "The marilith can take one reaction on every turn in a combat."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The marilith makes seven attacks: six with its longswords and one with its tail."
+    },
+    {
+      "name": "Longsword",
+      "text": "Melee Weapon Attack: +9 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "9",
+        "hits": [
+          {
+            "roll": "2d8+4",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Tail",
+      "text": "Melee Weapon Attack: +9 to hit, reach 10 ft., one creature. Hit: 15 (2d10 + 4) bludgeoning damage. If the target is Medium or smaller, it is grappled (escape DC 19). Until this grapple ends, the target is restrained, the marilith can automatically hit the target with its tail, and the marilith can’t make tail attacks against other targets.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "9",
+        "hits": [
+          {
+            "roll": "2d10+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Teleport",
+      "text": "The marilith magically teleports, along with any equipment it is wearing or carrying, up to 120 feet to an unoccupied space it can see."
+    }
+  ],
+  "reactions": [
+    {
+      "name": "Parry",
+      "text": "The marilith adds 5 to its AC against one melee attack that would hit it. To do so, the marilith must see the attacker and be wielding a melee weapon."
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}

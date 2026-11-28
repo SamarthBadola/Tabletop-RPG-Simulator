@@ -1,0 +1,93 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:blue-dragon-wyrmling",
+  "name": "Blue Dragon Wyrmling",
+  "size": "medium",
+  "type": "dragon",
+  "alignment": "lawful_evil",
+  "ac": {
+    "value": 17,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "8d8+16",
+    "average": 52
+  },
+  "speeds": {
+    "walk": 30,
+    "burrow": 15,
+    "fly": 60
+  },
+  "abilities": {
+    "str": 17,
+    "dex": 10,
+    "con": 15,
+    "int": 12,
+    "wis": 11,
+    "cha": 15
+  },
+  "saves": {
+    "dex": 2,
+    "con": 4,
+    "wis": 2,
+    "cha": 4
+  },
+  "skills": {
+    "perception": 4,
+    "stealth": 2
+  },
+  "damageModifiers": [
+    {
+      "kind": "immunity",
+      "types": [
+        "lightning"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 10,
+    "darkvision": 60,
+    "passivePerception": 14
+  },
+  "languages": "Draconic",
+  "challenge": {
+    "cr": 3,
+    "xp": 700,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 8 (1d10 + 3) piercing damage plus 3 (1d6) lightning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d10+3",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "1d6",
+            "damageType": "lightning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Lightning Breath",
+      "text": "The dragon exhales lightning in a 30-foot line that is 5 feet wide. Each creature in that line must make a DC 12 Dexterity saving throw, taking 22 (4d10) lightning damage on a failed save, or half as much damage on a successful one.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 5
+      },
+      "save": {
+        "ability": "dex",
+        "dc": "12",
+        "onSuccess": "half"
+      }
+    }
+  ]
+}

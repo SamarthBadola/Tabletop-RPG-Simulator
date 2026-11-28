@@ -1,0 +1,118 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:chain-devil",
+  "name": "Chain Devil",
+  "size": "medium",
+  "type": "fiend",
+  "alignment": "lawful_evil",
+  "tags": [
+    "devil"
+  ],
+  "ac": {
+    "value": 16,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "10d8+40",
+    "average": 85
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 15,
+    "con": 18,
+    "int": 11,
+    "wis": 12,
+    "cha": 14
+  },
+  "saves": {
+    "con": 7,
+    "wis": 4,
+    "cha": 5
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "silvered"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "fire",
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 120,
+    "passivePerception": 11
+  },
+  "languages": "Infernal, telepathy 120 ft.",
+  "challenge": {
+    "cr": 8,
+    "xp": 3900,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Devil’s Sight",
+      "text": "Magical darkness doesn’t impede the devil’s darkvision."
+    },
+    {
+      "name": "Magic Resistance",
+      "text": "The devil has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The devil makes two attacks with its chains."
+    },
+    {
+      "name": "Chain",
+      "text": "Melee Weapon Attack: +8 to hit, reach 10 ft., one target. Hit: 11 (2d6 + 4) slashing damage. The target is grappled (escape DC 14) if the devil isn’t already grappling a creature. Until this grapple ends, the target is restrained and takes 7 (2d6) piercing damage at the start of each of its turns. Animate Chains (Recharges after a Short or Long Rest). Up to four chains the devil can see within 60 feet of it magically sprout razor-edged barbs and animate under the devil’s control, provided that the chains aren’t being worn or carried. Each animated chain is an object with AC 20, 20 hit points, resistance to piercing damage, and immunity to psychic and thunder damage. When the devil uses Multiattack on its turn, it can use each animated chain to make one additional chain attack. An animated chain can grapple one creature of its own but can’t make attacks while grappling. An animated chain reverts to its inanimate state if reduced to 0 hit points or if the devil is incapacitated or dies.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "slashing"
+          },
+          {
+            "roll": "2d6",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 10
+      }
+    }
+  ],
+  "reactions": [
+    {
+      "name": "Unnerving Mask",
+      "text": "When a creature the devil can see starts its turn within 30 feet of the devil, the devil can create the illusion that it looks like one of the creature’s departed loved ones or bitter enemies. If the creature can see the devil, it must succeed on a DC 14 Wisdom saving throw or be frightened until the end of its turn.",
+      "save": {
+        "ability": "wis",
+        "dc": "14",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}
