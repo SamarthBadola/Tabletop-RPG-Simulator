@@ -335,6 +335,26 @@ public final class SettingsRegistry {
             "Hours between effective long rests when using custom rests."));
     add(
         all,
+        choice(
+            "monsterHp",
+            "Monster hit points",
+            "AVERAGE",
+            Tier.STRUCTURAL,
+            "AVERAGE",
+            "Monsters start with the average printed in the stat block.",
+            "ROLLED",
+            "Each monster rolls its hit dice when it is added to an encounter."));
+    add(
+        all,
+        toggle(
+            "legendaryResistanceOverridesAutoFail",
+            "Legendary Resistance and automatic failures",
+            true,
+            Tier.ASK_ON_FIRST_USE,
+            "A monster may spend Legendary Resistance to turn an automatic failure into a success.",
+            "An automatic failure cannot be turned into a success."));
+    add(
+        all,
         time(
             "startTimeOfDay",
             "Starting time of day",
