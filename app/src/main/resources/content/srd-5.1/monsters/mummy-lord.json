@@ -121,7 +121,8 @@
     "entries": [
       {
         "name": "Attack",
-        "text": "The mummy lord makes one attack with its rotting fist or uses its Dreadful Glare."
+        "text": "The mummy lord makes one attack with its rotting fist or uses its Dreadful Glare.",
+        "cost": 1
       },
       {
         "name": "Blinding Dust",
@@ -130,7 +131,8 @@
           "ability": "con",
           "dc": "16",
           "onSuccess": "none"
-        }
+        },
+        "cost": 1
       },
       {
         "name": "Blasphemous Word",

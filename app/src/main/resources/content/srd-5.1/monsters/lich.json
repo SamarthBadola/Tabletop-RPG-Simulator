@@ -110,7 +110,8 @@
     "entries": [
       {
         "name": "Cantrip",
-        "text": "The lich casts a cantrip."
+        "text": "The lich casts a cantrip.",
+        "cost": 1
       },
       {
         "name": "Paralyzing Touch",

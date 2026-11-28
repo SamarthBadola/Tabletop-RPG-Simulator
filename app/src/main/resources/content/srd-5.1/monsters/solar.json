@@ -145,7 +145,8 @@
     "entries": [
       {
         "name": "Teleport",
-        "text": "The solar magically teleports, along with any equipment it is wearing or carrying, up to 120 feet to an unoccupied space it can see."
+        "text": "The solar magically teleports, along with any equipment it is wearing or carrying, up to 120 feet to an unoccupied space it can see.",
+        "cost": 1
       },
       {
         "name": "Searing Burst",

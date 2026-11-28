@@ -481,6 +481,7 @@ public class Encounters {
     context.update(updated.tactics(updated.tactics().end().deathSave(false)));
     CombatEffects.expire(context, combatant, Boundary.END);
     context.dm("TurnEnded", Map.of("combatantId", combatant));
+    MonsterLegendary.window(context, combatant);
     nextTurn(context);
   }
 

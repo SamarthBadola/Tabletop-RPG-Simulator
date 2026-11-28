@@ -166,11 +166,16 @@
     "entries": [
       {
         "name": "Detect",
-        "text": "The dragon makes a Wisdom (Perception) check."
+        "text": "The dragon makes a Wisdom (Perception) check.",
+        "cost": 1
       },
       {
         "name": "Tail Attack",
-        "text": "The dragon makes a tail attack."
+        "text": "The dragon makes a tail attack.",
+        "cost": 1,
+        "attacks": [
+          "Tail"
+        ]
       },
       {
         "name": "Wing Attack",

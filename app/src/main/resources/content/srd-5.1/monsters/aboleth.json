@@ -121,11 +121,13 @@
     "entries": [
       {
         "name": "Detect",
-        "text": "The aboleth makes a Wisdom (Perception) check."
+        "text": "The aboleth makes a Wisdom (Perception) check.",
+        "cost": 1
       },
       {
         "name": "Tail Swipe",
-        "text": "The aboleth makes one tail attack."
+        "text": "The aboleth makes one tail attack.",
+        "cost": 1
       },
       {
         "name": "Psychic Drain",

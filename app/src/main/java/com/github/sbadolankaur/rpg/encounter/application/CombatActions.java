@@ -75,7 +75,7 @@ public class CombatActions {
     resolveAttack(context, request, attacker, weapon, false);
   }
 
-  private static void resolveAttack(
+  static void resolveAttack(
       Context context,
       Attack request,
       Creature attacker,

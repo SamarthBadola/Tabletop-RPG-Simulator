@@ -163,11 +163,13 @@
     "entries": [
       {
         "name": "Move",
-        "text": "The vampire moves up to its speed without provoking opportunity attacks."
+        "text": "The vampire moves up to its speed without provoking opportunity attacks.",
+        "cost": 1
       },
       {
         "name": "Unarmed Strike",
-        "text": "The vampire makes one unarmed strike."
+        "text": "The vampire makes one unarmed strike.",
+        "cost": 1
       },
       {
         "name": "Bite",

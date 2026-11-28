@@ -117,7 +117,8 @@
     "entries": [
       {
         "name": "Hooves",
-        "text": "The unicorn makes one attack with its hooves."
+        "text": "The unicorn makes one attack with its hooves.",
+        "cost": 1
       },
       {
         "name": "Shimmering Shield",

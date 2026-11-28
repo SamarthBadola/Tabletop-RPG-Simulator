@@ -139,7 +139,8 @@
     "entries": [
       {
         "name": "Tentacle Attack or Fling",
-        "text": "The kraken makes one tentacle attack or uses its Fling."
+        "text": "The kraken makes one tentacle attack or uses its Fling.",
+        "cost": 1
       },
       {
         "name": "Lightning Storm",

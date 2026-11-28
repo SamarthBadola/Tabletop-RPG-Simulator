@@ -170,11 +170,13 @@
     "entries": [
       {
         "name": "Attack",
-        "text": "The tarrasque makes one claw attack or tail attack."
+        "text": "The tarrasque makes one claw attack or tail attack.",
+        "cost": 1
       },
       {
         "name": "Move",
-        "text": "The tarrasque moves up to half its speed."
+        "text": "The tarrasque moves up to half its speed.",
+        "cost": 1
       },
       {
         "name": "Chomp",
