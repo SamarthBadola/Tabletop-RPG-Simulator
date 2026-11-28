@@ -2205,6 +2205,78 @@ class ApplicationFlowIT {
   }
 
   @Test
+  void aLegendaryCreatureActsAtTheEndOfAnotherTurnAndRefillsOnItsOwn() throws Exception {
+    var bout = combatFixture(true);
+    mockMvc
+        .perform(
+            combatAction(bout.url() + "/combatants", bout.id())
+                .param("monsterKey", "step7-test:legendary-creature"))
+        .andExpect(status().isSeeOther());
+    UUID dragon =
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM combatant WHERE monster_key = 'step7-test:legendary-creature'",
+            UUID.class);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT legendary_points FROM combatant WHERE id = ?", Long.class, dragon))
+        .isEqualTo(3L);
+    forceCombatDice(18, 12, 3, 15, 2);
+    submitBout(bout, "/start");
+
+    var waiting =
+        result(
+            mockMvc
+                .perform(
+                    combatAction(bout.url() + "/end-turn", bout.id())
+                        .header("HX-Request", "true")
+                        .param("actorId", bout.first().toString()))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(waiting.path("reaction").path("prompt").path("point").asString())
+        .isEqualTo("ON_TURN_END");
+    assertThat(waiting.path("reaction").path("prompt").path("decider").asString())
+        .isEqualTo(dragon.toString());
+
+    var target = decideCombatReaction(bout, waiting, dragon, "legendary:1");
+    assertThat(target.path("reaction").path("prompt").path("options").get(0).path("key").asString())
+        .startsWith("target:");
+    followUpCombatReaction(bout, target, dragon, "target:" + bout.first());
+
+    assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM pending_reaction", Long.class))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT legendary_points FROM combatant WHERE id = ?", Long.class, dragon))
+        .isEqualTo(2L);
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT payload->>'option' FROM combat_event WHERE type = 'LegendaryActionUsed'",
+                String.class))
+        .containsExactly("Tail Attack");
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(bout.second());
+
+    var again =
+        result(
+            mockMvc
+                .perform(
+                    combatAction(bout.url() + "/end-turn", bout.id())
+                        .header("HX-Request", "true")
+                        .param("actorId", bout.second().toString()))
+                .andExpect(status().isOk())
+                .andReturn());
+    assertThat(again.path("reaction").path("prompt").path("decider").asString())
+        .isEqualTo(dragon.toString());
+    decideCombatReaction(bout, again, dragon, null);
+    assertThat(jdbcTemplate.queryForObject("SELECT acting_id FROM encounter", UUID.class))
+        .isEqualTo(dragon);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT legendary_points FROM combatant WHERE id = ?", Long.class, dragon))
+        .isEqualTo(3L);
+  }
+
+  @Test
   void actionSurgeValidatesInputsAndGrantsAnAdditionalAction() throws Exception {
     var bout = combatFixture(false);
     jdbcTemplate.update("UPDATE pc_class SET level = 2 WHERE player_character_id = ?", bout.left());
@@ -2788,6 +2860,19 @@ class ApplicationFlowIT {
     assertThat(prompt.path("point").asString()).isEqualTo(point);
     assertThat(prompt.path("decider").asString()).isEqualTo(decider.toString());
     assertThat(prompt.path("options").get(0).path("key").asString()).isEqualTo("cutting-words");
+  }
+
+  private tools.jackson.databind.JsonNode followUpCombatReaction(
+      CombatFixture bout, tools.jackson.databind.JsonNode waiting, UUID decider, String option)
+      throws Exception {
+    var answer =
+        reactionRequest(
+                reactionRoute(bout, waiting) + "/follow-ups",
+                commands.newActionId(),
+                combatVersion(bout.id()))
+            .param("deciderId", decider.toString())
+            .param("optionKey", option);
+    return result(mockMvc.perform(answer).andExpect(status().isOk()).andReturn());
   }
 
   private tools.jackson.databind.JsonNode decideCombatReaction(
