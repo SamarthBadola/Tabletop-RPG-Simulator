@@ -109,7 +109,7 @@ public class EncounterStore {
   public List<Entry> entries(UUID encounter) {
     return jdbc.sql(
             """
-        SELECT id, character_id, monster_key, ordinal, initiative::integer, tie_order::integer, tactics::text, npc_vitals::text, dying_by_trait, regen_suppressed
+        SELECT id, character_id, monster_key, ordinal, initiative::integer, tie_order::integer, tactics::text, npc_vitals::text, dying_by_trait, regen_suppressed, legendary_points
         FROM combatant WHERE encounter_id = ? ORDER BY ordinal
         """)
         .param(encounter)
@@ -126,7 +126,8 @@ public class EncounterStore {
                   json.readValue(row.getString(7), Tactics.class),
                   vitals == null ? null : json.readValue(vitals, Vitals.class),
                   row.getBoolean(9),
-                  row.getBoolean(10));
+                  row.getBoolean(10),
+                  row.getInt(11));
             })
         .list();
   }
@@ -134,8 +135,8 @@ public class EncounterStore {
   public void add(UUID encounter, Entry entry) {
     jdbc.sql(
             """
-        INSERT INTO combatant (id,encounter_id,character_id,monster_key,ordinal,initiative,tie_order,tactics,npc_vitals,dying_by_trait,regen_suppressed)
-        VALUES (?,?,?,?,?,?,?,CAST(? AS jsonb),CAST(? AS jsonb),?,?)
+        INSERT INTO combatant (id,encounter_id,character_id,monster_key,ordinal,initiative,tie_order,tactics,npc_vitals,dying_by_trait,regen_suppressed,legendary_points)
+        VALUES (?,?,?,?,?,?,?,CAST(? AS jsonb),CAST(? AS jsonb),?,?,?)
         """)
         .params(
             entry.id(),
@@ -148,14 +149,15 @@ public class EncounterStore {
             json.writeValueAsString(entry.tactics()),
             entry.npcVitals() == null ? null : json.writeValueAsString(entry.npcVitals()),
             entry.dyingByTrait(),
-            entry.regenSuppressed())
+            entry.regenSuppressed(),
+            entry.legendaryPoints())
         .update();
   }
 
   public void update(Entry entry) {
     jdbc.sql(
             """
-        UPDATE combatant SET initiative=?, tie_order=?, tactics=CAST(? AS jsonb), npc_vitals=CAST(? AS jsonb), dying_by_trait=?, regen_suppressed=?
+        UPDATE combatant SET initiative=?, tie_order=?, tactics=CAST(? AS jsonb), npc_vitals=CAST(? AS jsonb), dying_by_trait=?, regen_suppressed=?, legendary_points=?
         WHERE id=?
         """)
         .params(
@@ -165,6 +167,7 @@ public class EncounterStore {
             entry.npcVitals() == null ? null : json.writeValueAsString(entry.npcVitals()),
             entry.dyingByTrait(),
             entry.regenSuppressed(),
+            entry.legendaryPoints(),
             entry.id())
         .update();
   }

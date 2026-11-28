@@ -69,6 +69,11 @@ class EncounterStoreIT {
       assertThat(updated.get(troll).regenSuppressed()).isTrue();
       assertThat(updated.get(goblin).dyingByTrait()).isFalse();
       assertThat(updated.get(goblin).regenSuppressed()).isTrue();
+
+      store.update(updated.get(troll).legendary(3));
+      var legendary = byId(store.entries(encounter));
+      assertThat(legendary.get(troll).legendaryPoints()).isEqualTo(3);
+      assertThat(legendary.get(goblin).legendaryPoints()).isEqualTo(0);
       // Changing another field keeps the marks.
       store.update(updated.get(troll).initiative(5, null));
       var again = byId(store.entries(encounter)).get(troll);

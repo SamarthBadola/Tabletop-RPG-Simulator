@@ -36,7 +36,8 @@ public final class EncounterState {
 
   /**
    * One combatant of an encounter. {@code dyingByTrait} and {@code regenSuppressed} are the marks
-   * of Regeneration (RS-MON-015); they stay false for every creature without that trait.
+   * of Regeneration (RS-MON-015); they stay false for every creature without that trait. {@code
+   * legendaryPoints} stays 0 for a creature without legendary actions.
    */
   public record Entry(
       UUID id,
@@ -48,7 +49,8 @@ public final class EncounterState {
       Tactics tactics,
       Vitals npcVitals,
       boolean dyingByTrait,
-      boolean regenSuppressed) {
+      boolean regenSuppressed,
+      int legendaryPoints) {
     private static final int REMOVED = Integer.MAX_VALUE;
 
     public Entry(
@@ -60,7 +62,7 @@ public final class EncounterState {
         Integer tie,
         Tactics tactics,
         Vitals npcVitals) {
-      this(id, character, monster, ordinal, initiative, tie, tactics, npcVitals, false, false);
+      this(id, character, monster, ordinal, initiative, tie, tactics, npcVitals, false, false, 0);
     }
 
     public boolean present() {
@@ -82,7 +84,8 @@ public final class EncounterState {
           tactics,
           npcVitals,
           dyingByTrait,
-          regenSuppressed);
+          regenSuppressed,
+          legendaryPoints);
     }
 
     public Entry tactics(Tactics next) {
@@ -96,7 +99,8 @@ public final class EncounterState {
           next,
           npcVitals,
           dyingByTrait,
-          regenSuppressed);
+          regenSuppressed,
+          legendaryPoints);
     }
 
     public Entry vitals(Vitals next) {
@@ -110,7 +114,8 @@ public final class EncounterState {
           tactics,
           next,
           dyingByTrait,
-          regenSuppressed);
+          regenSuppressed,
+          legendaryPoints);
     }
 
     public Entry marks(boolean nextDyingByTrait, boolean nextRegenSuppressed) {
@@ -124,7 +129,24 @@ public final class EncounterState {
           tactics,
           npcVitals,
           nextDyingByTrait,
-          nextRegenSuppressed);
+          nextRegenSuppressed,
+          legendaryPoints);
+    }
+
+    /** The unspent legendary action points of a creature that has them (RS-MON-028). */
+    public Entry legendary(int points) {
+      return new Entry(
+          id,
+          character,
+          monster,
+          ordinal,
+          initiative,
+          tie,
+          tactics,
+          npcVitals,
+          dyingByTrait,
+          regenSuppressed,
+          points);
     }
   }
 

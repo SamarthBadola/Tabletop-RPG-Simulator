@@ -40,4 +40,13 @@ class MonsterHooksTest {
     assertThat(MonsterHooks.attacksPerAction(goblin)).isEqualTo(1);
     assertThat(MonsterHooks.attacksPerAction(json.readTree("{}"))).isEqualTo(1);
   }
+
+  @Test
+  void readsTheLegendaryPointsOfADefinition() {
+    var dragon = Map.of("legendaryActions", Map.of("uses", 3, "entries", List.of()));
+
+    assertThat(MonsterHooks.legendaryUses(dragon)).isEqualTo(3);
+    assertThat(MonsterHooks.legendaryUses(Map.of())).isEqualTo(0);
+    assertThat(MonsterHooks.legendaryUses(Map.of("legendaryActions", "none"))).isEqualTo(0);
+  }
 }

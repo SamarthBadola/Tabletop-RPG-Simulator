@@ -2,6 +2,7 @@ package com.github.sbadolankaur.rpg.encounter.application;
 
 import com.github.sbadolankaur.rpg.encounter.application.CombatRoster.Creature;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.Context;
+import com.github.sbadolankaur.rpg.encounter.application.EncounterState.Entry;
 import com.github.sbadolankaur.rpg.engine.monster.HookedDamage;
 import com.github.sbadolankaur.rpg.engine.monster.Regeneration;
 import com.github.sbadolankaur.rpg.engine.monster.SpecialTraits;
@@ -90,5 +91,28 @@ final class MonsterHooks {
       most = Math.max(most, action.path("attacks").size());
     }
     return most;
+  }
+
+  /** The legendary action points a monster definition grants, or 0 (RS-MON-028). */
+  static int legendaryUses(Context context, String monster) {
+    if (monster == null) return 0;
+    return context
+        .content
+        .find("monster", monster)
+        .map(definition -> legendaryUses(definition.fields()))
+        .orElse(0);
+  }
+
+  static int legendaryUses(Map<String, ?> definition) {
+    return definition.get("legendaryActions") instanceof Map<?, ?> block
+            && block.get("uses") instanceof Number uses
+        ? uses.intValue()
+        : 0;
+  }
+
+  /** A legendary creature regains all its points at the start of its turn (RS-MON-028). */
+  static void refillLegendary(Context context, Entry entry) {
+    int uses = legendaryUses(context, entry.monster());
+    if (uses > 0 && entry.legendaryPoints() != uses) context.update(entry.legendary(uses));
   }
 }

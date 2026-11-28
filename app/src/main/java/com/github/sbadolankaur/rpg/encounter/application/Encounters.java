@@ -281,7 +281,8 @@ public class Encounters {
             int ordinal =
                 context.entries.values().stream().mapToInt(Entry::ordinal).max().orElse(0) + 1;
             var entry =
-                new Entry(row, form.character(), form.monster(), ordinal, null, null, tactics, npc);
+                new Entry(row, form.character(), form.monster(), ordinal, null, null, tactics, npc)
+                    .legendary(MonsterHooks.legendaryUses(context, form.monster()));
             context.add(entry);
             if (hitPointRoll != null) context.dice("Hit points", row, hitPointRoll);
             var creature = context.creature(row);
@@ -581,6 +582,7 @@ public class Encounters {
     CombatEffects.expire(context, next.id(), Boundary.START);
     context.dm("TurnStarted", Map.of("combatantId", next.id()));
     MonsterHooks.startOfTurn(context, context.creature(next.id()));
+    MonsterHooks.refillLegendary(context, context.entries.get(next.id()));
     var creature = context.creature(next.id());
     if (creature.vitals().health().state() == State.DYING) {
       context.update(creature.entry().tactics(creature.entry().tactics().deathSave(true)));
