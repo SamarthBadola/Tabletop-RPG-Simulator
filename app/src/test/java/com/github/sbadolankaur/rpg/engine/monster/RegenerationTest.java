@@ -61,4 +61,28 @@ class RegenerationTest {
     assertThat(Regeneration.startOfTurn(turn.health(), turn.state()).health().current())
         .isEqualTo(60);
   }
+
+  @Test
+  void aTrollHealedFromElsewhereIsNotKilledByALeftoverSuppression() {
+    var healed = CombatHealth.of(5, 84, 0);
+    var turn = Regeneration.turnStart(healed, new Regeneration.State(true, true));
+    assertThat(turn.health().state()).isEqualTo(CombatHealth.State.ALIVE);
+    assertThat(turn.state().dyingByTrait()).isFalse();
+    assertThat(turn.regained()).isEqualTo(0);
+  }
+
+  @Test
+  void aTrollHeldAtZeroRegeneratesAtTheStartOfItsTurn() {
+    var zero = CombatHealth.of(0, 84, 0);
+    var turn = Regeneration.turnStart(zero, new Regeneration.State(true, false));
+    assertThat(turn.health().current()).isEqualTo(10);
+    assertThat(turn.health().state()).isEqualTo(CombatHealth.State.ALIVE);
+  }
+
+  @Test
+  void aSuppressedTrollHeldAtZeroDiesAtTheStartOfItsTurn() {
+    var zero = CombatHealth.of(0, 84, 0);
+    var turn = Regeneration.turnStart(zero, new Regeneration.State(true, true));
+    assertThat(turn.health().state()).isEqualTo(CombatHealth.State.DEAD);
+  }
 }

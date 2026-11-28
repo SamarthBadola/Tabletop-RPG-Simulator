@@ -3,6 +3,7 @@ package com.github.sbadolankaur.rpg.encounter.application;
 import com.github.sbadolankaur.rpg.encounter.application.CombatRoster.Creature;
 import com.github.sbadolankaur.rpg.encounter.application.EncounterCommands.Context;
 import com.github.sbadolankaur.rpg.engine.monster.HookedDamage;
+import com.github.sbadolankaur.rpg.engine.monster.Regeneration;
 import com.github.sbadolankaur.rpg.engine.monster.SpecialTraits;
 import com.github.sbadolankaur.rpg.engine.monster.ZeroHitPointHook;
 import java.util.ArrayList;
@@ -46,6 +47,35 @@ final class MonsterHooks {
     if (entry.dyingByTrait() != marks.dyingByTrait()
         || entry.regenSuppressed() != marks.suppressed()) {
       context.update(entry.marks(marks.dyingByTrait(), marks.suppressed()));
+    }
+  }
+
+  /**
+   * The start-of-turn step of Regeneration (RS-MON-036). A creature without the trait is left
+   * alone. The step runs before the death-save check, so a monster held at 0 by the trait never
+   * makes a death save.
+   */
+  static void startOfTurn(Context context, Creature creature) {
+    if (!defender(context, creature).regeneration()) return;
+    var entry = creature.entry();
+    var before = creature.vitals().health();
+    var turn =
+        Regeneration.turnStart(
+            before, new Regeneration.State(entry.dyingByTrait(), entry.regenSuppressed()));
+    var id = entry.id();
+    if (!turn.health().equals(before)) {
+      context.health(creature, turn.health());
+      if (turn.health().state()
+          == com.github.sbadolankaur.rpg.engine.combat.CombatHealth.State.DEAD) {
+        context.dm("RegenerationFailed", Map.of("combatantId", id));
+      } else {
+        context.dm("Regenerated", Map.of("combatantId", id, "regained", turn.regained()));
+      }
+    }
+    var current = context.entries.get(id);
+    if (current.dyingByTrait() != turn.state().dyingByTrait()
+        || current.regenSuppressed() != turn.state().suppressed()) {
+      context.update(current.marks(turn.state().dyingByTrait(), turn.state().suppressed()));
     }
   }
 }

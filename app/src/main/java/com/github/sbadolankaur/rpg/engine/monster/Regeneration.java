@@ -54,4 +54,13 @@ public final class Regeneration {
     var healed = health.heal(AMOUNT);
     return new Turn(healed, State.CLEAR, healed.current() - health.current());
   }
+
+  /**
+   * The step the engine runs at the start of the creature's turn. Healing above 0 from any other
+   * source ends the dying mark first (RS-MON-R6), so a healed troll is not killed by a leftover
+   * suppression.
+   */
+  public static Turn turnStart(CombatHealth health, State state) {
+    return startOfTurn(health, afterHealing(state, health));
+  }
 }

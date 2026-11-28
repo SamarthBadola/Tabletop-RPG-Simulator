@@ -580,6 +580,7 @@ public class Encounters {
     context.sweepRoundClock(previous);
     CombatEffects.expire(context, next.id(), Boundary.START);
     context.dm("TurnStarted", Map.of("combatantId", next.id()));
+    MonsterHooks.startOfTurn(context, context.creature(next.id()));
     var creature = context.creature(next.id());
     if (creature.vitals().health().state() == State.DYING) {
       context.update(creature.entry().tactics(creature.entry().tactics().deathSave(true)));
