@@ -26,6 +26,8 @@ import com.github.sbadolankaur.rpg.engine.combat.ConditionInstance.Boundary;
 import com.github.sbadolankaur.rpg.engine.combat.Exhaustion;
 import com.github.sbadolankaur.rpg.engine.combat.TurnBudget;
 import com.github.sbadolankaur.rpg.engine.dice.RollMode;
+import com.github.sbadolankaur.rpg.engine.dice.RollResult;
+import com.github.sbadolankaur.rpg.engine.monster.MonsterHp;
 import com.github.sbadolankaur.rpg.engine.reaction.ReactionReplay.Point;
 import com.github.sbadolankaur.rpg.platform.ServerIds;
 import java.time.Instant;
@@ -233,6 +235,11 @@ public class Encounters {
                       .orElse(null);
           if (existing != null && present(existing)) throw EncounterCommands.invalid();
 
+          MonsterHp.Mode hitPointMode = null;
+          if (form.monster() != null) {
+            context.preflight(List.of("monsterHp"));
+            hitPointMode = MonsterHp.Mode.valueOf(context.setting("monsterHp", String.class));
+          }
           Integer shared = null;
           if (active && form.monster() != null && form.count() > 1)
             context.preflight(List.of("groupInitiative"));
@@ -259,20 +266,24 @@ public class Encounters {
             }
             UUID row = ServerIds.at(Instant.now());
             Vitals npc = null;
+            RollResult hitPointRoll = null;
             if (form.monster() != null) {
-              int maximum =
-                  roster
-                      .monster(context.content, form.monster())
-                      .path("hp")
-                      .path("average")
-                      .asInt();
-              npc = new Vitals(CombatHealth.of(maximum, maximum, 0), null, Set.of());
+              var start =
+                  MonsterSpawner.startingHitPoints(
+                      roster.monster(context.content, form.monster()),
+                      hitPointMode,
+                      context.random());
+              hitPointRoll = start.roll();
+              npc =
+                  new Vitals(
+                      CombatHealth.of(start.hitPoints(), start.hitPoints(), 0), null, Set.of());
             }
             int ordinal =
                 context.entries.values().stream().mapToInt(Entry::ordinal).max().orElse(0) + 1;
             var entry =
                 new Entry(row, form.character(), form.monster(), ordinal, null, null, tactics, npc);
             context.add(entry);
+            if (hitPointRoll != null) context.dice("Hit points", row, hitPointRoll);
             var creature = context.creature(row);
             if (active) {
               int initiative =

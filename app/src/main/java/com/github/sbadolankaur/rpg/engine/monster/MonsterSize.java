@@ -15,6 +15,20 @@ public enum MonsterSize {
     this.hitDie = hitDie;
   }
 
+  /** The size as a stat block writes it, such as "medium". */
+  public static MonsterSize fromKey(String key) {
+    if (key == null) throw new IllegalArgumentException("A size is required");
+    return switch (key) {
+      case "tiny" -> TINY;
+      case "small" -> SMALL;
+      case "medium" -> MEDIUM;
+      case "large" -> LARGE;
+      case "huge" -> HUGE;
+      case "gargantuan" -> GARGANTUAN;
+      default -> throw new IllegalArgumentException("Unknown size: " + key);
+    };
+  }
+
   public int hitDie() {
     return hitDie;
   }
