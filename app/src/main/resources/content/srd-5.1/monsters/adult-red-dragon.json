@@ -68,7 +68,12 @@
   "actions": [
     {
       "name": "Multiattack",
-      "text": "The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws."
+      "text": "The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws.",
+      "attacks": [
+        "Bite",
+        "Claw",
+        "Claw"
+      ]
     },
     {
       "name": "Bite",

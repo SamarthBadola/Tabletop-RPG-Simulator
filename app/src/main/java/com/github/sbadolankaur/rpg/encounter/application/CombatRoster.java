@@ -360,7 +360,7 @@ class CombatRoster {
         abilities.get(Ability.DEX),
         monster.path("speeds").path("walk").asInt(),
         monster.path("hp").path("average").asInt(),
-        1,
+        MonsterHooks.attacksPerAction(monster),
         monster.path("size").asString(),
         entry.npcVitals(),
         abilities,

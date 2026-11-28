@@ -64,7 +64,11 @@
   "actions": [
     {
       "name": "Multiattack (Humanoid or Hybrid Form Only)",
-      "text": "The werewolf makes two attacks: one with its bite and one with its claws or spear."
+      "text": "The werewolf makes two attacks: one with its bite and one with its claws or spear.",
+      "attacks": [
+        "Bite (Wolf or Hybrid Form Only)",
+        "Claws (Hybrid Form Only)"
+      ]
     },
     {
       "name": "Bite (Wolf or Hybrid Form Only)",

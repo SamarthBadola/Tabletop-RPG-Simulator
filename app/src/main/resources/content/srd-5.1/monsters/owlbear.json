@@ -45,7 +45,11 @@
   "actions": [
     {
       "name": "Multiattack",
-      "text": "The owlbear makes two attacks: one with its beak and one with its claws."
+      "text": "The owlbear makes two attacks: one with its beak and one with its claws.",
+      "attacks": [
+        "Beak",
+        "Claws"
+      ]
     },
     {
       "name": "Beak",

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 /** The glue between a spawned monster and the zero-hit-point hook (Step 12). */
 final class MonsterHooks {
@@ -77,5 +78,17 @@ final class MonsterHooks {
         || current.regenSuppressed() != turn.state().suppressed()) {
       context.update(current.marks(turn.state().dyingByTrait(), turn.state().suppressed()));
     }
+  }
+
+  /**
+   * How many attacks the Attack action gives a monster: the attacks its Multiattack lists, or one.
+   * The listed attacks are counted, and the player or DM still picks which one each swing uses.
+   */
+  static int attacksPerAction(JsonNode monster) {
+    int most = 1;
+    for (var action : monster.path("actions")) {
+      most = Math.max(most, action.path("attacks").size());
+    }
+    return most;
   }
 }

@@ -70,7 +70,14 @@
   "actions": [
     {
       "name": "Multiattack",
-      "text": "The wight makes two longsword attacks or two longbow attacks. It can use its Life Drain in place of one longsword attack."
+      "text": "The wight makes two longsword attacks or two longbow attacks. It can use its Life Drain in place of one longsword attack.",
+      "attacks": [
+        "Longsword",
+        "Longsword"
+      ],
+      "replacements": [
+        "Life Drain"
+      ]
     },
     {
       "name": "Life Drain",

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 class MonsterHooksTest {
   @Test
@@ -23,5 +24,20 @@ class MonsterHooksTest {
   void aDefinitionWithoutTraitsHasNoNames() {
     assertThat(MonsterHooks.traitNames(Map.of())).isEmpty();
     assertThat(MonsterHooks.traitNames(Map.of("traits", "none"))).isEmpty();
+  }
+
+  @Test
+  void aMultiattackGivesOneSwingPerListedAttack() {
+    var json = JsonMapper.builder().build();
+    var owlbear =
+        json.readTree(
+            """
+            {"actions":[{"name":"Multiattack","attacks":["Beak","Claws"]},{"name":"Beak"}]}
+            """);
+    var goblin = json.readTree("{\"actions\":[{\"name\":\"Scimitar\"}]}");
+
+    assertThat(MonsterHooks.attacksPerAction(owlbear)).isEqualTo(2);
+    assertThat(MonsterHooks.attacksPerAction(goblin)).isEqualTo(1);
+    assertThat(MonsterHooks.attacksPerAction(json.readTree("{}"))).isEqualTo(1);
   }
 }

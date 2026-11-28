@@ -50,7 +50,12 @@
   "actions": [
     {
       "name": "Multiattack",
-      "text": "The troll makes three attacks: one with its bite and two with its claws."
+      "text": "The troll makes three attacks: one with its bite and two with its claws.",
+      "attacks": [
+        "Bite",
+        "Claw",
+        "Claw"
+      ]
     },
     {
       "name": "Bite",
