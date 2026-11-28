@@ -998,26 +998,9 @@ public class CombatActions {
                     : creature
                         .skills()
                         .getOrDefault(form.skill(), creature.abilities().get(form.ability()));
-        boolean dodge =
-            form.save()
-                && form.ability() == Ability.DEX
-                && creature.entry().tactics().dodging()
-                && creature.speed() > 0
-                && !creature.incapacitated();
-        boolean restraint =
-            form.save()
-                && form.ability() == Ability.DEX
-                && creature.conditions().contains("srd-5.1:restrained");
-        var authored = CombatEffects.rollSources(context, creature, "save", "holder", null, null);
-        var saveAdvantages = new ArrayList<>(authored.advantages());
-        var savePenalties = new ArrayList<>(authored.disadvantages());
-        if (dodge) saveAdvantages.add("Dodge");
-        if (restraint) savePenalties.add("Restrained");
-        if (Exhaustion.disadvantagesAttacksAndSaves(creature.vitals().exhaustion()))
-          savePenalties.add("Exhaustion");
         var sources =
             form.save()
-                ? new AdvantageSources(saveAdvantages, savePenalties)
+                ? saveSources(context, creature, form.ability())
                 : assistedCheck(context, creature, form.skill(), form.fearSourceVisible());
         Cover cover = form.cover().getOrDefault(subject, Cover.NONE);
         var roll = CombatRolls.coveredSave(bonus, cover, sources.mode(), context.random());
@@ -1063,6 +1046,25 @@ public class CombatActions {
     context.result("outcomes", outcome);
     context.dm("TestResolved", Map.of("outcomes", outcome));
     return List.copyOf(outcome);
+  }
+
+  /** What gives a creature advantage or disadvantage on a saving throw of one ability. */
+  private static AdvantageSources saveSources(Context context, Creature creature, Ability ability) {
+    boolean dodge =
+        ability == Ability.DEX
+            && creature.entry().tactics().dodging()
+            && creature.speed() > 0
+            && !creature.incapacitated();
+    boolean restraint =
+        ability == Ability.DEX && creature.conditions().contains("srd-5.1:restrained");
+    var authored = CombatEffects.rollSources(context, creature, "save", "holder", null, null);
+    var saveAdvantages = new ArrayList<>(authored.advantages());
+    var savePenalties = new ArrayList<>(authored.disadvantages());
+    if (dodge) saveAdvantages.add("Dodge");
+    if (restraint) savePenalties.add("Restrained");
+    if (Exhaustion.disadvantagesAttacksAndSaves(creature.vitals().exhaustion()))
+      savePenalties.add("Exhaustion");
+    return new AdvantageSources(saveAdvantages, savePenalties);
   }
 
   private static boolean forcedFailure(Check form, Creature creature) {
