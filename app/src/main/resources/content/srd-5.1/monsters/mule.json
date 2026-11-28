@@ -1,0 +1,61 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:mule",
+  "name": "Mule",
+  "size": "medium",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 10
+  },
+  "hp": {
+    "dice": "2d8+2",
+    "average": 11
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 14,
+    "dex": 10,
+    "con": 13,
+    "int": 2,
+    "wis": 10,
+    "cha": 5
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": "1/8",
+    "xp": 25,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Beast of Burden",
+      "text": "The mule is considered to be a Large animal for the purpose of determining its carrying capacity."
+    },
+    {
+      "name": "Sure-Footed",
+      "text": "The mule has advantage on Strength and Dexterity saving throws made against effects that would knock it prone."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Hooves",
+      "text": "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 4 (1d4 + 2) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "2",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

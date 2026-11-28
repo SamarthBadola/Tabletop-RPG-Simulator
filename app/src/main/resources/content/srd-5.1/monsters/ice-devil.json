@@ -1,0 +1,156 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:ice-devil",
+  "name": "Ice Devil",
+  "size": "large",
+  "type": "fiend",
+  "alignment": "lawful_evil",
+  "tags": [
+    "devil"
+  ],
+  "ac": {
+    "value": 18,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "19d10+76",
+    "average": 180
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 21,
+    "dex": 14,
+    "con": 18,
+    "int": 18,
+    "wis": 15,
+    "cha": 18
+  },
+  "saves": {
+    "dex": 7,
+    "con": 9,
+    "wis": 7,
+    "cha": 9
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "silvered"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "cold",
+        "fire",
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 60,
+    "darkvision": 120,
+    "passivePerception": 12
+  },
+  "languages": "Infernal, telepathy 120 ft.",
+  "challenge": {
+    "cr": 14,
+    "xp": 11500,
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Devil’s Sight",
+      "text": "Magical darkness doesn’t impede the devil’s darkvision."
+    },
+    {
+      "name": "Magic Resistance",
+      "text": "The devil has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The devil makes three attacks: one with its bite, one with its claws, and one with its tail."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +10 to hit, reach 5 ft., one target. Hit: 12 (2d6 + 5) piercing damage plus 10 (3d6) cold damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "10",
+        "hits": [
+          {
+            "roll": "2d6+5",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "3d6",
+            "damageType": "cold"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +10 to hit, reach 5 ft., one target. Hit: 10 (2d4 + 5) slashing damage plus 10 (3d6) cold damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "10",
+        "hits": [
+          {
+            "roll": "2d4+5",
+            "damageType": "slashing"
+          },
+          {
+            "roll": "3d6",
+            "damageType": "cold"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Tail",
+      "text": "Melee Weapon Attack: +10 to hit, reach 10 ft., one target. Hit: 12 (2d6 + 5) bludgeoning damage plus 10 (3d6) cold damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "10",
+        "hits": [
+          {
+            "roll": "2d6+5",
+            "damageType": "bludgeoning"
+          },
+          {
+            "roll": "3d6",
+            "damageType": "cold"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Wall of Ice",
+      "text": "The devil magically forms an opaque wall of ice on a solid surface it can see within 60 feet of it. The wall is 1 foot thick and up to 30 feet long and 10 feet high, or it’s a hemispherical dome up to 20 feet in diameter. When the wall appears, each creature in its space is pushed out of it by the shortest route. The creature chooses which side of the wall to end up on, unless the creature is incapacitated. The creature then makes a DC 17 Dexterity saving throw, taking 35 (10d6) cold damage on a failed save, or half as much damage on a successful one. The wall lasts for 1 minute or until the devil is incapacitated or dies. The wall can be damaged and breached; each 10-foot section has AC 5, 30 hit points, vulnerability to fire damage, and immunity to acid, cold, necrotic, poison, and psychic damage. If a section is destroyed, it leaves behind a sheet of frigid air in the space the wall occupied. Whenever a creature finishes moving through the frigid air on a turn, willingly or otherwise, the creature must make a DC 17 Constitution saving throw, taking 17 (5d6) cold damage on a failed save, or half as much damage on a successful one. The frigid air dissipates when the rest of the wall vanishes.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 6
+      },
+      "save": {
+        "ability": "dex",
+        "dc": "17",
+        "onSuccess": "half"
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}

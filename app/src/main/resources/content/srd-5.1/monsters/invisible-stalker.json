@@ -1,0 +1,93 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:invisible-stalker",
+  "name": "Invisible Stalker",
+  "size": "medium",
+  "type": "elemental",
+  "alignment": "neutral",
+  "ac": {
+    "value": 14
+  },
+  "hp": {
+    "dice": "16d8+32",
+    "average": 104
+  },
+  "speeds": {
+    "walk": 50,
+    "fly": 50,
+    "hover": true
+  },
+  "abilities": {
+    "str": 16,
+    "dex": 19,
+    "con": 14,
+    "int": 10,
+    "wis": 15,
+    "cha": 11
+  },
+  "skills": {
+    "perception": 8,
+    "stealth": 10
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 18
+  },
+  "languages": "Auran, understands Common but doesn’t speak it",
+  "challenge": {
+    "cr": 6,
+    "xp": 2300,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Invisibility",
+      "text": "The stalker is invisible."
+    },
+    {
+      "name": "Faultless Tracker",
+      "text": "The stalker is given a quarry by its summoner. The stalker knows the direction and distance to its quarry as long as the two of them are on the same plane of existence. The stalker also knows the location of its summoner."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The stalker makes two slam attacks."
+    },
+    {
+      "name": "Slam",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d6+3",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: exhaustion, grappled, paralyzed, petrified, poisoned, prone, restrained, unconscious"
+  ]
+}

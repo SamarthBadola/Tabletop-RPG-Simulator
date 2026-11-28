@@ -1,0 +1,66 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:death-dog",
+  "name": "Death Dog",
+  "size": "medium",
+  "type": "monstrosity",
+  "alignment": "neutral_evil",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "6d8+12",
+    "average": 39
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 15,
+    "dex": 14,
+    "con": 14,
+    "int": 3,
+    "wis": 13,
+    "cha": 6
+  },
+  "skills": {
+    "perception": 5,
+    "stealth": 4
+  },
+  "senses": {
+    "darkvision": 120,
+    "passivePerception": 15
+  },
+  "challenge": {
+    "cr": 1,
+    "xp": 200,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Two-Headed",
+      "text": "The dog has advantage on Wisdom (Perception) checks and on saving throws against being blinded, charmed, deafened, frightened, stunned, or knocked unconscious."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The dog makes two bite attacks."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage. If the target is a creature, it must succeed on a DC 12 Constitution saving throw against disease or become poisoned until the disease is cured. Every 24 hours that elapse, the creature must repeat the saving throw, reducing its hit point maximum by 5 (1d10) on a failure. This reduction lasts until the disease is cured. The creature dies if the disease reduces its hit point maximum to 0. A death dog is an ugly two-‑headed hound that roams plains, and deserts. Hate burns in a death dog’s heart, and a taste for humanoid flesh drives it to attack travelers and explorers. Death dog saliva carries a foul disease that causes a victim’s flesh to slowly rot off the bone.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d6+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:spy",
+  "name": "Spy",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "6d8",
+    "average": 27
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 10,
+    "dex": 15,
+    "con": 10,
+    "int": 12,
+    "wis": 14,
+    "cha": 16
+  },
+  "skills": {
+    "deception": 5,
+    "insight": 4,
+    "investigation": 5,
+    "perception": 6,
+    "persuasion": 5,
+    "sleight_of_hand": 4,
+    "stealth": 4
+  },
+  "senses": {
+    "passivePerception": 16
+  },
+  "languages": "any two languages",
+  "challenge": {
+    "cr": 1,
+    "xp": 200,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Cunning Action",
+      "text": "On each of its turns, the spy can use a bonus action to take the Dash, Disengage, or Hide action."
+    },
+    {
+      "name": "Sneak Attack (1/Turn)",
+      "text": "The spy deals an extra 7 (2d6) damage when it hits a target with a weapon attack and has advantage on the attack roll, or when the target is within 5 feet of an ally of the spy that isn’t incapacitated and the spy doesn’t have disadvantage on the attack roll."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The spy makes two melee attacks."
+    },
+    {
+      "name": "Shortsword",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d6+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Hand Crossbow",
+      "text": "Ranged Weapon Attack: +4 to hit, range 30/120 ft., one target. Hit: 5 (1d6 + 2) piercing damage. Rulers, nobles, merchants, guildmasters, and other wealthy individuals use spies to gain the upper hand in a world of cutthroat politics. A spy is trained to secretly gather information. Loyal spies would rather die than divulge information that could compromise them or their employers.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d6+2",
+            "damageType": "piercing"
+          }
+        ],
+        "range": {
+          "normal": 30,
+          "long": 120
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any alignment"
+  ]
+}

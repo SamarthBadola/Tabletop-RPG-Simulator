@@ -1,0 +1,108 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:dretch",
+  "name": "Dretch",
+  "size": "small",
+  "type": "fiend",
+  "alignment": "chaotic_evil",
+  "tags": [
+    "demon"
+  ],
+  "ac": {
+    "value": 11,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "4d6+4",
+    "average": 18
+  },
+  "speeds": {
+    "walk": 20
+  },
+  "abilities": {
+    "str": 11,
+    "dex": 11,
+    "con": 12,
+    "int": 5,
+    "wis": 8,
+    "cha": 3
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "cold",
+        "fire",
+        "lightning"
+      ]
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 9
+  },
+  "languages": "Abyssal, telepathy 60 ft. (works only with creatures that understand Abyssal)",
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The dretch makes two attacks: one with its bite and one with its claws."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 3 (1d6) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "2",
+        "hits": [
+          {
+            "roll": "1d6",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 5 (2d4) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "2",
+        "hits": [
+          {
+            "roll": "2d4",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Fetid Cloud",
+      "text": "A 10-foot radius of disgusting green gas extends out from the dretch. The gas spreads around corners, and its area is lightly obscured. It lasts for 1 minute or until a strong wind disperses it. Any creature that starts its turn in that area must succeed on a DC 11 Constitution saving throw or be poisoned until the start of its next turn. While poisoned in this way, the target can take either an action or a bonus action on its turn, not both, and can’t take reactions.",
+      "limit": {
+        "per": "long_rest",
+        "uses": "1"
+      },
+      "save": {
+        "ability": "con",
+        "dc": "11",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: poisoned"
+  ]
+}

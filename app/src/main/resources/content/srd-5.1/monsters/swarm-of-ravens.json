@@ -1,0 +1,109 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:swarm-of-ravens",
+  "name": "Swarm of Ravens",
+  "size": "medium",
+  "type": "beast",
+  "alignment": "unaligned",
+  "tags": [
+    "swarm"
+  ],
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "7d8-7",
+    "average": 24
+  },
+  "speeds": {
+    "walk": 10,
+    "fly": 50
+  },
+  "abilities": {
+    "str": 6,
+    "dex": 14,
+    "con": 8,
+    "int": 3,
+    "wis": 12,
+    "cha": 6
+  },
+  "skills": {
+    "perception": 5
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ]
+    }
+  ],
+  "senses": {
+    "passivePerception": 15
+  },
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Swarm",
+      "text": "The swarm can occupy another creature’s space and vice versa, and the swarm can move through any opening large enough for a Tiny raven. The swarm can’t regain hit points or gain temporary hit points."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Beaks",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target in the swarm’s space. Hit: 7 (2d6) piercing damage, or 3 (1d6) piercing damage if the swarm has half of its hit points or fewer. Variant: Insect Swarms Different kinds of insects can gather in swarms, and each swarm has the special characteristics described below.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "2d6",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "1d6",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Swarm of Beetles",
+      "text": "A swarm of beetles gains a burrowing speed of 5 feet."
+    },
+    {
+      "name": "Swarm of Centipedes",
+      "text": "A creature reduced to 0 hit points by a swarm of centipedes is stable but poisoned for 1 hour, even after regaining hit points, and paralyzed while poisoned in this way."
+    },
+    {
+      "name": "Swarm of Spiders",
+      "text": "A swarm of spiders has the following additional traits."
+    },
+    {
+      "name": "Spider Climb",
+      "text": "The swarm can climb difficult surfaces, including upside down on ceilings, without needing to make an ability check."
+    },
+    {
+      "name": "Web Sense",
+      "text": "While in contact with a web, the swarm knows the exact location of any other creature in contact with the same web."
+    },
+    {
+      "name": "Web Walker",
+      "text": "The swarm ignores movement restrictions caused by webbing."
+    },
+    {
+      "name": "Swarm of Wasps",
+      "text": "A swarm of wasps has a walking speed of 5 feet, a flying speed of 30 feet, and no climbing speed."
+    }
+  ],
+  "notes": [
+    "Condition immunities: charmed, frightened, grappled, paralyzed, petrified, prone, restrained, stunned"
+  ]
+}

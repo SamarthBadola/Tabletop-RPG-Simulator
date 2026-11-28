@@ -1,0 +1,54 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:giant-lizard",
+  "name": "Giant Lizard",
+  "size": "large",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 12,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "3d10+3",
+    "average": 19
+  },
+  "speeds": {
+    "walk": 30,
+    "climb": 30
+  },
+  "abilities": {
+    "str": 15,
+    "dex": 12,
+    "con": 13,
+    "int": 2,
+    "wis": 10,
+    "cha": 5
+  },
+  "senses": {
+    "darkvision": 30,
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) piercing damage. A giant lizard can be ridden or used as a draft animal. Lizardfolk also keep them as pets, and subterranean giant lizards are used as mounts and pack animals by drow, duergar, and others.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d8+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

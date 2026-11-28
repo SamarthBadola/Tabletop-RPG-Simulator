@@ -1,0 +1,68 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:giant-sea-horse",
+  "name": "Giant Sea Horse",
+  "size": "large",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 13,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "3d10",
+    "average": 16
+  },
+  "speeds": {
+    "walk": 0,
+    "swim": 40
+  },
+  "abilities": {
+    "str": 12,
+    "dex": 15,
+    "con": 11,
+    "int": 2,
+    "wis": 12,
+    "cha": 5
+  },
+  "senses": {
+    "passivePerception": 11
+  },
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Charge",
+      "text": "If the sea horse moves at least 20 feet straight toward a target and then hits it with a ram attack on the same turn, the target takes an extra 7 (2d6) bludgeoning damage. It the target is a creature, it must succeed on a DC 11 Strength saving throw or be knocked prone.",
+      "save": {
+        "ability": "str",
+        "dc": "11",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Water Breathing",
+      "text": "The sea horse can breathe only underwater."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Ram",
+      "text": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) bludgeoning damage. Like their smaller kin, giant sea horses are shy, colorful fish with elongated bodies and curled tails. Aquatic elves train them as mounts.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "3",
+        "hits": [
+          {
+            "roll": "1d6+1",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

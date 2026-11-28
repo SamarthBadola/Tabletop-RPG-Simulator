@@ -1,0 +1,66 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:dire-wolf",
+  "name": "Dire Wolf",
+  "size": "large",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 14,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "5d10+10",
+    "average": 37
+  },
+  "speeds": {
+    "walk": 50
+  },
+  "abilities": {
+    "str": 17,
+    "dex": 15,
+    "con": 15,
+    "int": 3,
+    "wis": 12,
+    "cha": 7
+  },
+  "skills": {
+    "perception": 3,
+    "stealth": 4
+  },
+  "senses": {
+    "passivePerception": 13
+  },
+  "challenge": {
+    "cr": 1,
+    "xp": 200,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Keen Hearing and Smell",
+      "text": "The wolf has advantage on Wisdom (Perception) checks that rely on hearing or smell."
+    },
+    {
+      "name": "Pack Tactics",
+      "text": "The wolf has advantage on an attack roll against a creature if at least one of the wolf’s allies is within 5 feet of the creature and the ally isn’t incapacitated."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) piercing damage. If the target is a creature, it must succeed on a DC 13 Strength saving throw or be knocked prone.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "2d6+3",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

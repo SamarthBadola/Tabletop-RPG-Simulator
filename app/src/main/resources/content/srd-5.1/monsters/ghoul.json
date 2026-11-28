@@ -1,0 +1,79 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:ghoul",
+  "name": "Ghoul",
+  "size": "medium",
+  "type": "undead",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "5d8",
+    "average": 22
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 13,
+    "dex": 15,
+    "con": 10,
+    "int": 7,
+    "wis": 10,
+    "cha": 6
+  },
+  "damageModifiers": [
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+  },
+  "languages": "Common",
+  "challenge": {
+    "cr": 1,
+    "xp": 200,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +2 to hit, reach 5 ft., one creature. Hit: 9 (2d6 + 2) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "2",
+        "hits": [
+          {
+            "roll": "2d6+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) slashing damage. If the target is a creature other than an elf or undead, it must succeed on a DC 10 Constitution saving throw or be paralyzed for 1 minute. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "2d4+2",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: charmed, exhaustion, poisoned"
+  ]
+}

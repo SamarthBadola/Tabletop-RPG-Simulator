@@ -1,0 +1,89 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:pseudodragon",
+  "name": "Pseudodragon",
+  "size": "tiny",
+  "type": "dragon",
+  "alignment": "neutral_good",
+  "ac": {
+    "value": 13,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "2d4+2",
+    "average": 7
+  },
+  "speeds": {
+    "walk": 15,
+    "fly": 60
+  },
+  "abilities": {
+    "str": 6,
+    "dex": 15,
+    "con": 13,
+    "int": 10,
+    "wis": 12,
+    "cha": 10
+  },
+  "skills": {
+    "perception": 3,
+    "stealth": 4
+  },
+  "senses": {
+    "blindsight": 10,
+    "darkvision": 60,
+    "passivePerception": 13
+  },
+  "languages": "understands Common and Draconic but can’t speak",
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Keen Senses",
+      "text": "The pseudodragon has advantage on Wisdom (Perception) checks that rely on sight, hearing, or smell."
+    },
+    {
+      "name": "Magic Resistance",
+      "text": "The pseudodragon has advantage on saving throws against spells and other magical effects."
+    },
+    {
+      "name": "Limited Telepathy",
+      "text": "The pseudodragon can magically communicate simple ideas, emotions, and images telepathically with any creature within 100 feet of it that can understand a language."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 4 (1d4 + 2) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Sting",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 4 (1d4 + 2) piercing damage, and the target must succeed on a DC 11 Constitution saving throw or become poisoned for 1 hour. If the saving throw fails by 5 or more, the target falls unconscious for the same duration, or until it takes damage or another creature uses an action to shake it awake.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

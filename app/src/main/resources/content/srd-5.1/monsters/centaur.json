@@ -1,0 +1,100 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:centaur",
+  "name": "Centaur",
+  "size": "large",
+  "type": "monstrosity",
+  "alignment": "neutral_good",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "6d10+12",
+    "average": 45
+  },
+  "speeds": {
+    "walk": 50
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 14,
+    "con": 14,
+    "int": 9,
+    "wis": 13,
+    "cha": 11
+  },
+  "skills": {
+    "athletics": 6,
+    "perception": 3,
+    "survival": 3
+  },
+  "senses": {
+    "passivePerception": 13
+  },
+  "languages": "Elvish, Sylvan",
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Charge",
+      "text": "If the centaur moves at least 30 feet straight toward a target and then hits it with a pike attack on the same turn, the target takes an extra 10 (3d6) piercing damage."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The centaur makes two attacks: one with its pike and one with its hooves or two with its longbow."
+    },
+    {
+      "name": "Pike",
+      "text": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 9 (1d10 + 4) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "1d10+4",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Hooves",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Longbow",
+      "text": "Ranged Weapon Attack: +4 to hit, range 150/600 ft., one target. Hit: 6 (1d8 + 2) piercing damage.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d8+2",
+            "damageType": "piercing"
+          }
+        ],
+        "range": {
+          "normal": 150,
+          "long": 600
+        }
+      }
+    }
+  ]
+}

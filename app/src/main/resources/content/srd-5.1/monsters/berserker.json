@@ -1,0 +1,65 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:berserker",
+  "name": "Berserker",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 13,
+    "source": "hide armor"
+  },
+  "hp": {
+    "dice": "9d8+27",
+    "average": 67
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 16,
+    "dex": 12,
+    "con": 17,
+    "int": 9,
+    "wis": 11,
+    "cha": 9
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "languages": "any one language (usually Common)",
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Reckless",
+      "text": "At the start of its turn, the berserker can gain advantage on all melee weapon attack rolls during that turn, but attack rolls against it have advantage until the start of its next turn."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Greataxe",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 9 (1d12 + 3) slashing damage. Hailing from uncivilized lands, unpredictable berserkers come together in war parties and seek conflict wherever they can find it.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d12+3",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any chaotic alignment"
+  ]
+}

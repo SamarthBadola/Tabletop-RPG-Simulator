@@ -1,0 +1,51 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:riding-horse",
+  "name": "Riding Horse",
+  "size": "large",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 10
+  },
+  "hp": {
+    "dice": "2d10+2",
+    "average": 13
+  },
+  "speeds": {
+    "walk": 60
+  },
+  "abilities": {
+    "str": 16,
+    "dex": 10,
+    "con": 12,
+    "int": 2,
+    "wis": 11,
+    "cha": 7
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Hooves",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 8 (2d4 + 3) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "2d4+3",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

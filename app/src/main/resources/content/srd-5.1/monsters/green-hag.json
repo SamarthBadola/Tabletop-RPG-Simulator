@@ -1,0 +1,78 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:green-hag",
+  "name": "Green Hag",
+  "size": "medium",
+  "type": "fey",
+  "alignment": "neutral_evil",
+  "ac": {
+    "value": 17,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "11d8+33",
+    "average": 82
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 12,
+    "con": 16,
+    "int": 13,
+    "wis": 14,
+    "cha": 14
+  },
+  "skills": {
+    "arcana": 3,
+    "deception": 4,
+    "perception": 4,
+    "stealth": 3
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 14
+  },
+  "languages": "Common, Draconic, Sylvan",
+  "challenge": {
+    "cr": 3,
+    "xp": 700,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Amphibious",
+      "text": "The hag can breathe air and water."
+    },
+    {
+      "name": "Innate Spellcasting",
+      "text": "The hag’s innate spellcasting ability is Charisma (spell save DC 12). She can innately cast the following spells, requiring no material components: At will: dancing lights, minor illusion, vicious mockery Mimicry. The hag can mimic animal sounds and humanoid voices. A creature that hears the sounds can tell they are imitations with a successful DC 14 Wisdom (Insight) check."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d8+4",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Illusory Appearance",
+      "text": "The hag covers herself and anything she is wearing or carrying with a magical illusion that makes her look like another creature of her general size and humanoid shape. The illusion ends if the hag takes a bonus action to end it or if she dies. The changes wrought by this effect fail to hold up to physical inspection. For example, the hag could appear to have smooth skin, but someone touching her would feel her rough flesh. Otherwise, a creature must take an action to visually inspect the illusion and succeed on a DC 20 Intelligence (Investigation) check to discern that the hag is disguised."
+    },
+    {
+      "name": "Invisible Passage",
+      "text": "The hag magically turns invisible until she attacks or casts a spell, or until her concentration ends (as if concentrating on a spell). While invisible, she leaves no physical evidence of her passage, so she can be tracked only by magic. Any equipment she wears or carries is invisible with her."
+    }
+  ]
+}

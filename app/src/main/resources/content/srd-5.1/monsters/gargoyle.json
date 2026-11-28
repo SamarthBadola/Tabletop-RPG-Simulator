@@ -1,0 +1,100 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:gargoyle",
+  "name": "Gargoyle",
+  "size": "medium",
+  "type": "elemental",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 15,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "7d8+21",
+    "average": 52
+  },
+  "speeds": {
+    "walk": 30,
+    "fly": 60
+  },
+  "abilities": {
+    "str": 15,
+    "dex": 11,
+    "con": 16,
+    "int": 6,
+    "wis": 11,
+    "cha": 7
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "adamantine"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+  },
+  "languages": "Terran",
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "False Appearance",
+      "text": "While the gargoyle remains motionless, it is indistinguishable from an inanimate statue."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The gargoyle makes two attacks: one with its bite and one with its claws."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d6+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d6+2",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: exhaustion, petrified, poisoned"
+  ]
+}

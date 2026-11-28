@@ -1,0 +1,97 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:cloud-giant",
+  "name": "Cloud Giant",
+  "size": "huge",
+  "type": "giant",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 14,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "16d12+96",
+    "average": 200
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 27,
+    "dex": 10,
+    "con": 22,
+    "int": 12,
+    "wis": 16,
+    "cha": 16
+  },
+  "saves": {
+    "con": 10,
+    "wis": 7,
+    "cha": 7
+  },
+  "skills": {
+    "insight": 7,
+    "perception": 7
+  },
+  "senses": {
+    "passivePerception": 17
+  },
+  "languages": "Common, Giant",
+  "challenge": {
+    "cr": 9,
+    "xp": 5000,
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Keen Smell",
+      "text": "The giant has advantage on Wisdom (Perception) checks that rely on smell."
+    },
+    {
+      "name": "Innate Spellcasting",
+      "text": "The giant’s innate spellcasting ability is Charisma. It can innately cast the following spells, requiring no material components: At will: detect magic, fog cloud, light 3/day each: feather fall, fly, misty step, telekinesis 1/day each: control weather, gaseous form"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The giant makes two morningstar attacks."
+    },
+    {
+      "name": "Morningstar",
+      "text": "Melee Weapon Attack: +12 to hit, reach 10 ft., one target. Hit: 21 (3d8 + 8) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "12",
+        "hits": [
+          {
+            "roll": "3d8+8",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Rock",
+      "text": "Ranged Weapon Attack: +12 to hit, range 60/240 ft., one target. Hit: 30 (4d10 + 8) bludgeoning damage.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "12",
+        "hits": [
+          {
+            "roll": "4d10+8",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "range": {
+          "normal": 60,
+          "long": 240
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: neutral good (50%) or neutral evil (50%)"
+  ]
+}

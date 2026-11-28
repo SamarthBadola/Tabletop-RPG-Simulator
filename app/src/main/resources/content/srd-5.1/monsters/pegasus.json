@@ -1,0 +1,61 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:pegasus",
+  "name": "Pegasus",
+  "size": "large",
+  "type": "celestial",
+  "alignment": "chaotic_good",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "7d10+21",
+    "average": 59
+  },
+  "speeds": {
+    "walk": 60,
+    "fly": 90
+  },
+  "abilities": {
+    "str": 18,
+    "dex": 15,
+    "con": 16,
+    "int": 10,
+    "wis": 15,
+    "cha": 13
+  },
+  "saves": {
+    "dex": 4,
+    "wis": 4,
+    "cha": 3
+  },
+  "skills": {
+    "perception": 6
+  },
+  "senses": {
+    "passivePerception": 16
+  },
+  "languages": "understands Celestial, Common, Elvish, and Sylvan but can’t speak",
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "actions": [
+    {
+      "name": "Hooves",
+      "text": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "6",
+        "hits": [
+          {
+            "roll": "2d6+4",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

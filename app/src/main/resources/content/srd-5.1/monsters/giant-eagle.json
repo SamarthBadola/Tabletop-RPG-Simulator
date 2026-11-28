@@ -1,0 +1,81 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:giant-eagle",
+  "name": "Giant Eagle",
+  "size": "large",
+  "type": "beast",
+  "alignment": "neutral_good",
+  "ac": {
+    "value": 13
+  },
+  "hp": {
+    "dice": "4d10+4",
+    "average": 26
+  },
+  "speeds": {
+    "walk": 10,
+    "fly": 80
+  },
+  "abilities": {
+    "str": 16,
+    "dex": 17,
+    "con": 13,
+    "int": 8,
+    "wis": 14,
+    "cha": 10
+  },
+  "skills": {
+    "perception": 4
+  },
+  "senses": {
+    "passivePerception": 14
+  },
+  "languages": "Giant Eagle, understands Common and Auran but can’t speak them",
+  "challenge": {
+    "cr": 1,
+    "xp": 200,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Keen Sight",
+      "text": "The eagle has advantage on Wisdom (Perception) checks that rely on sight."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The eagle makes two attacks: one with its beak and one with its talons."
+    },
+    {
+      "name": "Beak",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d6+3",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Talons",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) slashing damage. A giant eagle is a noble creature that speaks its own language and understands speech in the Common tongue. A mated pair of giant eagles typically has up to four eggs or young in their nest (treat the young as normal eagles).",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "2d6+3",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:owlbear",
+  "name": "Owlbear",
+  "size": "large",
+  "type": "monstrosity",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 13,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "7d10+21",
+    "average": 59
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 20,
+    "dex": 12,
+    "con": 17,
+    "int": 3,
+    "wis": 12,
+    "cha": 7
+  },
+  "skills": {
+    "perception": 3
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 13
+  },
+  "challenge": {
+    "cr": 3,
+    "xp": 700,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Keen Sight and Smell",
+      "text": "The owlbear has advantage on Wisdom (Perception) checks that rely on sight or smell."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The owlbear makes two attacks: one with its beak and one with its claws."
+    },
+    {
+      "name": "Beak",
+      "text": "Melee Weapon Attack: +7 to hit, reach 5 ft., one creature. Hit: 10 (1d10 + 5) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "1d10+5",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claws",
+      "text": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 14 (2d8 + 5) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "7",
+        "hits": [
+          {
+            "roll": "2d8+5",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

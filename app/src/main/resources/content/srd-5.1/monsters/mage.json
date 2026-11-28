@@ -1,0 +1,77 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:mage",
+  "name": "Mage",
+  "size": "medium",
+  "type": "humanoid",
+  "alignment": "any",
+  "tags": [
+    "any race"
+  ],
+  "ac": {
+    "value": 12,
+    "source": "15 with mage armor"
+  },
+  "hp": {
+    "dice": "9d8",
+    "average": 40
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 9,
+    "dex": 14,
+    "con": 11,
+    "int": 17,
+    "wis": 12,
+    "cha": 11
+  },
+  "saves": {
+    "int": 6,
+    "wis": 4
+  },
+  "skills": {
+    "arcana": 6,
+    "history": 6
+  },
+  "senses": {
+    "passivePerception": 11
+  },
+  "languages": "any four languages",
+  "challenge": {
+    "cr": 6,
+    "xp": 2300,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Spellcasting",
+      "text": "The mage is a 9th-level spellcaster. Its spellcasting ability is Intelligence (spell save DC 14, +6 to hit with spell attacks). The mage has the following wizard spells prepared: Cantrips (at will): fire bolt, light, mage hand, prestidigitation 1st level (4 slots): detect magic, mage armor, magic missile, shield 2nd level (3 slots): misty step, suggestion 3rd level (3 slots): counterspell, fireball, fly 4th level (3 slots): greater invisibility, ice storm 5th level (1 slot): cone of cold"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Dagger",
+      "text": "Melee or Ranged Weapon Attack: +5 to hit, reach 5 ft. or range 20/60 ft., one target. Hit: 4 (1d4 + 2) piercing damage. Mages spend their lives in the study and practice of magic. Good-‑aligned mages offer counsel to nobles and others in power, while evil mages dwell in isolated sites to perform unspeakable experiments without interference.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5,
+        "range": {
+          "normal": 20,
+          "long": 60
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Printed alignment: any alignment"
+  ]
+}

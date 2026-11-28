@@ -1,0 +1,91 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:ochre-jelly",
+  "name": "Ochre Jelly",
+  "size": "large",
+  "type": "ooze",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 8
+  },
+  "hp": {
+    "dice": "6d10+12",
+    "average": 45
+  },
+  "speeds": {
+    "walk": 10,
+    "climb": 10
+  },
+  "abilities": {
+    "str": 15,
+    "dex": 6,
+    "con": 14,
+    "int": 2,
+    "wis": 6,
+    "cha": 1
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "acid"
+      ]
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "lightning",
+        "slashing"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 60,
+    "passivePerception": 8
+  },
+  "challenge": {
+    "cr": 2,
+    "xp": 450,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Amorphous",
+      "text": "The jelly can move through a space as narrow as 1 inch wide without squeezing."
+    },
+    {
+      "name": "Spider Climb",
+      "text": "The jelly can climb difficult surfaces, including upside down on ceilings, without needing to make an ability check."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pseudopod",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 9 (2d6 + 2) bludgeoning damage plus 3 (1d6) acid damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "2d6+2",
+            "damageType": "bludgeoning"
+          },
+          {
+            "roll": "1d6",
+            "damageType": "acid"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "reactions": [
+    {
+      "name": "Split",
+      "text": "When a jelly that is Medium or larger is subjected to lightning or slashing damage, it splits into two new jellies if it has at least 10 hit points. Each new jelly has hit points equal to half the original jelly’s, rounded down. New jellies are one size smaller than the original jelly."
+    }
+  ],
+  "notes": [
+    "Condition immunities: blinded, charmed, deafened, exhaustion, frightened, prone"
+  ]
+}

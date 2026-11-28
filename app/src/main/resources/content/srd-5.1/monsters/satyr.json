@@ -1,0 +1,97 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:satyr",
+  "name": "Satyr",
+  "size": "medium",
+  "type": "fey",
+  "alignment": "chaotic_neutral",
+  "ac": {
+    "value": 14,
+    "source": "leather armor"
+  },
+  "hp": {
+    "dice": "7d8",
+    "average": 31
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 12,
+    "dex": 16,
+    "con": 11,
+    "int": 12,
+    "wis": 10,
+    "cha": 14
+  },
+  "skills": {
+    "perception": 2,
+    "performance": 6,
+    "stealth": 5
+  },
+  "senses": {
+    "passivePerception": 12
+  },
+  "languages": "Common, Elvish, Sylvan",
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Magic Resistance",
+      "text": "The satyr has advantage on saving throws against spells and other magical effects."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Ram",
+      "text": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 6 (2d4 + 1) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "3",
+        "hits": [
+          {
+            "roll": "2d4+1",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Shortsword",
+      "text": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d6+3",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Shortbow",
+      "text": "Ranged Weapon Attack: +5 to hit, range 80/320 ft., one target. Hit: 6 (1d6 + 3) piercing damage.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "5",
+        "hits": [
+          {
+            "roll": "1d6+3",
+            "damageType": "piercing"
+          }
+        ],
+        "range": {
+          "normal": 80,
+          "long": 320
+        }
+      }
+    }
+  ]
+}

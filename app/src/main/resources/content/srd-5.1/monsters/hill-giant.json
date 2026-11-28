@@ -1,0 +1,78 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:hill-giant",
+  "name": "Hill Giant",
+  "size": "huge",
+  "type": "giant",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 13,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "10d12+40",
+    "average": 105
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 21,
+    "dex": 8,
+    "con": 19,
+    "int": 5,
+    "wis": 9,
+    "cha": 6
+  },
+  "skills": {
+    "perception": 2
+  },
+  "senses": {
+    "passivePerception": 12
+  },
+  "languages": "Giant",
+  "challenge": {
+    "cr": 5,
+    "xp": 1800,
+    "proficiencyBonus": 3
+  },
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The giant makes two greatclub attacks."
+    },
+    {
+      "name": "Greatclub",
+      "text": "Melee Weapon Attack: +8 to hit, reach 10 ft., one target. Hit: 18 (3d8 + 5) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "3d8+5",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Rock",
+      "text": "Ranged Weapon Attack: +8 to hit, range 60/240 ft., one target. Hit: 21 (3d10 + 5) bludgeoning damage.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "3d10+5",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "range": {
+          "normal": 60,
+          "long": 240
+        }
+      }
+    }
+  ]
+}

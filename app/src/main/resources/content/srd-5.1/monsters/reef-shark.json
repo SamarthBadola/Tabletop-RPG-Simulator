@@ -1,0 +1,67 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:reef-shark",
+  "name": "Reef Shark",
+  "size": "medium",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 12,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "4d8+4",
+    "average": 22
+  },
+  "speeds": {
+    "walk": 0,
+    "swim": 40
+  },
+  "abilities": {
+    "str": 14,
+    "dex": 13,
+    "con": 13,
+    "int": 1,
+    "wis": 10,
+    "cha": 4
+  },
+  "skills": {
+    "perception": 2
+  },
+  "senses": {
+    "blindsight": 30,
+    "passivePerception": 12
+  },
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Pack Tactics",
+      "text": "The shark has advantage on an attack roll against a creature if at least one of the shark’s allies is within 5 feet of the creature and the ally isn’t incapacitated."
+    },
+    {
+      "name": "Water Breathing",
+      "text": "The shark can breathe only underwater."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) piercing damage. Smaller than giant sharks and hunter sharks, reef sharks inhabit shallow waters and coral reefs, gathering in small packs to hunt. A full-‑grown specimen measures 6 to 10 feet long.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d8+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

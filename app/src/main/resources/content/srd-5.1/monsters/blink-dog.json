@@ -1,0 +1,71 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:blink-dog",
+  "name": "Blink Dog",
+  "size": "medium",
+  "type": "fey",
+  "alignment": "lawful_good",
+  "ac": {
+    "value": 13
+  },
+  "hp": {
+    "dice": "4d8+4",
+    "average": 22
+  },
+  "speeds": {
+    "walk": 40
+  },
+  "abilities": {
+    "str": 12,
+    "dex": 17,
+    "con": 12,
+    "int": 10,
+    "wis": 13,
+    "cha": 11
+  },
+  "skills": {
+    "perception": 3,
+    "stealth": 5
+  },
+  "senses": {
+    "passivePerception": 13
+  },
+  "languages": "Blink Dog, understands Sylvan but can’t speak it",
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Keen Hearing and Smell",
+      "text": "The dog has advantage on Wisdom (Perception) checks that rely on hearing or smell."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "3",
+        "hits": [
+          {
+            "roll": "1d6+1",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Teleport",
+      "text": "The dog magically teleports, along with any equipment it is wearing or carrying, up to 40 feet to an unoccupied space it can see. Before or after teleporting, the dog can make one bite attack. A blink dog takes its name from its ability to blink in and out of existence, a talent it uses to aid its attacks and to avoid harm.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 4
+      }
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:adult-red-dragon",
+  "name": "Adult Red Dragon",
+  "size": "huge",
+  "type": "dragon",
+  "alignment": "chaotic_evil",
+  "ac": {
+    "value": 19,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "19d12+133",
+    "average": 256
+  },
+  "speeds": {
+    "walk": 40,
+    "climb": 40,
+    "fly": 80
+  },
+  "abilities": {
+    "str": 27,
+    "dex": 10,
+    "con": 25,
+    "int": 16,
+    "wis": 13,
+    "cha": 21
+  },
+  "saves": {
+    "dex": 6,
+    "con": 13,
+    "wis": 7,
+    "cha": 11
+  },
+  "skills": {
+    "perception": 13,
+    "stealth": 6
+  },
+  "damageModifiers": [
+    {
+      "kind": "immunity",
+      "types": [
+        "fire"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 60,
+    "darkvision": 120,
+    "passivePerception": 23
+  },
+  "languages": "Common, Draconic",
+  "challenge": {
+    "cr": 17,
+    "xp": 18000,
+    "proficiencyBonus": 6
+  },
+  "traits": [
+    {
+      "name": "Legendary Resistance",
+      "text": "If the dragon fails a saving throw, it can choose to succeed instead.",
+      "limit": {
+        "per": "long_rest",
+        "uses": "3"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +14 to hit, reach 10 ft., one target. Hit: 19 (2d10 + 8) piercing damage plus 7 (2d6) fire damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "14",
+        "hits": [
+          {
+            "roll": "2d10+8",
+            "damageType": "piercing"
+          },
+          {
+            "roll": "2d6",
+            "damageType": "fire"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Claw",
+      "text": "Melee Weapon Attack: +14 to hit, reach 5 ft., one target. Hit: 15 (2d6 + 8) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "14",
+        "hits": [
+          {
+            "roll": "2d6+8",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Tail",
+      "text": "Melee Weapon Attack: +14 to hit, reach 15 ft., one target. Hit: 17 (2d8 + 8) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "14",
+        "hits": [
+          {
+            "roll": "2d8+8",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 15
+      }
+    },
+    {
+      "name": "Frightful Presence",
+      "text": "Each creature of the dragon’s choice that is within 120 feet of the dragon and aware of it must succeed on a DC 19 Wisdom saving throw or become frightened for 1 minute. A creature can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success. If a creature’s saving throw is successful or the effect ends for it, the creature is immune to the dragon’s Frightful Presence for the next 24 hours.",
+      "save": {
+        "ability": "wis",
+        "dc": "19",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Fire Breath",
+      "text": "The dragon exhales fire in a 60-foot cone. Each creature in that area must make a DC 21 Dexterity saving throw, taking 63 (18d6) fire damage on a failed save, or half as much damage on a successful one.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 5
+      },
+      "save": {
+        "ability": "dex",
+        "dc": "21",
+        "onSuccess": "half"
+      }
+    }
+  ],
+  "legendaryActions": {
+    "uses": 3,
+    "entries": [
+      {
+        "name": "Detect",
+        "text": "The dragon makes a Wisdom (Perception) check."
+      },
+      {
+        "name": "Tail Attack",
+        "text": "The dragon makes a tail attack."
+      },
+      {
+        "name": "Wing Attack",
+        "text": "The dragon beats its wings. Each creature within 10 feet of the dragon must succeed on a DC 22 Dexterity saving throw or take 15 (2d6 + 8) bludgeoning damage and be knocked prone. The dragon can then fly up to half its flying speed.",
+        "cost": 2,
+        "save": {
+          "ability": "dex",
+          "dc": "22",
+          "onSuccess": "none"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:earth-elemental",
+  "name": "Earth Elemental",
+  "size": "large",
+  "type": "elemental",
+  "alignment": "neutral",
+  "ac": {
+    "value": 17,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "12d10+60",
+    "average": 126
+  },
+  "speeds": {
+    "walk": 30,
+    "burrow": 30
+  },
+  "abilities": {
+    "str": 20,
+    "dex": 8,
+    "con": 20,
+    "int": 5,
+    "wis": 10,
+    "cha": 5
+  },
+  "damageModifiers": [
+    {
+      "kind": "vulnerability",
+      "types": [
+        "thunder"
+      ]
+    },
+    {
+      "kind": "resistance",
+      "types": [
+        "bludgeoning",
+        "piercing",
+        "slashing"
+      ],
+      "unless": "magical"
+    },
+    {
+      "kind": "immunity",
+      "types": [
+        "poison"
+      ]
+    }
+  ],
+  "senses": {
+    "darkvision": 60,
+    "tremorsense": 60,
+    "passivePerception": 10
+  },
+  "languages": "Terran",
+  "challenge": {
+    "cr": 5,
+    "xp": 1800,
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Earth Glide",
+      "text": "The elemental can burrow through nonmagical, unworked earth and stone. While doing so, the elemental doesn’t disturb the material it moves through."
+    },
+    {
+      "name": "Siege Monster",
+      "text": "The elemental deals double damage to objects and structures."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The elemental makes two slam attacks."
+    },
+    {
+      "name": "Slam",
+      "text": "Melee Weapon Attack: +8 to hit, reach 10 ft., one target. Hit: 14 (2d8 + 5) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "8",
+        "hits": [
+          {
+            "roll": "2d8+5",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 10
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: exhaustion, paralyzed, petrified, poisoned, unconscious"
+  ]
+}

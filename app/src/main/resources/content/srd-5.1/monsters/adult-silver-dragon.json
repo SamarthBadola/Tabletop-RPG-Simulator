@@ -1,0 +1,183 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:adult-silver-dragon",
+  "name": "Adult Silver Dragon",
+  "size": "huge",
+  "type": "dragon",
+  "alignment": "lawful_good",
+  "ac": {
+    "value": 19,
+    "source": "natural armor"
+  },
+  "hp": {
+    "dice": "18d12+126",
+    "average": 243
+  },
+  "speeds": {
+    "walk": 40,
+    "fly": 80
+  },
+  "abilities": {
+    "str": 27,
+    "dex": 10,
+    "con": 25,
+    "int": 16,
+    "wis": 13,
+    "cha": 21
+  },
+  "saves": {
+    "dex": 5,
+    "con": 12,
+    "wis": 6,
+    "cha": 10
+  },
+  "skills": {
+    "arcana": 8,
+    "history": 8,
+    "perception": 11,
+    "stealth": 5
+  },
+  "damageModifiers": [
+    {
+      "kind": "immunity",
+      "types": [
+        "cold"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 60,
+    "darkvision": 120,
+    "passivePerception": 21
+  },
+  "languages": "Common, Draconic",
+  "challenge": {
+    "cr": 16,
+    "xp": 15000,
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Legendary Resistance",
+      "text": "If the dragon fails a saving throw, it can choose to succeed instead.",
+      "limit": {
+        "per": "long_rest",
+        "uses": "3"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws."
+    },
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +13 to hit, reach 10 ft., one target. Hit: 19 (2d10 + 8) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "13",
+        "hits": [
+          {
+            "roll": "2d10+8",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 10
+      }
+    },
+    {
+      "name": "Claw",
+      "text": "Melee Weapon Attack: +13 to hit, reach 5 ft., one target. Hit: 15 (2d6 + 8) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "13",
+        "hits": [
+          {
+            "roll": "2d6+8",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Tail",
+      "text": "Melee Weapon Attack: +13 to hit, reach 15 ft., one target. Hit: 17 (2d8 + 8) bludgeoning damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "13",
+        "hits": [
+          {
+            "roll": "2d8+8",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "reach": 15
+      }
+    },
+    {
+      "name": "Frightful Presence",
+      "text": "Each creature of the dragon’s choice that is within 120 feet of the dragon and aware of it must succeed on a DC 18 Wisdom saving throw or become frightened for 1 minute. A creature can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success. If a creature’s saving throw is successful or the effect ends for it, the creature is immune to the dragon’s Frightful Presence for the next 24 hours.",
+      "save": {
+        "ability": "wis",
+        "dc": "18",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Breath Weapons",
+      "text": "The dragon uses one of the following breath weapons.",
+      "recharge": {
+        "on": "START_OF_OWN_TURN",
+        "die": "1d6",
+        "threshold": 5
+      }
+    },
+    {
+      "name": "Cold Breath",
+      "text": "The dragon exhales an icy blast in a 60- foot cone. Each creature in that area must make a DC 20 Constitution saving throw, taking 58 (13d8) cold damage on a failed save, or half as much damage on a successful one.",
+      "save": {
+        "ability": "con",
+        "dc": "20",
+        "onSuccess": "half"
+      }
+    },
+    {
+      "name": "Paralyzing Breath",
+      "text": "The dragon exhales paralyzing gas in a 60-foot cone. Each creature in that area must succeed on a DC 20 Constitution saving throw or be paralyzed for 1 minute. A creature can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
+      "save": {
+        "ability": "con",
+        "dc": "20",
+        "onSuccess": "none"
+      }
+    },
+    {
+      "name": "Change Shape",
+      "text": "The dragon magically polymorphs into a humanoid or beast that has a challenge rating no higher than its own, or back into its true form. It reverts to its true form if it dies. Any equipment it is wearing or carrying is absorbed or borne by the new form (the dragon’s choice). In a new form, the dragon retains its alignment, hit points, Hit Dice, ability to speak, proficiencies, Legendary Resistance, lair actions, and Intelligence, Wisdom, and Charisma scores, as well as this action. Its statistics and capabilities are otherwise replaced by those of the new form, except any class features or legendary actions of that form."
+    }
+  ],
+  "legendaryActions": {
+    "uses": 3,
+    "entries": [
+      {
+        "name": "Detect",
+        "text": "The dragon makes a Wisdom (Perception) check."
+      },
+      {
+        "name": "Tail Attack",
+        "text": "The dragon makes a tail attack."
+      },
+      {
+        "name": "Wing Attack",
+        "text": "The dragon beats its wings. Each creature within 10 feet of the dragon must succeed on a DC 21 Dexterity saving throw or take 15 (2d6 + 8) bludgeoning damage and be knocked prone. The dragon can then fly up to half its flying speed.",
+        "cost": 2,
+        "save": {
+          "ability": "dex",
+          "dc": "21",
+          "onSuccess": "none"
+        }
+      }
+    ]
+  }
+}

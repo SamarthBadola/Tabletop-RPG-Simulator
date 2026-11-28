@@ -1,0 +1,84 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:kobold",
+  "name": "Kobold",
+  "size": "small",
+  "type": "humanoid",
+  "alignment": "lawful_evil",
+  "tags": [
+    "kobold"
+  ],
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "2d6-2",
+    "average": 5
+  },
+  "speeds": {
+    "walk": 30
+  },
+  "abilities": {
+    "str": 7,
+    "dex": 15,
+    "con": 9,
+    "int": 8,
+    "wis": 7,
+    "cha": 8
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 8
+  },
+  "languages": "Common, Draconic",
+  "challenge": {
+    "cr": "1/8",
+    "xp": 25,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Sunlight Sensitivity",
+      "text": "While in sunlight, the kobold has disadvantage on attack rolls, as well as on Wisdom (Perception) checks that rely on sight."
+    },
+    {
+      "name": "Pack Tactics",
+      "text": "The kobold has advantage on an attack roll against a creature if at least one of the kobold’s allies is within 5 feet of the creature and the ally isn’t incapacitated."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Dagger",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 4 (1d4 + 2) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Sling",
+      "text": "Ranged Weapon Attack: +4 to hit, range 30/120 ft., one target. Hit: 4 (1d4 + 2) bludgeoning damage.",
+      "attack": {
+        "kind": "ranged_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "bludgeoning"
+          }
+        ],
+        "range": {
+          "normal": 30,
+          "long": 120
+        }
+      }
+    }
+  ]
+}

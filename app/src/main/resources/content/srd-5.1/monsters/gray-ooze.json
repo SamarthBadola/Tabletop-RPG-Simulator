@@ -1,0 +1,87 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:gray-ooze",
+  "name": "Gray Ooze",
+  "size": "medium",
+  "type": "ooze",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 8
+  },
+  "hp": {
+    "dice": "3d8+9",
+    "average": 22
+  },
+  "speeds": {
+    "walk": 10,
+    "climb": 10
+  },
+  "abilities": {
+    "str": 12,
+    "dex": 6,
+    "con": 16,
+    "int": 1,
+    "wis": 6,
+    "cha": 2
+  },
+  "skills": {
+    "stealth": 2
+  },
+  "damageModifiers": [
+    {
+      "kind": "resistance",
+      "types": [
+        "acid",
+        "cold",
+        "fire"
+      ]
+    }
+  ],
+  "senses": {
+    "blindsight": 60,
+    "passivePerception": 8
+  },
+  "challenge": {
+    "cr": "1/2",
+    "xp": 100,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Amorphous",
+      "text": "The ooze can move through a space as narrow as 1 inch wide without squeezing."
+    },
+    {
+      "name": "Corrode Metal",
+      "text": "Any nonmagical weapon made of metal that hits the ooze corrodes. After dealing damage, the weapon takes a permanent and cumulative −1 penalty to damage rolls. If its penalty drops to −5, the weapon is destroyed. Nonmagical ammunition made of metal that hits the ooze is destroyed after dealing damage. The ooze can eat through 2-inch-thick, nonmagical metal in 1 round."
+    },
+    {
+      "name": "False Appearance",
+      "text": "While the ooze remains motionless, it is indistinguishable from an oily pool or wet rock."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pseudopod",
+      "text": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) bludgeoning damage plus 7 (2d6) acid damage, and if the target is wearing nonmagical metal armor, its armor is partly corroded and takes a permanent and cumulative −1 penalty to the AC it offers. The armor is destroyed if the penalty reduces its AC to 10.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "3",
+        "hits": [
+          {
+            "roll": "1d6+1",
+            "damageType": "bludgeoning"
+          },
+          {
+            "roll": "2d6",
+            "damageType": "acid"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ],
+  "notes": [
+    "Condition immunities: blinded, charmed, deafened, exhaustion, frightened, prone"
+  ]
+}

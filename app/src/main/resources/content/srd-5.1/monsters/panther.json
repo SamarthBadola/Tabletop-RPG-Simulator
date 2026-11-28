@@ -1,0 +1,86 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:panther",
+  "name": "Panther",
+  "size": "medium",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 12
+  },
+  "hp": {
+    "dice": "3d8",
+    "average": 13
+  },
+  "speeds": {
+    "walk": 50,
+    "climb": 40
+  },
+  "abilities": {
+    "str": 14,
+    "dex": 15,
+    "con": 10,
+    "int": 3,
+    "wis": 14,
+    "cha": 7
+  },
+  "skills": {
+    "perception": 4,
+    "stealth": 6
+  },
+  "senses": {
+    "passivePerception": 14
+  },
+  "challenge": {
+    "cr": "1/4",
+    "xp": 50,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Keen Smell",
+      "text": "The panther has advantage on Wisdom (Perception) checks that rely on smell."
+    },
+    {
+      "name": "Pounce",
+      "text": "If the panther moves at least 20 feet straight toward a creature and then hits it with a claw attack on the same turn, that target must succeed on a DC 12 Strength saving throw or be knocked prone. If the target is prone, the panther can make one bite attack against it as a bonus action.",
+      "save": {
+        "ability": "str",
+        "dc": "12",
+        "onSuccess": "none"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bite",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d6+2",
+            "damageType": "piercing"
+          }
+        ],
+        "reach": 5
+      }
+    },
+    {
+      "name": "Claw",
+      "text": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 4 (1d4 + 2) slashing damage.",
+      "attack": {
+        "kind": "melee_weapon",
+        "bonus": "4",
+        "hits": [
+          {
+            "roll": "1d4+2",
+            "damageType": "slashing"
+          }
+        ],
+        "reach": 5
+      }
+    }
+  ]
+}

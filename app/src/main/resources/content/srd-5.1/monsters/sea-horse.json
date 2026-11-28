@@ -1,0 +1,41 @@
+{
+  "kind": "monster",
+  "key": "srd-5.1:sea-horse",
+  "name": "Sea Horse",
+  "size": "tiny",
+  "type": "beast",
+  "alignment": "unaligned",
+  "ac": {
+    "value": 11
+  },
+  "hp": {
+    "dice": "1d4-1",
+    "average": 1
+  },
+  "speeds": {
+    "walk": 0,
+    "swim": 20
+  },
+  "abilities": {
+    "str": 1,
+    "dex": 12,
+    "con": 8,
+    "int": 1,
+    "wis": 10,
+    "cha": 2
+  },
+  "senses": {
+    "passivePerception": 10
+  },
+  "challenge": {
+    "cr": 0,
+    "xp": 0,
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Water Breathing",
+      "text": "The sea horse can breathe only underwater."
+    }
+  ]
+}
